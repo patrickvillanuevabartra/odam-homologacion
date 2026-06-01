@@ -432,7 +432,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
     <button class="btn btn-o" onclick="goStep(3)">← Calificación</button>
     <button class="btn btn-p" id="btnNext2top" onclick="sincronizarPaqueteYAvanzar(5)" disabled>Continuar → Evaluación →</button>
   </div>
-  <p class="stitle" style="display:flex;justify-content:space-between;align-items:center;">Paso 5 — Proveedores a Evaluar<button class="btn btn-o btn-sm" onclick="guardarTodosProveedores();" style="font-size:.8rem;">💾 Guardar ahora</button></p>
+  <p class="stitle">Paso 5 — Proveedores a Evaluar</p>
 
   <p style="font-size:.96rem;color:var(--muted);margin-bottom:16px;padding:12px 16px;background:var(--surface);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;line-height:1.6;">
     Agrega todos los proveedores que deseas evaluar. Luego en el paso 4 seleccionas uno por uno y le asignas las calificaciones.
@@ -924,7 +924,9 @@ function appendProvRow(p, i){
       var chk=document.createElement('input');
       chk.type='checkbox';
       var provProductos=p.productosIds||[];
-      chk.checked=provProductos.indexOf(prod.id)>-1;
+      var prodNomLow=(prod.nombre||prod.nom||'').trim().toLowerCase();
+      var prodNomEnProducto=(p.producto||'').toLowerCase().split(',').map(function(x){return x.trim();});
+      chk.checked=provProductos.indexOf(prod.id)>-1 || prodNomEnProducto.indexOf(prodNomLow)>-1;
       (function(prodId,prodNom){
         chk.onchange=function(){
           var pp=getProv(p.id);
@@ -2112,6 +2114,12 @@ function doLogout(){
     var nombres=ptSinGuardar.map(function(p){return '"'+p.nombre+'"';}).join(', ');
     if(!confirm('⚠️ Tienes plantillas sin guardar en la biblioteca:\n\n'+nombres+'\n\n¿Salir sin guardarlas?')) return;
   }
+  // Verificar proveedores sin guardar
+  var provSinGuardar=provs.filter(function(p){return p.nom&&(!p._qid||p._modificado);});
+  if(provSinGuardar.length){
+    var nomsProv=provSinGuardar.map(function(p){return '"'+p.nom+'"';}).join(', ');
+    if(!confirm('⚠️ Tienes proveedores con cambios sin guardar:\n\n'+nomsProv+'\n\n¿Salir sin guardarlos?')) return;
+  }
   // Verificar escalas sin guardar en biblioteca
   var escSinGuardar=_bibliotecaEscalasCache.filter(function(e){return !e._qid;});
   if(escSinGuardar.length){
@@ -3049,9 +3057,12 @@ function sincronizarPaqueteYAvanzar(destino){
     }
   }
   // Si venimos de calificación (destino=4), verificar escala guardada
-  if(destino===5 && !_proveedoresGuardados && provs.length){
-    alert('⚠️ Debes guardar los proveedores antes de continuar.\n\nHaz clic en "💾 Guardar ahora".');
-    return;
+  if(destino===5 && provs.length){
+    var provPend=provs.filter(function(p){return p.nom&&(!p._qid||p._modificado);});
+    if(provPend.length){
+      alert('⚠️ Tienes proveedores sin guardar.\n\nUsa el botón 💾 de cada proveedor antes de continuar.');
+      return;
+    }
   }
   if(destino===4 && !_escalaGuardada){
     alert('⚠️ Debes guardar la escala de calificación antes de continuar.\n\nHaz clic en "💾 Guardar ahora".');
