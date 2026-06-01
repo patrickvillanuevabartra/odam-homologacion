@@ -875,12 +875,54 @@ function appendProvRow(p, i){
   grid.appendChild(mkField('Dirección','dir','Av. Industrial 123...'));
   grid.appendChild(mkField('Rubro / Sector','mat','Ej. Textil, Logística, Limpieza...'));
 
-  // ── Sección 2: Producto / Servicio ──
+  // ── Sección 2: Productos del paquete (checkboxes) ──
   var sec2=document.createElement('div');
-  sec2.style.cssText='grid-column:1/-1;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);padding:4px 0 2px 0;border-bottom:1px solid var(--border);margin-top:6px;margin-bottom:4px;';
-  sec2.textContent='Producto / Servicio';grid.appendChild(sec2);
+  sec2.style.cssText='grid-column:1/-1;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);padding:4px 0 2px 0;border-bottom:1px solid var(--border);margin-top:6px;margin-bottom:8px;';
+  sec2.textContent='Productos / Servicios que provee (del paquete actual)';
+  grid.appendChild(sec2);
 
-  grid.appendChild(mkField('Nombre del producto / servicio','producto','Ej. Telas de algodón, Servicio de fumigación...'));
+  var prodChecksTop=document.createElement('div');
+  prodChecksTop.style.cssText='grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;';
+  var prodListTop=paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length?paqueteActual.productos:productos;
+  if(prodListTop&&prodListTop.length){
+    prodListTop.forEach(function(prod){
+      var lbl=document.createElement('label');
+      lbl.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:.86rem;background:white;';
+      var chk=document.createElement('input');
+      chk.type='checkbox';
+      var provProductos=p.productosIds||[];
+      chk.checked=provProductos.indexOf(prod.id)>-1;
+      (function(prodId,prodNom){
+        chk.onchange=function(){
+          var pp=getProv(p.id);
+          if(!pp)return;
+          if(!pp.productosIds)pp.productosIds=[];
+          if(this.checked){
+            if(pp.productosIds.indexOf(prodId)===-1)pp.productosIds.push(prodId);
+          } else {
+            pp.productosIds=pp.productosIds.filter(function(x){return x!==prodId;});
+          }
+          // Guardar en campo producto como lista de nombres
+          var nombresSelec=prodListTop.filter(function(pr){
+            return (pp.productosIds||[]).indexOf(pr.id)>-1;
+          }).map(function(pr){return pr.nombre||pr.nom||'';}).join(', ');
+          pp.producto=nombresSelec;
+        };
+      })(prod.id, prod.nombre||prod.nom||'');
+      lbl.appendChild(chk);
+      lbl.appendChild(document.createTextNode((prod.codigo?'['+prod.codigo+'] ':'')+( prod.nombre||prod.nom||'Sin nombre')));
+      prodChecksTop.appendChild(lbl);
+    });
+  } else {
+    prodChecksTop.innerHTML='<span style="color:var(--muted);font-size:.86rem;">No hay productos en el paquete — ve al Paso 2 para agregarlos</span>';
+  }
+  grid.appendChild(prodChecksTop);
+
+  // ── Links del producto ──
+  var secLinks=document.createElement('div');
+  secLinks.style.cssText='grid-column:1/-1;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);padding:4px 0 2px 0;border-bottom:1px solid var(--border);margin-top:2px;margin-bottom:4px;';
+  secLinks.textContent='Links y descripción';grid.appendChild(secLinks);
+
   grid.appendChild(mkField('Link al producto / servicio','linkProducto','https://...', false, true));
   grid.appendChild(mkField('Link empresa / web','linkEmpresa','https://...', false, true));
   grid.appendChild(mkField('Link otros archivos','linkOtros','https://Drive, catálogo...', false, true));
@@ -902,44 +944,6 @@ function appendProvRow(p, i){
 
   grid.appendChild(mkField('N° de cuenta','nCuenta','Ej. 1234567890'));
   grid.appendChild(mkField('CCI (Código de Cuenta Interbancario)','cci','Ej. 00212345678901234567'));
-
-  // ── Sección 5: Productos del paquete ──
-  var sec5=document.createElement('div');
-  sec5.style.cssText='grid-column:1/-1;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);padding:4px 0 2px 0;border-bottom:1px solid var(--border);margin-top:6px;margin-bottom:8px;';
-  sec5.textContent='Productos / Servicios que provee (del paquete actual)';
-  grid.appendChild(sec5);
-
-  var prodChecks=document.createElement('div');
-  prodChecks.style.cssText='grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;';
-  var prodList=paqueteActual&&paqueteActual.productos?paqueteActual.productos:productos;
-  if(prodList&&prodList.length){
-    prodList.forEach(function(prod){
-      var lbl=document.createElement('label');
-      lbl.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:.86rem;background:white;';
-      var chk=document.createElement('input');
-      chk.type='checkbox';
-      var provProductos=p.productosIds||[];
-      chk.checked=provProductos.indexOf(prod.id)>-1;
-      (function(prodId,prodNom){
-        chk.onchange=function(){
-          var pp=getProv(p.id);
-          if(!pp)return;
-          if(!pp.productosIds)pp.productosIds=[];
-          if(this.checked){
-            if(pp.productosIds.indexOf(prodId)===-1)pp.productosIds.push(prodId);
-          } else {
-            pp.productosIds=pp.productosIds.filter(function(x){return x!==prodId;});
-          }
-        };
-      })(prod.id, prod.nombre||prod.nom||'');
-      lbl.appendChild(chk);
-      lbl.appendChild(document.createTextNode((prod.codigo?'['+prod.codigo+'] ':'')+( prod.nombre||prod.nom||'Sin nombre')));
-      prodChecks.appendChild(lbl);
-    });
-  } else {
-    prodChecks.innerHTML='<span style="color:var(--muted);font-size:.86rem;">No hay productos en el paquete — ve al Paso 2 para agregarlos</span>';
-  }
-  grid.appendChild(prodChecks);
 
   div.appendChild(grid);
 
