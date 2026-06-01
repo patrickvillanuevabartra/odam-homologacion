@@ -994,12 +994,21 @@ function appendProvRow(p, i){
   delBtn.style.cssText='color:var(--no);border-color:var(--no);';
   delBtn.textContent='✕ Eliminar';
   (function(pid){ delBtn.onclick=function(){
+    var pp=getProv(pid);
+    if(!confirm('¿Eliminar a "'+(pp?pp.nom:'este proveedor')+'"?'+(pp&&pp._qid?' Se eliminará también de QuintaDB.':'')))return;
+    // Eliminar de QDB si tiene _qid
+    if(pp&&pp._qid){
+      qdbFetch({accion:'eliminarProveedor',qid:pp._qid},function(res){
+        tst(res&&res.ok?'✅ Proveedor eliminado de QuintaDB':'⚠️ Eliminado localmente');
+      },5000);
+    }
     provs=provs.filter(function(x){return x.id!==pid;});
     delete evFiles[pid]; delete notasEval[pid];
     var row=document.getElementById('provrow-'+pid);
     if(row)row.parentNode.removeChild(row);
     renumerarProveedores();
     checkProvs();
+    guardarPaqueteActual();
   }; })(p.id);
   // Botón guardar individual
   var btnSaveProv=document.createElement('button');
