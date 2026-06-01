@@ -2361,10 +2361,23 @@ function seleccionarPaquete(pk){
     document.getElementById('provList').innerHTML='';
     provs=[];provSeq=0;
 
-    // 1. Proveedores de QDB que pertenecen a este paquete
+    // Filtrar proveedores: si el paquete tiene proveedores en su JSON, usar esos como referencia
+    // Si QDB devuelve el campo paquete, filtrar por él; sino cruzar por nombre/ruc con pk.proveedores
     var pkId=pk.id;
+    var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
+    var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
+
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      return qp.paquete===pkId;
+      // Filtrar por paquete.id si el campo existe
+      if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
+      // Si no tiene paquete, cruzar por nombre o RUC con los del JSON del paquete
+      if(pkProvNoms.length){
+        var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
+        var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
+        return nomMatch||rucMatch;
+      }
+      // Si el paquete no tiene proveedores en JSON, mostrar todos del propietario
+      return true;
     });
 
     // 2. Si no hay en QDB, usar los del JSON del paquete como fallback
