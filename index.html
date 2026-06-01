@@ -756,6 +756,14 @@ function addProv(preset){
   var id='p'+(++provSeq);
   var p=preset||{id:id,nom:'',ruc:'',dir:'',fec:new Date().toISOString().slice(0,10),mat:'',eva:'',guardado:false};
   if(!preset)p.id=id;
+  // Reconstruir productosIds desde p.producto si no existe
+  if(!p.productosIds&&p.producto){
+    var nombresGuard=(p.producto||'').split(',').map(function(n){return n.trim().toLowerCase();});
+    var prodRef=paqueteActual&&paqueteActual.productos?paqueteActual.productos:productos;
+    p.productosIds=prodRef.filter(function(pr){
+      return nombresGuard.indexOf((pr.nombre||pr.nom||'').toLowerCase())>-1;
+    }).map(function(pr){return pr.id;});
+  }
   provs.push(p);
   evFiles[id]={};
   notasEval[id]={};
@@ -952,6 +960,10 @@ function appendProvRow(p, i){
   var span=document.createElement('span');
   span.id='provnom-'+p.id;
   span.style.cssText='font-size:.88rem;color:var(--muted);';
+  var badge=document.createElement('span');
+  badge.id='prov-badge-'+p.id;
+  badge.style.cssText='font-size:.72rem;padding:3px 10px;border-radius:20px;margin-left:8px;'+(p._qid?'background:#DCFCE7;color:#059669;':'background:#FEF9C3;color:#92400E;');
+  badge.textContent=p._qid?'✓ En QDB':'⏳ Sin guardar';
   var delBtn=document.createElement('button');
   delBtn.className='btn btn-o btn-sm';
   delBtn.style.cssText='color:var(--no);border-color:var(--no);';
@@ -964,7 +976,8 @@ function appendProvRow(p, i){
     renumerarProveedores();
     checkProvs();
   }; })(p.id);
-  footer.appendChild(span);footer.appendChild(delBtn);
+  footer.appendChild(span);
+  footer.appendChild(badge);footer.appendChild(delBtn);
   div.appendChild(footer);
   wrap.appendChild(div);
   // Numerar DESPUÉS de añadir al DOM
@@ -1390,6 +1403,7 @@ function buildEscalaRows(){
 
 var _escalaGuardada = false;
 var _bibliotecaEscalasCache = [];
+var _proveedoresGuardados = false;
 
 function guardarEscalaEnQDB(){
   if(!paqueteActual){tst('Selecciona un paquete primero');return;}
@@ -2841,18 +2855,25 @@ function cargarProveedoresDesdeQDB(cb){
 function guardarTodosProveedores(){
   if(!provs.length){tst('Agrega al menos un proveedor');return;}
   var sinNom=provs.filter(function(p){return !p.nom||!p.nom.trim();});
-  if(sinNom.length){tst('⚠️ Hay proveedores sin Razón Social');return;}
+  if(sinNom.length){
+    alert('⚠️ Hay proveedores sin Razón Social. Completa todos los campos obligatorios.');
+    return;
+  }
   tst('⏳ Guardando proveedores en QuintaDB...');
-  var pendientes=provs.length;
   var guardados=0;
   provs.forEach(function(p){
     guardarProveedorEnQDB(p,function(ok){
       guardados++;
       if(guardados===provs.length){
-        // También guardar en paquete
+        _proveedoresGuardados=true;
         guardarPaqueteActual();
+        // Actualizar badges de cada proveedor
+        provs.forEach(function(pr){
+          var badge=document.getElementById('prov-badge-'+pr.id);
+          if(badge){badge.textContent='✓ En QDB';badge.style.background='#DCFCE7';badge.style.color='#059669';}
+        });
         tst('✅ '+guardados+' proveedor(es) guardados en QuintaDB',4000);
-        alert('✅ Proveedores guardados correctamente en QuintaDB');
+        alert('✅ '+guardados+' proveedor(es) guardados correctamente en QuintaDB');
       }
     });
   });
@@ -2870,7 +2891,7 @@ function guardarProveedorEnQDB(p,cb){
     propietario:getUsuarioCorreo(), propietario_nombre:getUsuarioNombre(),
     paquete:paqueteActual?paqueteActual.id:''
   };
-  qdbFetch({accion:'guardarProveedor', datos:JSON.stringify(datos)}, function(res){
+  qdbFetch({accion:'guardarProveedor', datos:JSON.stringify(datos), qid:p._qid||''}, function(res){
     if(res&&res.qid)p._qid=res.qid;
     if(cb)cb(res&&res.ok);
   });
@@ -2960,6 +2981,10 @@ function sincronizarPaqueteYAvanzar(destino){
     }
   }
   // Si venimos de calificación (destino=4), verificar escala guardada
+  if(destino===5 && !_proveedoresGuardados && provs.length){
+    alert('⚠️ Debes guardar los proveedores antes de continuar.\n\nHaz clic en "💾 Guardar ahora".');
+    return;
+  }
   if(destino===4 && !_escalaGuardada){
     alert('⚠️ Debes guardar la escala de calificación antes de continuar.\n\nHaz clic en "💾 Guardar ahora".');
     return;
