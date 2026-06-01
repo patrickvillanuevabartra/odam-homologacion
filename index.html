@@ -758,6 +758,15 @@ function addProv(preset){
   if(!preset)p.id=id;
   // Reconstruir productosIds desde p.producto si no existe
   if(!p.productosIds&&p.producto){
+    var nombresGuard=p.producto.split(',').map(function(n){return n.trim().toLowerCase();});
+    var prodRef=paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length?paqueteActual.productos:productos;
+    p.productosIds=prodRef.filter(function(pr){
+      return nombresGuard.indexOf((pr.nombre||pr.nom||'').toLowerCase())>-1;
+    }).map(function(pr){return pr.id;});
+  }
+  if(!p.productosIds)p.productosIds=[];
+  // Reconstruir productosIds desde p.producto si no existe
+  if(!p.productosIds&&p.producto){
     var nombresGuard=(p.producto||'').split(',').map(function(n){return n.trim().toLowerCase();});
     var prodRef=paqueteActual&&paqueteActual.productos?paqueteActual.productos:productos;
     p.productosIds=prodRef.filter(function(pr){
@@ -2344,81 +2353,66 @@ function seleccionarPaquete(pk){
     buildEscalaRows();
   }
 
-  // Cargar proveedores — primero del paquete, luego complementar desde tabla PROVEEDORES de QuintaDB
-  provs=[];notasEval={};evFiles={};
-  document.getElementById('provList').innerHTML='';
-  if(pk.proveedores&&pk.proveedores.length){
-    pk.proveedores.forEach(function(p){
-      var np={id:'p_'+Date.now()+Math.random().toString(36).substr(2,4),
-        nom:p.nom||'',ruc:p.ruc||'',dir:p.dir||'',mat:p.mat||'',
-        producto:p.producto||'',linkProducto:p.linkProducto||'',
-        linkEmpresa:p.linkEmpresa||'',linkOtros:p.linkOtros||'',
-        descripcion:p.descripcion||'',
-        contactoNom:p.contactoNom||'',contactoCel:p.contactoCel||'',
-        contactoEmail:p.contactoEmail||'',
-        nCuenta:p.nCuenta||'',cci:p.cci||'',
-        fec:p.fec||new Date().toISOString().slice(0,10),
-        eva:p.eva||'',guardado:p.guardado||false,_arch:false,_dest:false};
-      provs.push(np);notasEval[np.id]={};evFiles[np.id]={};
-      appendProvRow(np,provs.length-1);
-    });
-    checkProvs();
-  }
+  // Cargar proveedores — QDB como fuente principal filtrada por paquete.id
+  provs=[];provSeq=0;notasEval={};evFiles={};
+  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando proveedores...</div>';
 
-  // Cargar datos completos desde tabla PROVEEDORES de QuintaDB
   cargarProveedoresDesdeQDB(function(qdbProvs){
-    if(!qdbProvs||!qdbProvs.length)return;
-    var correo=getUsuarioCorreo();
-    qdbProvs.forEach(function(qp){
-      // Enriquecer proveedores existentes con datos de QuintaDB
-      var existing=provs.find(function(p){
-        return (p.nom&&qp.nombre&&p.nom.trim().toLowerCase()===qp.nombre.trim().toLowerCase())||
-               (p.ruc&&qp.ruc&&p.ruc.trim()===qp.ruc.trim());
-      });
-      if(existing){
-        // FIX: cargarProveedoresDesdeQDB ya mapea a {nom,dir,mat,...}
-        if(!existing.dir&&qp.dir)existing.dir=qp.dir;
-        if(!existing.mat&&qp.mat)existing.mat=qp.mat;
-        if(!existing.producto&&qp.producto)existing.producto=qp.producto;
-        if(!existing.contactoNom&&qp.contactoNom)existing.contactoNom=qp.contactoNom;
-        if(!existing.contactoCel&&qp.contactoCel)existing.contactoCel=qp.contactoCel;
-        if(!existing.contactoEmail&&qp.contactoEmail)existing.contactoEmail=qp.contactoEmail;
-        if(!existing.nCuenta&&qp.nCuenta)existing.nCuenta=qp.nCuenta;
-        if(!existing.cci&&qp.cci)existing.cci=qp.cci;
-        if(!existing.linkProducto&&qp.linkProducto)existing.linkProducto=qp.linkProducto;
-        if(!existing.linkEmpresa&&qp.linkEmpresa)existing.linkEmpresa=qp.linkEmpresa;
-        if(!existing.linkOtros&&qp.linkOtros)existing.linkOtros=qp.linkOtros;
-        if(!existing.descripcion&&qp.descripcion)existing.descripcion=qp.descripcion;
-        if(!existing.ruc&&qp.ruc)existing.ruc=qp.ruc;
-        existing._qid=qp._qid||existing._qid;
-        existing.guardado=true;
-      } else if(false){
-        // No agregar proveedores de QDB que no están en el paquete actual
-        // Solo se cargan los del paquete — el usuario los agrega manualmente
-        // Agregar proveedor que existe en QDB pero no en el paquete
-        var np2={id:'p_'+Date.now()+Math.random().toString(36).substr(2,4),
-          _qid:qp._qid,
-          nom:qp.nombre||'',ruc:qp.ruc||'',
-          dir:qp.direccion||'',mat:qp.rubro_sector||'',
-          producto:qp.producto_servicio||'',
-          linkProducto:qp.link_producto||'',
-          linkEmpresa:qp.link_empresa||'',
-          linkOtros:qp.link_otros||'',
-          descripcion:qp.descripcion||'',
-          contactoNom:qp.contacto_nombre||'',
-          contactoCel:qp.contacto_celular||'',
-          contactoEmail:qp.contacto_email||'',
-          nCuenta:qp.n_cuenta||'',cci:qp.cci||'',
-          fec:new Date().toISOString().slice(0,10),
-          eva:'',guardado:true,_arch:false,_dest:false};
-        provs.push(np2);notasEval[np2.id]={};evFiles[np2.id]={};
-        appendProvRow(np2,provs.length-1);
-      }
+    document.getElementById('provList').innerHTML='';
+    provs=[];provSeq=0;
+
+    // 1. Proveedores de QDB que pertenecen a este paquete
+    var pkId=pk.id;
+    var misProvs=(qdbProvs||[]).filter(function(qp){
+      return qp.paquete===pkId;
     });
+
+    // 2. Si no hay en QDB, usar los del JSON del paquete como fallback
+    var fuente = misProvs.length ? misProvs : (pk.proveedores||[]);
+
+    fuente.forEach(function(p){
+      var np={
+        id:'p_'+(++provSeq),
+        _qid: p._qid||'',
+        nom: p.nom||p.nombre||'',
+        ruc: p.ruc||'',
+        dir: p.dir||p.direccion||'',
+        mat: p.mat||p.rubro_sector||'',
+        producto: p.producto||p.producto_servicio||'',
+        productosIds: p.productosIds||[],
+        linkProducto: p.linkProducto||p.link_producto||'',
+        linkEmpresa: p.linkEmpresa||p.link_empresa||'',
+        linkOtros: p.linkOtros||p.link_otros||'',
+        descripcion: p.descripcion||'',
+        contactoNom: p.contactoNom||p.contacto_nombre||'',
+        contactoCel: p.contactoCel||p.contacto_celular||'',
+        contactoEmail: p.contactoEmail||p.contacto_email||'',
+        nCuenta: p.nCuenta||p.n_cuenta||'',
+        cci: p.cci||'',
+        fec: p.fec||new Date().toISOString().slice(0,10),
+        eva: p.eva||'',
+        guardado: !!p._qid,
+        _arch:false, _dest:false
+      };
+      // Reconstruir productosIds desde campo producto si no existe
+      if(!np.productosIds.length && np.producto){
+        var nombresGuard=np.producto.split(',').map(function(n){return n.trim().toLowerCase();});
+        var prodRef=pk.productos&&pk.productos.length?pk.productos:productos;
+        np.productosIds=prodRef.filter(function(pr){
+          return nombresGuard.indexOf((pr.nombre||pr.nom||'').toLowerCase())>-1;
+        }).map(function(pr){return pr.id;});
+      }
+      provs.push(np);
+      notasEval[np.id]={};evFiles[np.id]={};
+      appendProvRow(np, provs.length-1);
+    });
+
+    if(misProvs.length) tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB');
     checkProvs();
+    _proveedoresGuardados = misProvs.length > 0;
   });
 
-  // Cargar historial del paquete (si existe en JSON)
+    // Cargar historial del paquete (si existe en JSON)
   hist=[];
   if(pk.historial&&pk.historial.length){
     pk.historial.forEach(function(h){
