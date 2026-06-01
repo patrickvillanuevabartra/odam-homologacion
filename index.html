@@ -804,6 +804,14 @@ function appendProvRow(p, i){
       updProv(pid,k,this.value);
       var nomSpan=document.getElementById('provnom-'+pid);
       if(nomSpan&&k==='nom') renumerarProveedores();
+      // Marcar como modificado
+      var pp=getProv(pid);
+      if(pp){pp._modificado=true;}
+      var badge=document.getElementById('prov-badge-'+pid);
+      if(badge&&badge.textContent==='✓ En QDB'){
+        badge.textContent='✏️ Cambios sin guardar';
+        badge.style.background='#FEF9C3';badge.style.color='#92400E';
+      }
     }); })(key, p.id);
     fld.appendChild(lbl);fld.appendChild(inp);
     return fld;
@@ -816,7 +824,15 @@ function appendProvRow(p, i){
     var ta=document.createElement('textarea');
     ta.className='fld-inp';ta.rows=rows||2;ta.placeholder=placeholder||'';
     ta.value=p[key]||'';ta.style.resize='vertical';
-    (function(k,pid){ta.addEventListener('input',function(){updProv(pid,k,this.value);});})(key,p.id);
+    (function(k,pid){ta.addEventListener('input',function(){
+      updProv(pid,k,this.value);
+      var pp=getProv(pid);if(pp)pp._modificado=true;
+      var badge=document.getElementById('prov-badge-'+pid);
+      if(badge&&badge.textContent==='✓ En QDB'){
+        badge.textContent='✏️ Cambios sin guardar';
+        badge.style.background='#FEF9C3';badge.style.color='#92400E';
+      }
+    });})(key,p.id);
     fld.appendChild(lbl);fld.appendChild(ta);return fld;
   }
 
@@ -985,8 +1001,34 @@ function appendProvRow(p, i){
     renumerarProveedores();
     checkProvs();
   }; })(p.id);
+  // Botón guardar individual
+  var btnSaveProv=document.createElement('button');
+  btnSaveProv.id='prov-save-'+p.id;
+  btnSaveProv.textContent='💾';
+  btnSaveProv.title='Guardar este proveedor en QuintaDB';
+  btnSaveProv.style.cssText='background:#EFF6FF;border:1px solid #BAE6FD;border-radius:6px;padding:5px 10px;cursor:pointer;color:#0284c7;font-size:.88rem;margin-left:8px;';
+  (function(pid,badgeEl){
+    btnSaveProv.onclick=function(){
+      var pp=getProv(pid);if(!pp)return;
+      if(!pp.nom||!pp.nom.trim()){tst('⚠️ Ingresa la Razón Social primero');return;}
+      tst('⏳ Guardando...');
+      guardarProveedorEnQDB(pp,function(ok){
+        if(ok){
+          pp._modificado=false;
+          badgeEl.textContent='✓ En QDB';
+          badgeEl.style.background='#DCFCE7';badgeEl.style.color='#059669';
+          tst('✅ Proveedor "'+pp.nom+'" guardado en QuintaDB',4000);
+        } else {
+          tst('⚠️ Error al guardar — verifica conexión');
+        }
+      });
+    };
+  })(p.id,badge);
+
   footer.appendChild(span);
-  footer.appendChild(badge);footer.appendChild(delBtn);
+  footer.appendChild(badge);
+  footer.appendChild(btnSaveProv);
+  footer.appendChild(delBtn);
   div.appendChild(footer);
   wrap.appendChild(div);
   // Numerar DESPUÉS de añadir al DOM
@@ -2869,19 +2911,26 @@ function guardarTodosProveedores(){
     alert('⚠️ Hay proveedores sin Razón Social. Completa todos los campos obligatorios.');
     return;
   }
-  tst('⏳ Guardando proveedores en QuintaDB...');
+  // Solo guardar los nuevos (sin _qid) o los modificados
+  var pendientes=provs.filter(function(p){return !p._qid||p._modificado;});
+  if(!pendientes.length){
+    tst('✅ Todos los proveedores ya están guardados');
+    _proveedoresGuardados=true;
+    return;
+  }
+  tst('⏳ Guardando '+pendientes.length+' proveedor(es)...');
   var guardados=0;
-  provs.forEach(function(p){
+  pendientes.forEach(function(p){
     guardarProveedorEnQDB(p,function(ok){
       guardados++;
-      if(guardados===provs.length){
+      if(ok){
+        p._modificado=false;
+        var badge=document.getElementById('prov-badge-'+p.id);
+        if(badge){badge.textContent='✓ En QDB';badge.style.background='#DCFCE7';badge.style.color='#059669';}
+      }
+      if(guardados===pendientes.length){
         _proveedoresGuardados=true;
         guardarPaqueteActual();
-        // Actualizar badges de cada proveedor
-        provs.forEach(function(pr){
-          var badge=document.getElementById('prov-badge-'+pr.id);
-          if(badge){badge.textContent='✓ En QDB';badge.style.background='#DCFCE7';badge.style.color='#059669';}
-        });
         tst('✅ '+guardados+' proveedor(es) guardados en QuintaDB',4000);
         alert('✅ '+guardados+' proveedor(es) guardados correctamente en QuintaDB');
       }
