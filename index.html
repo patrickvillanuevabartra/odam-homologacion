@@ -2392,7 +2392,9 @@ function seleccionarPaquete(pk){
         if(!existing.ruc&&qp.ruc)existing.ruc=qp.ruc;
         existing._qid=qp._qid||existing._qid;
         existing.guardado=true;
-      } else if(!qp.propietario||qp.propietario===correo){
+      } else if(false){
+        // No agregar proveedores de QDB que no están en el paquete actual
+        // Solo se cargan los del paquete — el usuario los agrega manualmente
         // Agregar proveedor que existe en QDB pero no en el paquete
         var np2={id:'p_'+Date.now()+Math.random().toString(36).substr(2,4),
           _qid:qp._qid,
