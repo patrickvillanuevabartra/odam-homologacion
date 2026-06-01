@@ -432,7 +432,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
     <button class="btn btn-o" onclick="goStep(3)">← Calificación</button>
     <button class="btn btn-p" id="btnNext2top" onclick="sincronizarPaqueteYAvanzar(5)" disabled>Continuar → Evaluación →</button>
   </div>
-  <p class="stitle" style="display:flex;justify-content:space-between;align-items:center;">Paso 5 — Proveedores a Evaluar<button class="btn btn-o btn-sm" onclick="tst('⏳ Guardando...');guardarPaqueteActual();" style="font-size:.8rem;">💾 Guardar ahora</button></p>
+  <p class="stitle" style="display:flex;justify-content:space-between;align-items:center;">Paso 5 — Proveedores a Evaluar<button class="btn btn-o btn-sm" onclick="guardarTodosProveedores();" style="font-size:.8rem;">💾 Guardar ahora</button></p>
 
   <p style="font-size:.96rem;color:var(--muted);margin-bottom:16px;padding:12px 16px;background:var(--surface);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;line-height:1.6;">
     Agrega todos los proveedores que deseas evaluar. Luego en el paso 4 seleccionas uno por uno y le asignas las calificaciones.
@@ -2837,6 +2837,26 @@ function cargarProveedoresDesdeQDB(cb){
   });
 }
 
+
+function guardarTodosProveedores(){
+  if(!provs.length){tst('Agrega al menos un proveedor');return;}
+  var sinNom=provs.filter(function(p){return !p.nom||!p.nom.trim();});
+  if(sinNom.length){tst('⚠️ Hay proveedores sin Razón Social');return;}
+  tst('⏳ Guardando proveedores en QuintaDB...');
+  var pendientes=provs.length;
+  var guardados=0;
+  provs.forEach(function(p){
+    guardarProveedorEnQDB(p,function(ok){
+      guardados++;
+      if(guardados===provs.length){
+        // También guardar en paquete
+        guardarPaqueteActual();
+        tst('✅ '+guardados+' proveedor(es) guardados en QuintaDB',4000);
+        alert('✅ Proveedores guardados correctamente en QuintaDB');
+      }
+    });
+  });
+}
 
 function guardarProveedorEnQDB(p,cb){
   // FIX: mapear campos internos (nom,dir,mat) a nombres que el proxy entiende
