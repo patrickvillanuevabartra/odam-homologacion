@@ -2156,6 +2156,15 @@ function _establecerUsuario(nombre, correo){
 }
 
 function doLogout(){
+  // Verificar productos sin guardar (Paso 2)
+  var prodSinGuardar=productos.filter(function(p){return p.nombre&&p.nombre.trim()&&!p._qid;});
+  if(prodSinGuardar.length||_productosModificados){
+    var nomsProd=prodSinGuardar.map(function(p){return '"'+p.nombre+'"';}).join(', ');
+    var msg=prodSinGuardar.length
+      ?'⚠️ Tienes productos sin guardar en el Paso 2:\n\n'+nomsProd+'\n\n¿Salir sin guardarlos?'
+      :'⚠️ Tienes cambios en productos sin guardar en el Paso 2.\n\n¿Salir sin guardarlos?';
+    if(!confirm(msg)) return;
+  }
   // Verificar criterios sin guardar
   if(!_criteriosGuardados && crits.length){
     if(!confirm('⚠️ Tienes criterios sin guardar en el Paso 3.\n\n¿Salir sin guardarlos?')) return;
@@ -2492,20 +2501,13 @@ function seleccionarPaquete(pk){
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      // Filtrar por paquete.id si el campo existe (fuente principal)
-      if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
-      // Si no tiene campo paquete, cruzar por nombre o RUC con los del JSON del paquete
-      if(pkProvNoms.length){
-        var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
-        var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
-        return nomMatch||rucMatch;
-      }
-      // Si el paquete no tiene proveedores en JSON → es nuevo → no mostrar nada
-      return false;
+      // SOLO filtrar por paquete.id — campo obligatorio desde ahora
+      return qp.paquete&&qp.paquete===pkId;
     });
 
-    // 2. Si no hay en QDB, usar los del JSON del paquete como fallback
-    var fuente = misProvs.length ? misProvs : (pk.proveedores||[]);
+    // 2. Si no hay en QDB con campo paquete, usar los del JSON del paquete como fallback
+    // Esto cubre proveedores guardados antes de que existiera el campo paquete
+    var fuente = misProvs.length ? misProvs : [];
 
     fuente.forEach(function(p){
       var np={
@@ -2935,8 +2937,11 @@ function renderProductos(){
           renderListaPaquetes();
           // Refrescar checkboxes en proveedores ya renderizados
           _refrescarCheckboxsProveedores();
+          tst('✅ Producto guardado en QuintaDB',4000);
+          alert('✅ Producto "'+prod.nombre+'" guardado correctamente en QuintaDB');
+        } else {
+          tst('⚠️ Sin conexión — verifica e intenta de nuevo',4000);
         }
-        tst(res&&res.ok?'✅ Producto guardado en QuintaDB':'⚠️ Sin conexión',4000);
       },8000);
     };
 
@@ -3430,6 +3435,7 @@ function renderPlantillas(){
             badgeEl.style.background='#DCFCE7';
             badgeEl.style.color='#059669';
             tst('✅ Plantilla guardada en QuintaDB', 4000);
+          alert('✅ Plantilla guardada correctamente en QuintaDB');
           } else {
             tst('⚠️ Sin conexión a QuintaDB');
           }
