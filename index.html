@@ -2297,7 +2297,18 @@ function cargarPaquetesDesdeSheets(){
           criterios:safeJsonParse(r.criterios_json,[]),
           escala:safeJsonParse(r.escala_json,[]),
           proveedores:safeJsonParse(r.proveedores_json,[]),
-          historial:safeJsonParse(r.historial_json,[]),
+          historial:(function(){
+            var h=safeJsonParse(r.historial_json,{});
+            return Array.isArray(h)?h:(h.registros||[]);
+          })(),
+          plantillaActual:(function(){
+            var h=safeJsonParse(r.historial_json,{});
+            return Array.isArray(h)?'':(h.plantillaActual||'');
+          })(),
+          escalaActual:(function(){
+            var h=safeJsonParse(r.historial_json,{});
+            return Array.isArray(h)?'':(h.escalaActual||'');
+          })(),
           productos:safeJsonParse(r.productos_json,[]),
           fechaCreacion:r.fecha_creacion||'',
           ultimaActualizacion:r.ultima_actualizacion||'',
@@ -2672,9 +2683,11 @@ function seleccionarPaquete(pk){
   var pbnom=document.getElementById('paqueteBadgeNom');
   if(pbadge){pbadge.style.display='flex';}
   if(pbnom){pbnom.textContent=pk.nombre;}
-  // Restaurar badges de plantilla y escala si el paquete los tenía
-  if(pk._plantillaActual) _actualizarBadgePlantilla(pk._plantillaActual);
-  if(pk._escalaActual) _actualizarBadgeEscala(pk._escalaActual);
+  // Restaurar badges de plantilla y escala
+  var pltNom=pk._plantillaActual||pk.plantillaActual||'';
+  var escNom=pk._escalaActual||pk.escalaActual||'';
+  if(pltNom){pk._plantillaActual=pltNom;_actualizarBadgePlantilla(pltNom);}
+  if(escNom){pk._escalaActual=escNom;_actualizarBadgeEscala(escNom);}
   tst('📦 "'+pk.nombre+'" seleccionado — elige qué hacer');
 }
 
@@ -3060,6 +3073,9 @@ function guardarPaqueteActual(){
   if(!paqueteActual)return;
   paqueteActual.criterios=crits.map(function(c){return{label:c.label,weight:c.weight};});
   paqueteActual.escala=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};});
+  // Preservar nombres de plantilla y escala activas
+  if(paqueteActual._plantillaActual) paqueteActual.plantillaActual=paqueteActual._plantillaActual;
+  if(paqueteActual._escalaActual) paqueteActual.escalaActual=paqueteActual._escalaActual;
   // Guardar solo los nombres/rucs para el count del resumen
   // Los datos completos viven en tabla PROVEEDORES de QDB
   paqueteActual._provCount = provs.length;
@@ -3180,8 +3196,14 @@ function guardarPaqueteSheets(pk,callback){
     propietario_nombre: pk.propietarioNombre||getUsuarioNombre(),
     criterios_json: JSON.stringify(pk.criterios||[]),
     escala_json: JSON.stringify(pk.escala||[]),
+    plantilla_actual: pk.plantillaActual||pk._plantillaActual||'',
+    escala_actual: pk.escalaActual||pk._escalaActual||'',
     proveedores_json: JSON.stringify(pk.proveedores||[]),
-    historial_json: JSON.stringify(pk.historial||[]),
+    historial_json: JSON.stringify({
+      registros: pk.historial||[],
+      plantillaActual: pk.plantillaActual||pk._plantillaActual||'',
+      escalaActual: pk.escalaActual||pk._escalaActual||''
+    }),
     productos_json: JSON.stringify(pk.productos||[]),
     fecha_creacion: pk.fechaCreacion||'',
     ultima_actualizacion: new Date().toISOString()
