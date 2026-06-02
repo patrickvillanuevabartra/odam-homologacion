@@ -2319,7 +2319,7 @@ function renderListaPaquetes(){
 
     var meta=document.createElement('div');
     meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
-    meta.textContent='📋 '+(pk.criterios||[]).length+' criterios · 👥 '+(pk.proveedores||[]).length+' proveedores';
+    meta.textContent='📋 '+(pk.criterios||[]).length+' criterios · 👥 '+(pk.proveedores||[]).length+' proveedores · 📦 '+(pk.productos||[]).length+' productos';
 
     left.appendChild(nomRow);
     left.appendChild(meta);
@@ -2454,6 +2454,9 @@ function seleccionarPaquete(pk){
     crits=[];document.getElementById('critList').innerHTML='';seq=0;
     checkWeight();
   }
+
+  // Limpiar productos del paquete anterior
+  productos=[];prodSeq=0;
 
   // Cargar escala
   if(pk.escala&&pk.escala.length){
@@ -2752,8 +2755,8 @@ function cargarProductosDesdeQDB(){
     var pkId=paqueteActual?paqueteActual.id:'';
     var remote=(res.registros||[]).filter(function(r){
       var propOk=!r.propietario||r.propietario===correo;
-      // Filtrar por paquete.id — si el producto no tiene paquete, incluirlo igual
-      var pkOk=!pkId||!r.paquete||r.paquete===pkId;
+      // Filtrar ESTRICTAMENTE por paquete.id
+      var pkOk=r.paquete&&r.paquete===pkId;
       return propOk&&pkOk&&r.nombre;
     });
     // Reconstruir lista desde QDB + locales sin _qid
