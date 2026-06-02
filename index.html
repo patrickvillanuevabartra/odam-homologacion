@@ -2262,9 +2262,28 @@ function cargarPaquetesDesdeSheets(){
       var uidLow=(uid||'').toLowerCase().trim();
       return pk.nombre&&(!pkProp||pkProp===''||pkProp===uidLow);
     });
-    renderListaPaquetes();
-    if(_paquetesCache.length)tst('✅ '+_paquetesCache.length+' paquetes cargados');
-    else tst('Sin paquetes — crea el primero');
+    // Contar proveedores por paquete desde QDB
+    qdbFetch({accion:'cargarProveedores'},function(resProv){
+      if(resProv&&resProv.ok){
+        var correo=getUsuarioCorreo();
+        var todos=(resProv.registros||[]).filter(function(r){
+          return !r.propietario||r.propietario===correo;
+        });
+        // Contar por paquete.id
+        var countMap={};
+        todos.forEach(function(r){
+          if(r.paquete&&r.paquete.trim()){
+            countMap[r.paquete]=(countMap[r.paquete]||0)+1;
+          }
+        });
+        _paquetesCache.forEach(function(pk){
+          pk._provCount=countMap[pk.id]||0;
+        });
+      }
+      renderListaPaquetes();
+      if(_paquetesCache.length)tst('✅ '+_paquetesCache.length+' paquetes cargados');
+      else tst('Sin paquetes — crea el primero');
+    },5000);
   }, 3000);
 }
 
