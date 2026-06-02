@@ -1356,6 +1356,10 @@ function enviarASheets(d,callback){
   var payload={accion:'guardar',nom:d.nom,ruc:d.ruc,dir:d.dir,fec:d.fec,mat:d.mat,eva:d.eva,
     version:d.version||'Evaluación inicial',total:d.total,catFinal:d.catFinal,
     catInterp:d.catItem?d.catItem.interp:'',
+    propietario:getUsuarioCorreo(),
+    propietarioNombre:getUsuarioNombre(),
+    paquete:paqueteActual?paqueteActual.nombre:'',
+    paqueteId:paqueteActual?paqueteActual.id:'',
     det:d.det.map(function(r){return{label:r.label,weight:r.weight,nota:r.nota,cat:r.cat,pond:r.pond,ev:(r.ev||[]).map(function(f){return typeof f==='string'?f:f.name;})};}),
     escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};})
   };
