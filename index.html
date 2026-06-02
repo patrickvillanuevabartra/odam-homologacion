@@ -1400,11 +1400,14 @@ function guardarEvalActual(){
     d.version='Evaluacion inicial';
   }
   var _now=new Date();
-  d.ts=_now.toISOString(); // ISO para ordenar correctamente
-  d.fecHora=_now.toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); // para mostrar
+  d.ts=_now.toISOString();
+  d.fecHora=_now.toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   d.paquete=paqueteActual?paqueteActual.nombre:'Sin paquete';
   // Guardar notasSnap para poder restaurar en reevaluación
   d.notasSnap=JSON.parse(JSON.stringify(notasEval[provActualId]||{}));
+  // Guardar snapshot de criterios y escala usados en esta evaluación
+  d.critsSnap=crits.map(function(c){return{id:c.id,label:c.label,weight:c.weight};});
+  d.scaleSnap=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,color:s.color,bg:s.bg};});
   d.propietario=getUsuarioCorreo();
   hist.push(d);
   var btn=document.getElementById('btnGuardarEval');
@@ -1420,6 +1423,13 @@ function guardarEvalActual(){
     });
     mostrarMetaFields(provActualId);
     if(paqueteActual)guardarPaqueteActual();
+    // Limpiar banner de reevaluación al guardar
+    if(window._reevalPid){
+      window._reevalPid=null;window._reevalNum=null;window._reevalNom=null;
+      _mostrarBannerReeval(null,null);
+      var portal=document.querySelector('.portal');
+      if(portal)portal.style.paddingTop='0';
+    }
   });
 }
 
@@ -3840,43 +3850,84 @@ function reEvalProv(pid){
   }
   // 2. Setear proveedor activo
   provActualId=pid;
-  // 3. Activar panel evaluación
-  ['panel-0','panel-1','panel-2','panel-6','panel-3','panel-4','panel-5'].forEach(function(id,i){
-    var el=document.getElementById(id);
-    if(el)el.classList.toggle('active',i===4);
-  });
-  document.querySelectorAll('.sbtn').forEach(function(b,i){
-    b.classList.remove('active','done');
-    if(i===4)b.classList.add('active');
-    else if(i<4)b.classList.add('done');
-  });
-  // 4. Construir evaluación CON el proveedor ya seleccionado
-  buildEval();
-  buildProvSelector();
-  // 5. Seleccionar proveedor en dropdown
-  var drop=document.getElementById('provSelectorDrop');
-  if(drop)drop.value=pid;
-  // 6. Mostrar campos fecha/evaluador
-  var mf=document.getElementById('evalMetaFields');
-  if(mf)mf.style.display='block';
-  mostrarMetaFields(pid);
-  // 7. Recalcular con notas restauradas
-  recalc();
-  // 6. Mostrar banner con nombre correcto
+  // 3. Contar reevaluaciones previas para el banner
   var p=getProv(pid);
-  var banner=document.getElementById('reevalBanner');
-  var nomTxt=document.getElementById('reevalNomText');
-  var stepTitle=document.getElementById('evalStepTitle');
-  if(banner)banner.style.display='block';
-  if(nomTxt&&p)nomTxt.textContent=p.nom+(p.ruc?' — RUC: '+p.ruc:'');
-  if(stepTitle&&p)stepTitle.textContent='Reevaluación — '+p.nom;
-  mostrarMetaFields(pid);
-  recalc();
+  var prevReevs=hist.filter(function(h){return h.provId===pid&&(h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
+  var reevalNum=prevReevs+1;
+  // Guardar estado de reevaluación globalmente
+  window._reevalPid=pid;
+  window._reevalNum=reevalNum;
+  window._reevalNom=p?p.nom:'';
+  // 4. Ir al Paso 3 — Criterios (donde puede cambiar criterios y escala)
+  goStep(2);
+  // 5. Mostrar banner de reevaluación en todos los pasos
+  _mostrarBannerReeval(pid, reevalNum);
   window.scrollTo({top:0,behavior:'smooth'});
-  tst('↺ Reevaluando: '+(p?p.nom:'proveedor'));
+  tst('↺ Reevaluación '+reevalNum+' — '+( p?p.nom:'proveedor')+': ajusta criterios si es necesario');
 }
 
 // ── EVALUACIÓN ──
+function _mostrarBannerReeval(pid, num){
+  // Crear o actualizar banner sticky de reevaluación
+  var bannerId='reevalStickyBanner';
+  var existing=document.getElementById(bannerId);
+  if(existing)existing.parentNode.removeChild(existing);
+  if(!pid){window._reevalPid=null;window._reevalNum=null;return;}
+  var p=getProv(pid);
+  var banner=document.createElement('div');
+  banner.id=bannerId;
+  banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#D97706;color:white;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+  banner.innerHTML='<div style="display:flex;align-items:center;gap:10px;">'
+    +'<span style="font-size:1.2rem;">↺</span>'
+    +'<div>'
+      +'<div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.85;">Modo Reevaluación '+num+'</div>'
+      +'<div style="font-size:1rem;font-weight:700;">'+(p?p.nom:'Proveedor')+(p&&p.ruc?' — RUC: '+p.ruc:'')+'</div>'
+    +'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;align-items:center;">'
+      +'<span style="font-size:.82rem;opacity:.85;">Modifica criterios, escala o ve directo a Evaluación</span>'
+      +'<button onclick="irAEvaluacionReeval()" '
+        +'style="padding:6px 14px;border-radius:6px;background:white;color:#D97706;border:none;font-size:.84rem;font-weight:700;cursor:pointer;">→ Ir a Evaluación</button>'
+      +'<button onclick="_cancelarReeval()" style="padding:6px 12px;border-radius:6px;background:rgba(255,255,255,.2);color:white;border:1px solid rgba(255,255,255,.4);font-size:.82rem;cursor:pointer;">✕ Cancelar</button>'
+    +'</div>';
+  document.body.insertBefore(banner, document.body.firstChild);
+  // Agregar padding al portal para que no quede tapado
+  var portal=document.querySelector('.portal');
+  if(portal)portal.style.paddingTop='52px';
+}
+
+function irAEvaluacionReeval(){
+  if(!window._reevalPid)return;
+  var pid=window._reevalPid;
+  provActualId=pid;
+  // Restaurar notas de última evaluación
+  var ultimaEval=null;
+  for(var hi=hist.length-1;hi>=0;hi--){if(hist[hi].provId===pid){ultimaEval=hist[hi];break;}}
+  if(ultimaEval&&ultimaEval.notasSnap&&Object.keys(ultimaEval.notasSnap).length>0){
+    notasEval[pid]=JSON.parse(JSON.stringify(ultimaEval.notasSnap));
+  }
+  goStep(5);
+  setTimeout(function(){
+    var drop=document.getElementById('provSelectorDrop');
+    if(drop)drop.value=pid;
+    seleccionarProv(pid);
+    // Mostrar banner reeval en evaluación
+    var banner=document.getElementById('reevalBanner');
+    var nomTxt=document.getElementById('reevalNomText');
+    var p=getProv(pid);
+    if(banner)banner.style.display='block';
+    if(nomTxt&&p)nomTxt.textContent=p.nom+(p.ruc?' — RUC: '+p.ruc:'');
+  },100);
+}
+
+function _cancelarReeval(){
+  window._reevalPid=null;window._reevalNum=null;window._reevalNom=null;
+  _mostrarBannerReeval(null,null);
+  var portal=document.querySelector('.portal');
+  if(portal)portal.style.paddingTop='0';
+  tst('Reevaluación cancelada');
+}
+
 function buildEval(){
   var cont=document.getElementById('evalCont');
   cont.innerHTML='';
@@ -4505,33 +4556,42 @@ function buildResults(){
     if(seenH[k])return false;seenH[k]=true;return true;
   });
 
-  var datos=provs.map(function(p){
-    // SIEMPRE usar historial como fuente de verdad — ignorar notasEval para catFinal
+  // Mostrar TODAS las evaluaciones de todos los proveedores
+  var datos=[];
+  provs.forEach(function(p){
     var ph=hist.filter(function(h){return h.provId===p.id;});
-    var ultimaEval=ph.length?ph[ph.length-1]:null;
-    var d=getProvData(p.id);
-    if(ultimaEval&&ultimaEval.total>0){
-      d.total=ultimaEval.total;
-      d.catFinal=getFinalCat(ultimaEval.total);
-      d.catItem=getScaleItem(d.catFinal);
-      d.catInterp=ultimaEval.catInterp||(d.catItem?d.catItem.interp:'');
-      d.fec=ultimaEval.fec||d.fec;
-      d.eva=ultimaEval.eva||d.eva;
-      d.version=ultimaEval.version||d.version;
-    } else if(d.total>0){
-      d.catFinal=getFinalCat(d.total);
-      d.catItem=getScaleItem(d.catFinal);
+    if(ph.length){
+      ph.forEach(function(h){
+        var ci=getScaleItem(getFinalCat(h.total||0));
+        datos.push({
+          provId:p.id, nom:p.nom||h.nom, ruc:p.ruc||h.ruc,
+          total:h.total||0, catFinal:getFinalCat(h.total||0),
+          catItem:ci, catInterp:h.catInterp||(ci?ci.interp:''),
+          fec:h.fec||'', eva:h.eva||'', version:h.version||'Evaluación inicial',
+          critsSnap:h.critsSnap||[], scaleSnap:h.scaleSnap||[],
+          _arch:p._arch||false, _dest:p._dest||false,
+          det:h.det||[]
+        });
+      });
+    } else {
+      var d=getProvData(p.id);
+      d._arch=p._arch||false;d._dest=p._dest||false;
+      if(d.total>0) datos.push(d);
     }
-    d._arch=p._arch||false;d._dest=p._dest||false;
-    return d;
   });
-  var datosFiltrados=filtrarDatos(datos.sort(function(a,b){return b.total-a.total;}));
+  var datosFiltrados=filtrarDatos(datos.sort(function(a,b){
+    if(a.nom!==b.nom)return (a.nom||'').localeCompare(b.nom||'');
+    // inicial primero, luego reevaluaciones
+    var aI=(a.version||'').toLowerCase().indexOf('inici')>-1?0:1;
+    var bI=(b.version||'').toLowerCase().indexOf('inici')>-1?0:1;
+    return aI-bI;
+  }));
 
   var tableWrap=document.createElement('div');
   tableWrap.style.cssText='overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);';
   var tableEl=document.createElement('table');
   tableEl.className='dt'; tableEl.style.cssText='margin:0;min-width:700px;';
-  tableEl.innerHTML='<thead><tr><th>#</th><th>Paquete</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Evaluador</th><th>Calificación ponderada total</th><th>Categoría</th><th>Interpretación</th><th>Acciones</th></tr></thead>';
+  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Evaluador</th><th>Criterios utilizados</th><th>Calificación</th><th>Categoría</th><th>Acciones</th></tr></thead>';
   var tbodyEl=document.createElement('tbody');
   tableEl.appendChild(tbodyEl);
   if(!datosFiltrados.length){
@@ -4550,18 +4610,24 @@ function buildResults(){
     var bar=Math.round(d.total*100);
     var tr=document.createElement('tr');
     tr.style.background=ci?ci.bg:'white';
+    // Criterios usados en esta evaluación
+    var critsUsados=d.critsSnap&&d.critsSnap.length
+      ? d.critsSnap.map(function(c){return c.label+' ('+c.weight+'%)'}).join(' · ')
+      : (crits.length?crits.map(function(c){return c.label+' ('+c.weight+'%)'}).join(' · '):'—');
+    var versionLabel=(d.version||'').toLowerCase().indexOf('inici')>-1?'Evaluación inicial':d.version||'—';
+    var isInicial=(d.version||'').toLowerCase().indexOf('inici')>-1;
     tr.innerHTML='<td style="font-weight:700;color:var(--muted)">'+(i+1)+'</td>'
-      +'<td style="font-size:.82rem;color:var(--muted)">'+(paqueteActual?esc(paqueteActual.nombre):'—')+'</td>'
+      +'<td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;background:'+(isInicial?'#DCFCE7':'#EFF6FF')+';color:'+(isInicial?'#059669':'#0284c7')+';">'+esc(versionLabel)+'</span></td>'
       +'<td style="font-weight:700">'+esc(d.nom)+'</td>'
       +'<td>'+esc(d.ruc)+'</td>'
       +'<td>'+fmtFecha(d.fec)+'</td>'
       +'<td style="font-size:.86rem">'+esc(d.eva||'—')+'</td>'
+      +'<td style="font-size:.78rem;color:var(--muted);max-width:200px;">'+esc(critsUsados)+'</td>'
       +'<td>'
         +'<div style="font-weight:700;font-size:1rem;color:'+(ci?ci.color:'var(--text)')+'">'+d.total.toFixed(3)+'</div>'
         +'<div style="height:4px;background:rgba(0,0,0,.1);border-radius:2px;margin-top:3px;"><div style="height:100%;width:'+bar+'%;background:'+(ci?ci.color:'var(--border)')+';border-radius:2px;"></div></div>'
       +'</td>'
       +'<td><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;background:'+(ci?ci.color:'var(--subtle)')+';color:white;font-weight:700;font-size:1rem;">'+(d.catFinal||'—')+'</span></td>'
-      +'<td style="font-size:.86rem;color:var(--muted)">'+(ci?esc(ci.interp):'—')+'</td>'
       +'<td></td>';
 
     // botones con addEventListener para evitar problemas de comillas
