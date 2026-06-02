@@ -2470,8 +2470,9 @@ function seleccionarPaquete(pk){
     checkWeight();
   }
 
-  // Limpiar productos del paquete anterior
+  // Limpiar datos del paquete anterior inmediatamente
   productos=[];prodSeq=0;
+  provs=[];provSeq=0;
   var prodListEl=document.getElementById('productosList');
   if(prodListEl)prodListEl.innerHTML='';
 
