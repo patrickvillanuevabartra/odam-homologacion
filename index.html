@@ -1362,19 +1362,32 @@ function setSheetStatus(tipo,msg){
 }
 
 function enviarASheets(d,callback){
-  var payload={accion:'guardar',nom:d.nom,ruc:d.ruc,dir:d.dir,fec:d.fec,mat:d.mat,eva:d.eva,
-    version:d.version||'Evaluación inicial',total:d.total,catFinal:d.catFinal,
+  var payload={
+    nom:d.nom, ruc:d.ruc, dir:d.dir, fec:d.fec, mat:d.mat, eva:d.eva,
+    fecHora:d.fecHora||d.fec,
+    version:d.version||'Evaluacion inicial',
+    total:d.total, catFinal:d.catFinal,
     catInterp:d.catItem?d.catItem.interp:'',
     propietario:getUsuarioCorreo(),
     propietarioNombre:getUsuarioNombre(),
     paquete:paqueteActual?paqueteActual.nombre:'',
     paqueteId:paqueteActual?paqueteActual.id:'',
-    det:d.det.map(function(r){return{label:r.label,weight:r.weight,nota:r.nota,cat:r.cat,pond:r.pond,ev:(r.ev||[]).map(function(f){return typeof f==='string'?f:f.name;})};}),
+    producto:d.producto||'',
+    contactoNom:d.contactoNom||'',contactoCel:d.contactoCel||'',
+    contactoEmail:d.contactoEmail||'',
+    nCuenta:d.nCuenta||'',cci:d.cci||'',
+    linkProducto:d.linkProducto||'',linkEmpresa:d.linkEmpresa||'',
+    linkOtros:d.linkOtros||'',descripcion:d.descripcion||'',
+    det:d.det.map(function(r){return{
+      label:r.label,weight:r.weight,nota:r.nota,cat:r.cat,pond:r.pond,
+      comentario:r.comentario||'',
+      ev:(r.ev||[]).map(function(f){return typeof f==='string'?f:f.name;})
+    };}),
     escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};})
   };
   qdbFetch({accion:'guardarEvaluacion', datos:JSON.stringify(payload)}, function(res){
     if(callback)callback(!!(res&&res.ok));
-  }, 3000);
+  }, 30000);
 }
 
 function guardarEvalActual(){
@@ -2687,8 +2700,6 @@ function _restaurarNotasDesdeHist(){
 
 function _cargarHistorialDesdeResumen(nombrePaquete, callback){
   qdbFetch({accion:'cargarResumen'}, function(res){
-
-    done=true;try{delete window[cbName];}catch(e){}
     if(res&&res.ok&&res.registros){
       // Filtrar solo registros de este paquete
       // Filtrar ESTRICTAMENTE por proveedores de este paquete
@@ -2698,12 +2709,19 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
       
       // FIX: RESUMEN usa campos: proveedor, ruc, evaluador, version,
       // calificacion_total, categoria, interpretacion, fecha_evaluacion, timestamp
+      var correo=getUsuarioCorreo();
+      var pkId=paqueteActual?paqueteActual.id:'';
       var regs=res.registros.filter(function(r){
+        // Filtrar por propietario
+        var propOk=!r.propietario||r.propietario===correo;
+        // Filtrar por paquete si está disponible
+        var paqOk=!pkId||!r.paquete||r.paquete===pkId||r.paquete===nombrePaquete;
+        // Filtrar por proveedor del paquete actual
         var nom=(r.proveedor||'').trim().toLowerCase();
         var ruc=(r.ruc||'').trim();
         var nomMatch=nom&&provNames.indexOf(nom)>-1;
         var rucMatch=ruc&&provRucs.length>0&&provRucs.indexOf(ruc)>-1;
-        return nomMatch||rucMatch;
+        return propOk&&paqOk&&(nomMatch||rucMatch);
       });
       regs.forEach(function(r){
         var rNom=(r.proveedor||'').trim();
