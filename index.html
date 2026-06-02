@@ -2252,7 +2252,8 @@ function cargarPaquetesDesdeSheets(){
           historial:safeJsonParse(r.historial_json,[]),
           productos:safeJsonParse(r.productos_json,[]),
           fechaCreacion:r.fecha_creacion||'',
-          ultimaActualizacion:r.ultima_actualizacion||''
+          ultimaActualizacion:r.ultima_actualizacion||'',
+          _provCount:safeJsonParse(r.proveedores_json,[]).length
         };
       }
       return r;
@@ -2333,9 +2334,9 @@ function renderListaPaquetes(){
     var meta=document.createElement('div');
     meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
     var prodCount = (paqueteActual&&paqueteActual.id===pk.id) ? productos.length : (pk.productos||[]).length;
-    // Proveedores: solo mostrar count del paquete activo (fuente QDB tabla PROVEEDORES)
-    // Para paquetes inactivos no hay forma confiable de saber el count sin consultar QDB
-    var provCount = (paqueteActual&&paqueteActual.id===pk.id) ? provs.length : (pk._provCount||0);
+    // Proveedores: activo=count real de QDB, inactivo=count guardado en JSON
+    var isActive = paqueteActual&&paqueteActual.id===pk.id;
+    var provCount = isActive ? provs.length : (pk._provCount||0);
     meta.textContent='📦 '+prodCount+' productos · 📋 '+(pk.criterios||[]).length+' criterios · 🏅 calificación · 👥 '+provCount+' proveedores';
 
     left.appendChild(nomRow);
@@ -2413,6 +2414,7 @@ function crearPaquete(){
   if(!nombre){tst('Escribe un nombre para el paquete');return;}
   var pk={
     id:'pk_'+Date.now(),
+    _provCount:0,
     nombre:nombre,
     propietario:getUsuarioCorreo(),
     propietarioNombre:getUsuarioNombre(),
@@ -2982,9 +2984,13 @@ function guardarPaqueteActual(){
   if(!paqueteActual)return;
   paqueteActual.criterios=crits.map(function(c){return{label:c.label,weight:c.weight};});
   paqueteActual.escala=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};});
-  // NO guardar proveedores en JSON del paquete — viven en tabla PROVEEDORES de QDB
-  // Solo mantener la lista si ya existía (para compatibilidad hacia atrás)
-  // paqueteActual.proveedores se deja como estaba
+  // Guardar solo los nombres/rucs para el count del resumen
+  // Los datos completos viven en tabla PROVEEDORES de QDB
+  paqueteActual._provCount = provs.length;
+  var idx2=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
+  if(idx2>-1) _paquetesCache[idx2]._provCount=provs.length;
+  // Guardar lista mínima en proveedores_json para el count
+  paqueteActual.proveedores=provs.map(function(p){return{nom:p.nom,ruc:p.ruc};});
   // Guardar historial simplificado (sin catItem para no inflar JSON)
   paqueteActual.productos = productos;
   paqueteActual.historial=hist.map(function(h){
