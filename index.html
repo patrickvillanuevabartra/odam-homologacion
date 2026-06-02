@@ -1573,6 +1573,25 @@ function guardarEscalaEnQDB(){
   paqueteActual.escala=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,color:s.color,bg:s.bg};});
   var idx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
   if(idx>-1)_paquetesCache[idx].escala=paqueteActual.escala;
+
+  // Si no hay escala activa, pedir nombre y guardar en biblioteca
+  var escActual=paqueteActual._escalaActual||paqueteActual.escalaActual||'';
+  if(!escActual){
+    var nombre=prompt('🏅 Asigna un nombre a esta tabla de calificación para guardarla en la biblioteca:',
+      paqueteActual.nombre+' — Escala');
+    if(!nombre||!nombre.trim()){
+      tst('⚠️ Debes asignar un nombre a la escala');return;
+    }
+    nombre=nombre.trim();
+    // Guardar en biblioteca de escalas
+    var nuevaEsc={nombre:nombre,niveles:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,color:s.color,bg:s.bg};})};
+    _bibliotecaEscalasCache.push(nuevaEsc);
+    guardarEscalaExistente(nuevaEsc,function(){});
+    paqueteActual._escalaActual=nombre;
+    paqueteActual.escalaActual=nombre;
+    _actualizarBadgeEscala(nombre);
+  }
+
   tst('⏳ Guardando escala en QuintaDB...');
   guardarPaqueteSheets(paqueteActual,function(ok){
     if(ok){
@@ -1972,6 +1991,27 @@ function guardarCriteriosEnQDB(){
   paqueteActual.criterios=crits.map(function(c){return{label:c.label,weight:c.weight};});
   var idx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
   if(idx>-1)_paquetesCache[idx].criterios=paqueteActual.criterios;
+
+  // Si no hay plantilla activa, pedir nombre y guardar en biblioteca
+  var pltActual=paqueteActual._plantillaActual||paqueteActual.plantillaActual||'';
+  if(!pltActual){
+    var nombre=prompt('📋 Asigna un nombre a esta plantilla de criterios para guardarla en la biblioteca:',
+      paqueteActual.nombre+' — Criterios');
+    if(!nombre||!nombre.trim()){
+      tst('⚠️ Debes asignar un nombre a la plantilla');return;
+    }
+    nombre=nombre.trim();
+    // Guardar en biblioteca
+    var nueva={id:'pt_'+Date.now(),nombre:nombre,
+      criterios:crits.map(function(c){return{label:c.label,weight:c.weight};}),
+      fechaCreacion:new Date().toLocaleString('es-PE')};
+    _plantillasCache.push(nueva);
+    guardarPlantillaEnSheets(nueva,function(){});
+    paqueteActual._plantillaActual=nombre;
+    paqueteActual.plantillaActual=nombre;
+    _actualizarBadgePlantilla(nombre);
+  }
+
   tst('⏳ Guardando criterios en QuintaDB...');
   guardarPaqueteSheets(paqueteActual,function(ok){
     if(ok){
@@ -3831,7 +3871,6 @@ function goStep(n){
   }
   // ── Paso 3: Criterios ──
   if(n===2){
-    // Recargar criterios desde paqueteActual siempre
     crits=[];
     var cl=document.getElementById('critList');
     if(cl)cl.innerHTML='';
@@ -3843,6 +3882,9 @@ function goStep(n){
     checkWeight();
     verificarCriteriosGuardados();
     cargarPlantillasDesdeSheets();
+    // Actualizar badge de plantilla activa
+    var pltNom=paqueteActual&&(paqueteActual._plantillaActual||paqueteActual.plantillaActual)||'';
+    _actualizarBadgePlantilla(pltNom);
   }
 
   // ── Paso 4: Calificación ──
@@ -3850,6 +3892,9 @@ function goStep(n){
     buildEscalaRows();
     checkWeight();
     verificarEscalaGuardada();
+    // Actualizar badge de escala activa
+    var escNom=paqueteActual&&(paqueteActual._escalaActual||paqueteActual.escalaActual)||'';
+    _actualizarBadgeEscala(escNom);
   }
 
   // ── Paso 5: Proveedores ──
