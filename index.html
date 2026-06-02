@@ -2972,15 +2972,9 @@ function guardarPaqueteActual(){
   if(!paqueteActual)return;
   paqueteActual.criterios=crits.map(function(c){return{label:c.label,weight:c.weight};});
   paqueteActual.escala=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};});
-  paqueteActual.proveedores=provs.map(function(p){return{
-    nom:p.nom,ruc:p.ruc,dir:p.dir,mat:p.mat,
-    producto:p.producto||'',linkProducto:p.linkProducto||'',
-    linkEmpresa:p.linkEmpresa||'',linkOtros:p.linkOtros||'',
-    descripcion:p.descripcion||'',
-    contactoNom:p.contactoNom||'',contactoCel:p.contactoCel||'',
-    contactoEmail:p.contactoEmail||'',
-    nCuenta:p.nCuenta||'',cci:p.cci||'',
-    fec:p.fec,eva:p.eva,guardado:p.guardado||false};});
+  // NO guardar proveedores en JSON del paquete — viven en tabla PROVEEDORES de QDB
+  // Solo mantener la lista si ya existía (para compatibilidad hacia atrás)
+  // paqueteActual.proveedores se deja como estaba
   // Guardar historial simplificado (sin catItem para no inflar JSON)
   paqueteActual.productos = productos;
   paqueteActual.historial=hist.map(function(h){
