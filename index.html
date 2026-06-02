@@ -2333,7 +2333,9 @@ function renderListaPaquetes(){
     var meta=document.createElement('div');
     meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
     var prodCount = (paqueteActual&&paqueteActual.id===pk.id) ? productos.length : (pk.productos||[]).length;
-    var provCount = (paqueteActual&&paqueteActual.id===pk.id) ? provs.length : (pk.proveedores||[]).length;
+    // Proveedores: solo mostrar count del paquete activo (fuente QDB tabla PROVEEDORES)
+    // Para paquetes inactivos no hay forma confiable de saber el count sin consultar QDB
+    var provCount = (paqueteActual&&paqueteActual.id===pk.id) ? provs.length : (pk._provCount||0);
     meta.textContent='📦 '+prodCount+' productos · 📋 '+(pk.criterios||[]).length+' criterios · 🏅 calificación · 👥 '+provCount+' proveedores';
 
     left.appendChild(nomRow);
@@ -2550,6 +2552,13 @@ function seleccionarPaquete(pk){
     if(misProvs.length) tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB');
     checkProvs();
     _proveedoresGuardados = misProvs.length > 0;
+    // Actualizar _provCount en el paquete y re-renderizar resumen
+    if(paqueteActual){
+      paqueteActual._provCount = provs.length;
+      var idx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
+      if(idx>-1) _paquetesCache[idx]._provCount=provs.length;
+      renderListaPaquetes();
+    }
     });// fin cargarProveedoresDesdeQDB
   }// fin _cargarProveedoresDespues
 
