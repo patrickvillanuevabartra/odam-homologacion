@@ -1839,6 +1839,7 @@ function guardarEscalaEnBiblioteca(){
     propietario: getUsuarioCorreo(),
     propietario_nombre: getUsuarioNombre(),
     paquete: paqueteActual?paqueteActual.id:'',
+    paquete_nombre: paqueteActual?paqueteActual.nombre:'',
     fecha_registro: new Date().toISOString().slice(0,10)
   };
   tst('⏳ Guardando escala en biblioteca...');
@@ -2770,6 +2771,7 @@ function guardarProductosEnQDB(){
       descripcion: p.descripcion||'',
       unidad: p.unidad||'',
       paquete: paqueteActual?paqueteActual.id:'',
+      paquete_nombre: paqueteActual?paqueteActual.nombre:'',
       propietario: getUsuarioCorreo(),
       propietario_nombre: getUsuarioNombre(),
       fecha_registro: new Date().toISOString().slice(0,10)
