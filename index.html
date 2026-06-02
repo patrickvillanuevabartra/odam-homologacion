@@ -752,6 +752,52 @@ function getCrit(id){return crits.find(function(c){return c.id===id;});}
 function getProv(id){return provs.find(function(p){return p.id===id;});}
 
 // ── GESTIÓN DE PROVEEDORES ──
+function _refrescarCheckboxsProveedores(){
+  // Actualizar lista de productos disponibles
+  var prodList=paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length
+    ? paqueteActual.productos : productos;
+  if(!prodList||!prodList.length||!provs.length) return;
+
+  provs.forEach(function(p){
+    var wrap=document.getElementById('provrow-'+p.id);
+    if(!wrap) return;
+    // Buscar el contenedor de checkboxes de este proveedor
+    var checksWrap=wrap.querySelector('.prov-prod-checks');
+    if(!checksWrap) return;
+    checksWrap.innerHTML='';
+    prodList.forEach(function(prod){
+      var lbl=document.createElement('label');
+      lbl.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:.86rem;background:white;';
+      var chk=document.createElement('input');
+      chk.type='checkbox';
+      var prodNomLow=(prod.nombre||prod.nom||'').trim().toLowerCase();
+      var prodNomEnProducto=(p.producto||'').toLowerCase().split(',').map(function(x){return x.trim();});
+      chk.checked=(p.productosIds||[]).indexOf(prod.id)>-1 || prodNomEnProducto.indexOf(prodNomLow)>-1;
+      (function(prodId,prodNom,pp){
+        chk.onchange=function(){
+          if(!pp.productosIds)pp.productosIds=[];
+          if(this.checked){
+            if(pp.productosIds.indexOf(prodId)===-1)pp.productosIds.push(prodId);
+          } else {
+            pp.productosIds=pp.productosIds.filter(function(x){return x!==prodId;});
+          }
+          var nombresSelec=prodList.filter(function(pr){
+            return (pp.productosIds||[]).indexOf(pr.id)>-1;
+          }).map(function(pr){return pr.nombre||pr.nom||'';}).join(', ');
+          pp.producto=nombresSelec;
+          pp._modificado=true;
+          var badge=document.getElementById('prov-badge-'+pp.id);
+          if(badge){badge.textContent='✏️ Cambios sin guardar';badge.style.background='#FEF9C3';badge.style.color='#92400E';}
+        };
+      })(prod.id, prod.nombre||prod.nom||'', p);
+      lbl.appendChild(chk);
+      lbl.appendChild(document.createTextNode((prod.codigo?'['+prod.codigo+'] ':'')+( prod.nombre||prod.nom||'Sin nombre')));
+      checksWrap.appendChild(lbl);
+    });
+  });
+  tst('✅ Lista de productos actualizada en proveedores');
+}
+
 function addProv(preset){
   var id='p'+(++provSeq);
   var p=preset||{id:id,nom:'',ruc:'',dir:'',fec:new Date().toISOString().slice(0,10),mat:'',eva:'',guardado:false};
@@ -915,6 +961,7 @@ function appendProvRow(p, i){
   grid.appendChild(sec2);
 
   var prodChecksTop=document.createElement('div');
+  prodChecksTop.className='prov-prod-checks';
   prodChecksTop.style.cssText='grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;';
   // Obtener lista de productos: paqueteActual.productos > productos global > vacío
   var prodListTop=(paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length)
@@ -2857,8 +2904,12 @@ function renderProductos(){
         if(paqueteActual)paqueteActual.productos=productos;
         renderProductos();
         verificarProductosSinGuardar();
-        if(res&&res.ok)_productosModificados=false;
-        tst(res&&res.ok?'✅ Producto guardado en QuintaDB':' ⚠️ Sin conexión',4000);
+        if(res&&res.ok){
+          _productosModificados=false;
+          // Refrescar checkboxes en proveedores ya renderizados
+          _refrescarCheckboxsProveedores();
+        }
+        tst(res&&res.ok?'✅ Producto guardado en QuintaDB':'⚠️ Sin conexión',4000);
       },8000);
     };
 
