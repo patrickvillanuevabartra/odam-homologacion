@@ -1396,9 +1396,11 @@ function guardarEvalActual(){
   var fecEl=document.getElementById('evalFecha');
   if(fecEl&&fecEl.value)p.fec=fecEl.value;
   var d=getProvData(provActualId);
-  var isReeval=p.guardado;
+  // Es reevaluación solo si ya existe al menos una evaluación guardada en hist
+  var histProv=hist.filter(function(h){return h.provId===provActualId;});
+  var isReeval=histProv.length>0;
   if(isReeval){
-    var prevReev=hist.filter(function(h){return h.provId===provActualId&&(h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
+    var prevReev=histProv.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
     d.version='Reevaluacion '+(prevReev+1);
   } else {
     d.version='Evaluacion inicial';
@@ -4595,7 +4597,7 @@ function buildResults(){
   tableWrap.style.cssText='overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);';
   var tableEl=document.createElement('table');
   tableEl.className='dt'; tableEl.style.cssText='margin:0;min-width:700px;';
-  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Evaluador</th><th>Criterios utilizados</th><th>Calificación</th><th>Categoría</th><th>Acciones</th></tr></thead>';
+  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Categoría</th><th>Acciones</th></tr></thead>';
   var tbodyEl=document.createElement('tbody');
   tableEl.appendChild(tbodyEl);
   if(!datosFiltrados.length){
@@ -4618,6 +4620,10 @@ function buildResults(){
     var critsUsados=d.critsSnap&&d.critsSnap.length
       ? d.critsSnap.map(function(c){return c.label+' ('+c.weight+'%)'}).join(' · ')
       : (crits.length?crits.map(function(c){return c.label+' ('+c.weight+'%)'}).join(' · '):'—');
+    // Tabla de calificación usada
+    var scaleUsada=d.scaleSnap&&d.scaleSnap.length
+      ? d.scaleSnap.map(function(s){return s.cat+': '+s.min.toFixed(2)+'-'+s.max.toFixed(2)}).join(' | ')
+      : SCALE.map(function(s){return s.cat+': '+s.min.toFixed(2)+'-'+s.max.toFixed(2)}).join(' | ');
     var versionLabel=(d.version||'').toLowerCase().indexOf('inici')>-1?'Evaluación inicial':d.version||'—';
     var isInicial=(d.version||'').toLowerCase().indexOf('inici')>-1;
     tr.innerHTML='<td style="font-weight:700;color:var(--muted)">'+(i+1)+'</td>'
@@ -4627,6 +4633,7 @@ function buildResults(){
       +'<td>'+fmtFecha(d.fec)+'</td>'
       +'<td style="font-size:.86rem">'+esc(d.eva||'—')+'</td>'
       +'<td style="font-size:.78rem;color:var(--muted);max-width:200px;">'+esc(critsUsados)+'</td>'
+      +'<td style="font-size:.75rem;color:var(--muted);">'+esc(scaleUsada)+'</td>'
       +'<td>'
         +'<div style="font-weight:700;font-size:1rem;color:'+(ci?ci.color:'var(--text)')+'">'+d.total.toFixed(3)+'</div>'
         +'<div style="height:4px;background:rgba(0,0,0,.1);border-radius:2px;margin-top:3px;"><div style="height:100%;width:'+bar+'%;background:'+(ci?ci.color:'var(--border)')+';border-radius:2px;"></div></div>'
