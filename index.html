@@ -1308,7 +1308,7 @@ function seleccionarProv(id){
 
 // -- GUARDAR EVALUACION ACTUAL --
 // ── GOOGLE SHEETS ──
-var GS_URL='https://script.google.com/macros/s/AKfycbzqh2cMmZkVx7WCve8H5Ekm-5CTB-Bnq0jw8FRzNI2UNE7NHC9Uoom2fn5qmcAJo1Jg/exec';
+var GS_URL='https://script.google.com/macros/s/AKfycbw5dPz2akKPByRp-ozSWrHq-N3em5uD9MsexO5iqDJqeB7w04ySsj7lxggl3k3ykLCA/exec';
 
 // ── Wrapper fetch para reemplazar JSONP ──
 // Usa fetch() en lugar de <script> injection para evitar el error
@@ -1327,7 +1327,6 @@ function qdbFetch(params, callback, timeoutMs){
       .then(function(text){
         clearTimeout(timer);
         var json = text.trim();
-        // Manejar tanto JSON puro como JSONP
         if(json.charAt(0) !== '{' && json.charAt(0) !== '[') {
           json = json.replace(/^[^(]+\(/, '').replace(/\)\s*;?\s*$/, '');
         }
@@ -1336,12 +1335,12 @@ function qdbFetch(params, callback, timeoutMs){
       })
       .catch(function(err){
         clearTimeout(timer);
-        console.warn('Sin conexión a QuintaDB:', err.message);
+        // sin conexión — silencioso
         if(callback) callback({ok:false, offline:true});
       });
   } catch(e) {
     clearTimeout(timer);
-    console.warn('fetch no disponible:', e.message);
+    // fetch no disponible — silencioso
     if(callback) callback(null);
   }
 }
@@ -1839,7 +1838,6 @@ function guardarEscalaEnBiblioteca(){
     propietario: getUsuarioCorreo(),
     propietario_nombre: getUsuarioNombre(),
     paquete: paqueteActual?paqueteActual.id:'',
-    paquete_nombre: paqueteActual?paqueteActual.nombre:'',
     fecha_registro: new Date().toISOString().slice(0,10)
   };
   tst('⏳ Guardando escala en biblioteca...');
@@ -2771,7 +2769,6 @@ function guardarProductosEnQDB(){
       descripcion: p.descripcion||'',
       unidad: p.unidad||'',
       paquete: paqueteActual?paqueteActual.id:'',
-      paquete_nombre: paqueteActual?paqueteActual.nombre:'',
       propietario: getUsuarioCorreo(),
       propietario_nombre: getUsuarioNombre(),
       fecha_registro: new Date().toISOString().slice(0,10)
@@ -2943,14 +2940,15 @@ function renderProductos(){
     btnUpd.textContent='💾';
     btnUpd.title='Guardar cambios en QuintaDB';
     btnUpd.style.cssText='background:#EFF6FF;border:1px solid #BAE6FD;border-radius:7px;padding:8px 10px;cursor:pointer;color:#0284c7;font-size:.9rem;';
-    btnUpd.setAttribute('data-idx', i);
+    btnUpd.setAttribute('data-pid', p.id);
+    (function(prod){
     btnUpd.onclick=function(){
-      var idx=parseInt(this.getAttribute('data-idx'));
-      var prod=productos[idx];
-      if(!prod)return;
+      if(!prod){tst('⚠️ Producto no encontrado');return;}
       var datos={
         id:prod.id, codigo:prod.codigo||'', nombre:prod.nombre||'', descripcion:prod.descripcion||'',
-        unidad:prod.unidad||'', categoria:prod.categoria||'', paquete:paqueteActual?paqueteActual.id:'',
+        unidad:prod.unidad||'', categoria:prod.categoria||'',
+        paquete:paqueteActual?paqueteActual.id:'',
+        paquete_nombre:paqueteActual?paqueteActual.nombre:'',
         propietario:getUsuarioCorreo(), propietario_nombre:getUsuarioNombre(),
         fecha_registro:new Date().toISOString().slice(0,10)
       };
@@ -2976,7 +2974,7 @@ function renderProductos(){
           tst('⚠️ Sin conexión — verifica e intenta de nuevo',4000);
         }
       },8000);
-    };
+    };})(p);
 
     row1.appendChild(codInp);
     row1.appendChild(nomInp);
