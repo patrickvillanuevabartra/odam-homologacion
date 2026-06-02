@@ -1032,8 +1032,10 @@ function appendProvRow(p, i){
           badgeEl.textContent='✓ En QDB';
           badgeEl.style.background='#DCFCE7';badgeEl.style.color='#059669';
           tst('✅ Proveedor "'+pp.nom+'" guardado en QuintaDB',4000);
+          alert('✅ Proveedor "'+pp.nom+'" guardado correctamente en QuintaDB');
         } else {
           tst('⚠️ Error al guardar — verifica conexión');
+          alert('⚠️ Error al guardar. Verifica tu conexión.');
         }
       });
     };
@@ -1469,6 +1471,7 @@ function buildEscalaRows(){
 var _escalaGuardada = false;
 var _bibliotecaEscalasCache = [];
 var _proveedoresGuardados = false;
+var _productosModificados = false;
 
 function guardarEscalaEnQDB(){
   if(!paqueteActual){tst('Selecciona un paquete primero');return;}
@@ -2738,6 +2741,8 @@ function addProducto(preset){
   productos.push(p);
   if(paqueteActual) paqueteActual.productos = productos;
   renderProductos();
+  // Notificar que hay nuevos productos disponibles para proveedores
+  _productosModificados=true;
 }
 
 function delProducto(id){
@@ -2756,6 +2761,9 @@ function avanzarDesdeProdutos(){
     var nombres=sinGuardar.map(function(p){return '"'+p.nombre+'"';}).join(', ');
     alert('⚠️ Debes guardar primero los siguientes productos antes de continuar:\n\n'+nombres+'\n\nHaz clic en el ícono 💾 de cada producto pendiente.');
     return;
+  }
+  if(_productosModificados){
+    if(!confirm('⚠️ Hay cambios en productos sin guardar.\n\n¿Continuar sin guardarlos?')) return;
   }
   sincronizarPaqueteYAvanzar(2);
 }
@@ -2800,7 +2808,7 @@ function renderProductos(){
     nomInp.type='text'; nomInp.value=p.nombre||'';
     nomInp.placeholder='Nombre del producto / servicio *';
     nomInp.style.cssText='flex:1;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-family:inherit;font-size:.95rem;';
-    (function(idx){nomInp.oninput=function(){productos[idx].nombre=this.value;if(paqueteActual)paqueteActual.productos=productos;};})(i);
+    (function(idx){nomInp.oninput=function(){productos[idx].nombre=this.value;if(paqueteActual)paqueteActual.productos=productos;_productosModificados=true;};})(i);
 
     // Fila 2: categoría + unidad
     var row2 = document.createElement('div');
@@ -2849,7 +2857,8 @@ function renderProductos(){
         if(paqueteActual)paqueteActual.productos=productos;
         renderProductos();
         verificarProductosSinGuardar();
-        tst(res&&res.ok?'✅ Producto actualizado en QuintaDB':'⚠️ Sin conexión');
+        if(res&&res.ok)_productosModificados=false;
+        tst(res&&res.ok?'✅ Producto guardado en QuintaDB':' ⚠️ Sin conexión',4000);
       },8000);
     };
 
@@ -3642,12 +3651,17 @@ function goStep(n){
 
   // ── Paso 5: Proveedores ──
   if(n===4){
-    // Asegurar que los productos del paquete estén cargados antes de renderizar proveedores
-    if(paqueteActual&&(!paqueteActual.productos||!paqueteActual.productos.length)){
-      cargarProductosDesdeQDB();
-    } else if(paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length){
-      // Sincronizar variable global productos con los del paquete
-      if(!productos.length) productos=paqueteActual.productos;
+    // Sincronizar productos del paquete
+    if(paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length){
+      productos=paqueteActual.productos;
+    }
+    // Si hay proveedores renderizados y se agregaron productos nuevos, re-renderizar
+    if(provs.length && productos.length){
+      var wrap=document.getElementById('provList');
+      if(wrap){
+        wrap.innerHTML='';
+        provs.forEach(function(p,i){appendProvRow(p,i);});
+      }
     }
   }
 
