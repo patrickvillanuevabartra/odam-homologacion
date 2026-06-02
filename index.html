@@ -233,7 +233,10 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
     <div class="portal-title">Homologación de Proveedores</div>
     <div class="portal-sub">Sistema de Evaluación y Reevaluación de Proveedores</div>
   </div>
-  <div id="userBadge" style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;flex-shrink:0;"><span style="font-size:1.1rem;">👤</span><div><div id="userBadgeName" style="font-size:.82rem;font-weight:700;color:var(--text);line-height:1.2;">—</div><div id="userBadgeEmail" style="font-size:.72rem;color:var(--muted);line-height:1.2;">—</div></div><button onclick="doLogout()" title="Cerrar sesión" style="background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:.75rem;color:var(--muted);padding:3px 7px;font-family:inherit;">✕ Salir</button></div>  <button onclick="abrirModalEvaluadores()" style="padding:8px 16px;border-radius:8px;background:var(--blue-light);border:1.5px solid #BAE6FD;color:var(--blue);font-size:.86rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">👥 Evaluadores</button>
+  <div id="paqueteBadge" style="display:none;align-items:center;gap:6px;padding:5px 12px;background:#EFF6FF;border:1.5px solid #BAE6FD;border-radius:8px;flex-shrink:0;font-size:.82rem;color:#0284c7;font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+  📦 <span id="paqueteBadgeNom">—</span>
+</div>
+<div id="userBadge" style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;flex-shrink:0;"><span style="font-size:1.1rem;">👤</span><div><div id="userBadgeName" style="font-size:.82rem;font-weight:700;color:var(--text);line-height:1.2;">—</div><div id="userBadgeEmail" style="font-size:.72rem;color:var(--muted);line-height:1.2;">—</div></div><button onclick="doLogout()" title="Cerrar sesión" style="background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:.75rem;color:var(--muted);padding:3px 7px;font-family:inherit;">✕ Salir</button></div>  <button onclick="abrirModalEvaluadores()" style="padding:8px 16px;border-radius:8px;background:var(--blue-light);border:1.5px solid #BAE6FD;color:var(--blue);font-size:.86rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">👥 Evaluadores</button>
 </div>
 
 <!-- PASOS -->
@@ -2182,6 +2185,7 @@ function doLogout(){
   if(!confirm('¿Cerrar sesión de '+(_usuarioActual?_usuarioActual.nombre:'')+' ?'))return;
   (function(){
     _usuarioActual=null;
+    var pb=document.getElementById('paqueteBadge');if(pb)pb.style.display='none';
     try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}
     provs=[];hist=[];crits=[];notasEval={};evFiles={};paqueteActual=null;
     _paquetesCache=[];_evaluadoresCache=[];_plantillasCache=[];
@@ -2319,7 +2323,8 @@ function renderListaPaquetes(){
 
     var meta=document.createElement('div');
     meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
-    meta.textContent='📋 '+(pk.criterios||[]).length+' criterios · 👥 '+(pk.proveedores||[]).length+' proveedores · 📦 '+(pk.productos||[]).length+' productos';
+    var prodCount = (paqueteActual&&paqueteActual.id===pk.id) ? productos.length : (pk.productos||[]).length;
+    meta.textContent='📋 '+(pk.criterios||[]).length+' criterios · 👥 '+(pk.proveedores||[]).length+' proveedores · 📦 '+prodCount+' productos';
 
     left.appendChild(nomRow);
     left.appendChild(meta);
@@ -2457,6 +2462,8 @@ function seleccionarPaquete(pk){
 
   // Limpiar productos del paquete anterior
   productos=[];prodSeq=0;
+  var prodListEl=document.getElementById('productosList');
+  if(prodListEl)prodListEl.innerHTML='';
 
   // Cargar escala
   if(pk.escala&&pk.escala.length){
@@ -2578,6 +2585,11 @@ function seleccionarPaquete(pk){
     _actualizarAcciones(pk);
   }
 
+  // Mostrar paquete activo en header
+  var pbadge=document.getElementById('paqueteBadge');
+  var pbnom=document.getElementById('paqueteBadgeNom');
+  if(pbadge){pbadge.style.display='flex';}
+  if(pbnom){pbnom.textContent=pk.nombre;}
   tst('📦 "'+pk.nombre+'" seleccionado — elige qué hacer');
 }
 
