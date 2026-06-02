@@ -916,7 +916,10 @@ function appendProvRow(p, i){
 
   var prodChecksTop=document.createElement('div');
   prodChecksTop.style.cssText='grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;';
-  var prodListTop=paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length?paqueteActual.productos:productos;
+  // Obtener lista de productos: paqueteActual.productos > productos global > vacío
+  var prodListTop=(paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length)
+    ? paqueteActual.productos
+    : (productos&&productos.length ? productos : []);
   if(prodListTop&&prodListTop.length){
     prodListTop.forEach(function(prod){
       var lbl=document.createElement('label');
@@ -2412,11 +2415,12 @@ function seleccionarPaquete(pk){
     buildEscalaRows();
   }
 
-  // Cargar proveedores — QDB como fuente principal filtrada por paquete.id
+  // Cargar productos primero, luego proveedores para que checkboxes funcionen
   provs=[];provSeq=0;notasEval={};evFiles={};
-  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando proveedores...</div>';
+  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando...</div>';
 
-  cargarProveedoresDesdeQDB(function(qdbProvs){
+  function _cargarProveedoresDespues(){
+    cargarProveedoresDesdeQDB(function(qdbProvs){
     document.getElementById('provList').innerHTML='';
     provs=[];provSeq=0;
 
@@ -2482,7 +2486,14 @@ function seleccionarPaquete(pk){
     if(misProvs.length) tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB');
     checkProvs();
     _proveedoresGuardados = misProvs.length > 0;
-  });
+    });// fin cargarProveedoresDesdeQDB
+  }// fin _cargarProveedoresDespues
+
+  // Usar productos ya cargados del paquete (flujo definido en Paso 2)
+  if(pk.productos&&pk.productos.length&&!productos.length){
+    productos=pk.productos;
+  }
+  _cargarProveedoresDespues();
 
     // Cargar historial del paquete (si existe en JSON)
   hist=[];
@@ -3627,6 +3638,17 @@ function goStep(n){
     buildEscalaRows();
     checkWeight();
     verificarEscalaGuardada();
+  }
+
+  // ── Paso 5: Proveedores ──
+  if(n===4){
+    // Asegurar que los productos del paquete estén cargados antes de renderizar proveedores
+    if(paqueteActual&&(!paqueteActual.productos||!paqueteActual.productos.length)){
+      cargarProductosDesdeQDB();
+    } else if(paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length){
+      // Sincronizar variable global productos con los del paquete
+      if(!productos.length) productos=paqueteActual.productos;
+    }
   }
 
   // ── Paso 6 (Evaluación) ──
