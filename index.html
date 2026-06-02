@@ -2813,8 +2813,12 @@ function delProducto(id){
     qdbFetch({accion:'eliminarProducto',qid:p._qid},function(){},3000);
   }
   productos = productos.filter(function(p){return p.id!==id;});
-  if(paqueteActual) paqueteActual.productos = productos;
+  if(paqueteActual){
+    paqueteActual.productos=productos;
+    guardarPaqueteActual();
+  }
   renderProductos();
+  renderListaPaquetes();
 }
 
 function avanzarDesdeProdutos(){
@@ -2921,6 +2925,13 @@ function renderProductos(){
         verificarProductosSinGuardar();
         if(res&&res.ok){
           _productosModificados=false;
+          // Actualizar paquete con lista actualizada de productos
+          if(paqueteActual){
+            paqueteActual.productos=productos;
+            guardarPaqueteActual();
+          }
+          // Re-renderizar lista de paquetes para actualizar conteo
+          renderListaPaquetes();
           // Refrescar checkboxes en proveedores ya renderizados
           _refrescarCheckboxsProveedores();
         }
