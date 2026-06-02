@@ -2324,7 +2324,8 @@ function renderListaPaquetes(){
     var meta=document.createElement('div');
     meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
     var prodCount = (paqueteActual&&paqueteActual.id===pk.id) ? productos.length : (pk.productos||[]).length;
-    meta.textContent='📋 '+(pk.criterios||[]).length+' criterios · 👥 '+(pk.proveedores||[]).length+' proveedores · 📦 '+prodCount+' productos';
+    var provCount = (paqueteActual&&paqueteActual.id===pk.id) ? provs.length : (pk.proveedores||[]).length;
+    meta.textContent='📦 '+prodCount+' productos · 📋 '+(pk.criterios||[]).length+' criterios · 🏅 calificación · 👥 '+provCount+' proveedores';
 
     left.appendChild(nomRow);
     left.appendChild(meta);
@@ -2491,16 +2492,16 @@ function seleccionarPaquete(pk){
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      // Filtrar por paquete.id si el campo existe
+      // Filtrar por paquete.id si el campo existe (fuente principal)
       if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
-      // Si no tiene paquete, cruzar por nombre o RUC con los del JSON del paquete
+      // Si no tiene campo paquete, cruzar por nombre o RUC con los del JSON del paquete
       if(pkProvNoms.length){
         var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
         var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
         return nomMatch||rucMatch;
       }
-      // Si el paquete no tiene proveedores en JSON, mostrar todos del propietario
-      return true;
+      // Si el paquete no tiene proveedores en JSON → es nuevo → no mostrar nada
+      return false;
     });
 
     // 2. Si no hay en QDB, usar los del JSON del paquete como fallback
