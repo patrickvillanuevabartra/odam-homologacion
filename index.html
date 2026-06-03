@@ -2442,7 +2442,7 @@ function renderListaPaquetes(){
     meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
     var prodCount = (paqueteActual&&paqueteActual.id===pk.id) ? productos.length : (pk.productos||[]).length;
     // Proveedores: activo=count real de QDB, inactivo=count guardado en JSON
-    var provCount = pk._provCount!==undefined ? pk._provCount : (pk.proveedores||[]).length;
+    var provCount = (pk.proveedores||[]).length;
     meta.textContent='📦 '+prodCount+' productos · 📋 '+(pk.criterios||[]).length+' criterios · 🏅 calificación · 👥 '+provCount+' proveedores';
 
     left.appendChild(nomRow);
