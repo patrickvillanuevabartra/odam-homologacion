@@ -2309,6 +2309,7 @@ function getUsuarioNombre(){return _usuarioActual?_usuarioActual.nombre:'';}
 // ══════════════════════════════════════
 var paqueteActual = null;  // {id, nombre, criterios, escala, proveedores}
 var _paquetesCache = [];
+var _proveedoresCacheGlobal = []; // cache global de proveedores para evitar re-fetch
 
 function safeJsonParse(v,d){try{var s=String(v||'');return s&&s!=='false'?JSON.parse(s):d;}catch(e){return d;}}
 
@@ -2360,12 +2361,14 @@ function cargarPaquetesDesdeSheets(){
     _paquetesCache.forEach(function(pk){
       if(_prevProvCount[pk.id]) pk._provCount=_prevProvCount[pk.id];
     });
-    // Contar proveedores por paquete desde QDB
+    // Contar proveedores por paquete desde QDB y cachear registros
     qdbFetch({accion:'cargarProveedores'},function(resProv){
       if(resProv&&resProv.ok){
+        // Cachear todos los registros para reusar en seleccionarPaquete
+        _proveedoresCacheGlobal = resProv.registros||[];
         // Construir mapa paquete→count usando el valor raw de r.paquete
         var rawCount={};
-        (resProv.registros||[]).forEach(function(r){
+        _proveedoresCacheGlobal.forEach(function(r){
           var val=(r.paquete||'').trim();
           if(val) rawCount[val]=(rawCount[val]||0)+1;
         });
@@ -3137,8 +3140,33 @@ function guardarPaqueteActual(){
 }
 function cargarProveedoresDesdeQDB(cb){
   var correo=getUsuarioCorreo();
+  // Si ya tenemos cache global (cargado al inicio), usarlo directamente
+  if(_proveedoresCacheGlobal&&_proveedoresCacheGlobal.length){
+    var ps=_proveedoresCacheGlobal.map(function(r){
+      return {
+        id:r.id||r._qid, _qid:r._qid,
+        nom:r.nombre||'', ruc:r.ruc||'',
+        dir:r.direccion||'', mat:r.rubro_sector||'',
+        producto:r.producto_servicio||'',
+        paquete:r.paquete||'',
+        contactoNom:r.contacto_nombre||'',
+        contactoCel:r.contacto_celular||'',
+        contactoEmail:r.contacto_email||'',
+        nCuenta:r.n_cuenta||'', cci:r.cci||'',
+        linkProducto:r.link_producto||'',
+        linkEmpresa:r.link_empresa||'',
+        linkOtros:r.link_otros||'',
+        descripcion:r.descripcion||'',
+        propietario:r.propietario||'',
+        guardado:true
+      };
+    });
+    if(cb)cb(ps);
+    return;
+  }
   qdbFetch({accion:'cargarProveedores'}, function(res){
     if(res&&res.ok){
+      _proveedoresCacheGlobal=res.registros||[];
       var ps=(res.registros||[]).map(function(r){
         return {
           id:r.id||r._qid, _qid:r._qid,
