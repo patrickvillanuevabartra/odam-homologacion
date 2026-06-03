@@ -2499,7 +2499,7 @@ function renderListaPaquetes(){
       var b=document.createElement('button');
       b.textContent=parts[0];
       b.style.cssText='padding:8px 14px;border-radius:8px;background:white;border:1.5px solid var(--border);font-size:.86rem;cursor:pointer;font-family:inherit;';
-      b.onclick=function(e){e.stopPropagation();abrirPaqueteEn(parseInt(parts[1]));};
+      b.onclick=function(e){e.stopPropagation();seleccionarPaquete(pk);abrirPaqueteEn(parseInt(parts[1]));};
       acDiv.appendChild(b);
     });
     card.appendChild(acDiv);
@@ -2598,7 +2598,7 @@ function seleccionarPaquete(pk){
 
   // Cargar proveedores desde QDB filtrado por paquete.id
   provs=[];provSeq=0;notasEval={};evFiles={};
-  document.getElementById('provList').innerHTML='<div style="padding:14px 16px;color:#0284c7;font-size:.92rem;background:#EFF6FF;border-radius:8px;border:1px solid #BAE6FD;">⏳ Cargando proveedores desde QuintaDB...</div>';
+  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando proveedores...</div>';
 
   function _cargarProveedoresDespues(){
     cargarProveedoresDesdeQDB(function(qdbProvs){
@@ -2609,23 +2609,15 @@ function seleccionarPaquete(pk){
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
-    var pkNom=(pk.nombre||'').trim().toLowerCase();
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      var qpPaq=(qp.paquete||'').trim();
-      if(!qpPaq) return false;
-      if(qpPaq===pkId) return true;
-      if(qpPaq.toLowerCase()===pkNom) return true;
-      return false;
-    });
-
-    // Fallback: buscar por nombre/RUC si no hay coincidencia por paquete id
-    if(!misProvs.length&&pkProvNoms.length){
-      misProvs=(qdbProvs||[]).filter(function(qp){
+      if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
+      if(pkProvNoms.length){
         var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
         var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
         return nomMatch||rucMatch;
-      });
-    }
+      }
+      return false;
+    });
 
     var fuente=misProvs.length?misProvs:(pk.proveedores||[]);
 
@@ -2659,8 +2651,7 @@ function seleccionarPaquete(pk){
       appendProvRow(np,provs.length-1);
     });
 
-    if(misProvs.length){tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB para "'+pk.nombre+'"',4000);}
-    else{tst('⚠️ No se encontraron proveedores en QuintaDB para el paquete "'+pk.nombre+'" (id: '+pkId+')');}  
+    if(misProvs.length) tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB');
     checkProvs();
     _proveedoresGuardados=misProvs.length>0;
     if(paqueteActual){
@@ -3130,35 +3121,52 @@ function guardarPaqueteActual(){
     if(!ok)console.warn('Error guardando paquete en QuintaDB');
   });
 }
-function _mapProvQDB(r){
-  return{
-    id:r._qid||r.id||'', _qid:r._qid||r.id||'',
-    nom:r.nombre||'', ruc:r.ruc||'',
-    dir:r.direccion||'', mat:r.rubro_sector||'',
-    producto:r.producto_servicio||'',
-    paquete:r.paquete||'',
-    contactoNom:r.contacto_nombre||'',
-    contactoCel:r.contacto_celular||'',
-    contactoEmail:r.contacto_email||'',
-    nCuenta:r.n_cuenta||'', cci:r.cci||'',
-    linkProducto:r.link_producto||'',
-    linkEmpresa:r.link_empresa||'',
-    linkOtros:r.link_otros||'',
-    descripcion:r.descripcion||'',
-    propietario:r.propietario||'',
-    guardado:true
-  };
-}
 function cargarProveedoresDesdeQDB(cb){
-  // Siempre fetch fresco — ignorar caché para garantizar datos actuales
+  var correo=getUsuarioCorreo();
+  if(_cacheProv&&_cacheProv.length){
+    var ps=_cacheProv.map(function(r){
+      return{id:r.id||r._qid,_qid:r._qid,
+        nom:r.nombre||'',ruc:r.ruc||'',
+        dir:r.direccion||'',mat:r.rubro_sector||'',
+        producto:r.producto_servicio||'',
+        paquete:r.paquete||'',
+        contactoNom:r.contacto_nombre||'',
+        contactoCel:r.contacto_celular||'',
+        contactoEmail:r.contacto_email||'',
+        nCuenta:r.n_cuenta||'',cci:r.cci||'',
+        linkProducto:r.link_producto||'',
+        linkEmpresa:r.link_empresa||'',
+        linkOtros:r.link_otros||'',
+        descripcion:r.descripcion||'',
+        propietario:r.propietario||'',
+        guardado:true};
+    });
+    if(cb)cb(ps);return;
+  }
   qdbFetch({accion:'cargarProveedores'}, function(res){
     if(res&&res.ok){
-      _cacheProv=res.registros||[];
-      if(cb)cb(_cacheProv.map(_mapProvQDB));
-    } else {
-      if(cb)cb([]);
-    }
-  }, 20000);
+      var ps=(res.registros||[]).map(function(r){
+        return {
+          id:r.id||r._qid, _qid:r._qid,
+          nom:r.nombre||'', ruc:r.ruc||'',
+          dir:r.direccion||'', mat:r.rubro_sector||'',
+          producto:r.producto_servicio||'',
+          paquete:r.paquete||'',
+          contactoNom:r.contacto_nombre||'',
+          contactoCel:r.contacto_celular||'',
+          contactoEmail:r.contacto_email||'',
+          nCuenta:r.n_cuenta||'', cci:r.cci||'',
+          linkProducto:r.link_producto||'',
+          linkEmpresa:r.link_empresa||'',
+          linkOtros:r.link_otros||'',
+          descripcion:r.descripcion||'',
+          propietario:r.propietario||'',
+          guardado:true
+        };
+      });// sin filtro por propietario — el filtro por paquete.id en _cargarProveedoresDespues es suficiente
+      if(cb)cb(ps);
+    } else {if(cb)cb([]);}
+  });
 }
 
 
