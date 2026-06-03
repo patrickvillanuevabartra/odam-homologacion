@@ -2310,26 +2310,6 @@ function getUsuarioNombre(){return _usuarioActual?_usuarioActual.nombre:'';}
 var paqueteActual = null;  // {id, nombre, criterios, escala, proveedores}
 var _paquetesCache = [];
 
-function _actualizarConteoProveedores(){
-  console.log('_actualizarConteoProveedores llamado');
-  qdbFetch({accion:'cargarProveedores'},function(resProv){
-    console.log('cargarProveedores respuesta:', resProv&&resProv.ok, resProv&&resProv.registros?resProv.registros.length:0);
-    if(!resProv||!resProv.ok)return;
-    var countMap={};
-    (resProv.registros||[]).forEach(function(r){
-      if(r.paquete&&r.paquete.trim()){
-        countMap[r.paquete]=(countMap[r.paquete]||0)+1;
-      }
-    });
-    var actualizado=false;
-    _paquetesCache.forEach(function(pk){
-      var c=countMap[pk.id]||0;
-      if(c!==pk._provCount){pk._provCount=c;actualizado=true;}
-    });
-    if(actualizado)renderListaPaquetes();
-  },10000);
-}
-
 function safeJsonParse(v,d){try{var s=String(v||'');return s&&s!=='false'?JSON.parse(s):d;}catch(e){return d;}}
 
 function cargarPaquetesDesdeSheets(){
@@ -2373,11 +2353,41 @@ function cargarPaquetesDesdeSheets(){
       var uidLow=(uid||'').toLowerCase().trim();
       return pk.nombre&&(!pkProp||pkProp===''||pkProp===uidLow);
     });
-    renderListaPaquetes();
-    if(_paquetesCache.length)tst('✅ '+_paquetesCache.length+' paquetes cargados');
-    else tst('Sin paquetes — crea el primero');
-    // Contar proveedores desde QDB después de 3 segundos
-    setTimeout(_actualizarConteoProveedores, 30000);
+    // Contar proveedores por paquete desde QDB
+    qdbFetch({accion:'cargarProveedores'},function(resProv){
+      if(resProv&&resProv.ok){
+        var correo=getUsuarioCorreo();
+        // Contar por paquete.id (sin filtrar por propietario)
+        var countMap={};
+        (resProv.registros||[]).forEach(function(r){
+          if(r.paquete&&r.paquete.trim()){
+            countMap[r.paquete]=(countMap[r.paquete]||0)+1;
+          }
+        });
+        _paquetesCache.forEach(function(pk){
+          pk._provCount=countMap[pk.id]||0;
+        });
+      }
+      renderListaPaquetes();
+      if(_paquetesCache.length)tst('✅ '+_paquetesCache.length+' paquetes cargados');
+      else tst('Sin paquetes — crea el primero');
+      // Actualizar count desde QDB después de 3 segundos
+      setTimeout(function(){
+        qdbFetch({accion:'cargarProveedores'},function(resProv){
+          if(!resProv||!resProv.ok)return;
+          var cm2={};
+          (resProv.registros||[]).forEach(function(r){
+            if(r.paquete&&r.paquete.trim()) cm2[r.paquete]=(cm2[r.paquete]||0)+1;
+          });
+          var changed=false;
+          _paquetesCache.forEach(function(pk){
+            var c=cm2[pk.id]||0;
+            if(c!==pk._provCount){pk._provCount=c;changed=true;}
+          });
+          if(changed)renderListaPaquetes();
+        },10000);
+      },3000);
+    },5000);
   }, 3000);
 }
 
