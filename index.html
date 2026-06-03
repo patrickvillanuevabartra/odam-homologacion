@@ -236,7 +236,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div id="paqueteBadge" style="display:none;align-items:center;gap:6px;padding:5px 12px;background:#EFF6FF;border:1.5px solid #BAE6FD;border-radius:8px;flex-shrink:0;font-size:.82rem;color:#0284c7;font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
   📦 <span id="paqueteBadgeNom">—</span>
 </div>
-<div id="userBadge" style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;flex-shrink:0;"><span style="font-size:1.1rem;">👤</span><div><div id="userBadgeName" style="font-size:.82rem;font-weight:700;color:var(--text);line-height:1.2;">—</div><div id="userBadgeEmail" style="font-size:.72rem;color:var(--muted);line-height:1.2;">—</div></div><button onclick="doLogout()" title="Cerrar sesión" style="background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:.75rem;color:var(--muted);padding:3px 7px;font-family:inherit;">✕ Salir</button></div>  <button onclick="abrirModalEvaluadores()" style="padding:8px 16px;border-radius:8px;background:var(--blue-light);border:1.5px solid #BAE6FD;color:var(--blue);font-size:.86rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">👥 Evaluadores</button>
+<div id="userBadge" style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;flex-shrink:0;"><span style="font-size:1.1rem;">👤</span><div><div id="userBadgeName" style="font-size:.82rem;font-weight:700;color:var(--text);line-height:1.2;">—</div><div id="userBadgeEmail" style="font-size:.72rem;color:var(--muted);line-height:1.2;">—</div></div><button onclick="doLogout()" title="Cerrar sesión" style="background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:.75rem;color:var(--muted);padding:3px 7px;font-family:inherit;">✕ Salir</button></div>
 </div>
 
 <!-- PASOS -->
@@ -1238,7 +1238,8 @@ function mostrarMetaFields(pid){
   // Set datetime-local value (format: YYYY-MM-DDTHH:mm)
   var nowDT=new Date().toISOString().slice(0,16);
   var savedDT=p?(p.fec&&p.fec.indexOf('T')>-1?p.fec.slice(0,16):(p.fec?p.fec+'T00:00':nowDT)):nowDT;
-  if(fec)fec.value=savedDT;
+  // Siempre poner fecha/hora actual del sistema
+  if(fec)fec.value=new Date().toISOString().slice(0,16);
   // Restore evaluador — try select first, fallback to text
   var evaVal=p?(p.eva||''):'';
   if(eva)eva.value=evaVal;
@@ -1440,9 +1441,10 @@ function guardarEvalActual(){
   d.paquete=paqueteActual?paqueteActual.nombre:'Sin paquete';
   // Guardar notasSnap para poder restaurar en reevaluación
   d.notasSnap=JSON.parse(JSON.stringify(notasEval[provActualId]||{}));
-  // Guardar snapshot de criterios y escala usados en esta evaluación
+  // Guardar snapshot de criterios, escala y plantilla usados en esta evaluación
   d.critsSnap=crits.map(function(c){return{id:c.id,label:c.label,weight:c.weight};});
   d.scaleSnap=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,color:s.color,bg:s.bg};});
+  d.plantilla=paqueteActual&&(paqueteActual._plantillaActual||paqueteActual.plantillaActual)||'';
   d.propietario=getUsuarioCorreo();
   hist.push(d);
   var btn=document.getElementById('btnGuardarEval');
@@ -4626,7 +4628,9 @@ function buildDashboard(){
       +'<div style="font-size:1.6rem;">🏆</div>'
       +'<div><div style="font-size:.72rem;font-weight:700;color:#166534;text-transform:uppercase;">Mejor calificado</div>'
       +'<div style="font-weight:700;font-size:.96rem;color:#166534;">'+esc(mejor.nom)+'</div>'
-      +'<div style="font-size:.84rem;color:#059669;font-weight:700;">'+mejor.total.toFixed(3)+' — Categoría '+(mci?mci.cat:'')+'</div></div>'
+      +'<div style="font-size:.84rem;color:#059669;font-weight:700;">'+mejor.total.toFixed(3)+' — Categoría '+(mci?mci.cat:'')+'</div>'
+      +'<div style="font-size:.75rem;color:#166534;opacity:.8;">'+esc(mejor.version||'')+'</div>'
+      +'</div>'
       +'</div>';
   }
 
@@ -4636,7 +4640,9 @@ function buildDashboard(){
       +'<div style="font-size:1.6rem;">⚠️</div>'
       +'<div><div style="font-size:.72rem;font-weight:700;color:#9A3412;text-transform:uppercase;">Menor calificación</div>'
       +'<div style="font-weight:700;font-size:.96rem;color:#9A3412;">'+esc(peor.nom)+'</div>'
-      +'<div style="font-size:.84rem;color:#EA580C;font-weight:700;">'+peor.total.toFixed(3)+' — Categoría '+(pci?pci.cat:'')+'</div></div>'
+      +'<div style="font-size:.84rem;color:#EA580C;font-weight:700;">'+peor.total.toFixed(3)+' — Categoría '+(pci?pci.cat:'')+'</div>'
+      +'<div style="font-size:.75rem;color:#9A3412;opacity:.8;">'+esc(peor.version||'')+'</div>'
+      +'</div>'
       +'</div>';
   }
 
@@ -5222,7 +5228,7 @@ function buildComparativa(){
     // ── Tabla con botón eliminar ──
     var tableDiv=document.createElement('div');tableDiv.style.cssText='overflow-x:auto;';
     var tbl=document.createElement('table');tbl.className='dt';tbl.style.margin='0';
-    tbl.innerHTML='<thead><tr><th>Versión</th><th>Fecha</th><th>Evaluador</th><th>Criterios</th><th>Escala</th><th>Calificación</th><th>Categoría</th><th>Variación</th><th>% Variación</th><th>Acción</th></tr></thead>';
+    tbl.innerHTML='<thead><tr><th>Versión</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Plantilla</th><th>Criterios</th><th>Escala</th><th>Calificación</th><th>Categoría</th><th>Variación</th><th>% Variación</th><th>Acción</th></tr></thead>';
     var tbody=document.createElement('tbody');
 
     vers.forEach(function(d,vi){
@@ -5234,11 +5240,15 @@ function buildComparativa(){
       var diffCol=diff===null?'var(--muted)':diff>0?'#059669':diff<0?'#DC2626':'#64748B';
       var ci=d.catItem||getScaleItem(getFinalCat(d.total));
       var tr=document.createElement('tr');
-      var cC=d.critsSnap&&d.critsSnap.length?d.critsSnap.map(function(c){return c.label+' ('+c.weight+'%)'}).join(' · '):'—';
+      var cC=d.critsSnap&&d.critsSnap.length?d.critsSnap.map(function(c){return c.label+' ('+c.weight+'%)'}).join(' · '):(crits.length?crits.map(function(c){return c.label+' ('+c.weight+'%)'}).join(' · '):'—');
       var cS=d.scaleSnap&&d.scaleSnap.length?d.scaleSnap.map(function(s){return s.cat+':'+parseFloat(s.min).toFixed(2)+'-'+parseFloat(s.max).toFixed(2)}).join(' | '):SCALE.map(function(s){return s.cat+':'+s.min.toFixed(2)+'-'+s.max.toFixed(2)}).join(' | ');
+      var cPlt=d.plantilla||paqueteActual&&(paqueteActual._plantillaActual||paqueteActual.plantillaActual)||'—';
+      var hora=d.ts&&d.ts.indexOf('T')>-1?new Date(d.ts).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):(d.fecHora||'—');
       tr.innerHTML='<td>'+esc(d.version||'Eval. inicial')+'</td>'
-        +'<td>'+(d.fecHora||fmtFecha(d.fec))+'</td>'
+        +'<td>'+fmtFecha(d.fec)+'</td>'
+        +'<td style="font-size:.84rem;color:var(--muted)">'+hora+'</td>'
         +'<td style="font-size:.84rem;color:var(--muted)">'+esc(d.eva||'—')+'</td>'
+        +'<td style="font-size:.75rem;color:#0284c7">'+esc(cPlt)+'</td>'
         +'<td style="font-size:.75rem;color:var(--muted)">'+esc(cC)+'</td>'
         +'<td style="font-size:.75rem;color:var(--muted)">'+esc(cS)+'</td>'
         +'<td style="font-weight:700;color:'+(ci?ci.color:'var(--text)')+'">'+d.total.toFixed(3)+'</td>'
