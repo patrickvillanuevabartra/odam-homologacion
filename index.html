@@ -2616,14 +2616,9 @@ function seleccionarPaquete(pk){
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      // Filtrar por paquete.id si el campo existe
+      // Si tiene campo paquete, filtrar por ID
       if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
-      // Si no tiene paquete, cruzar por nombre o RUC con los del JSON del paquete
-      if(pkProvNoms.length){
-        var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
-        var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
-        return nomMatch||rucMatch;
-      }
+      // Sin campo paquete: incluir siempre (proveedores antiguos)
       return true;
     });
 
