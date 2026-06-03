@@ -2564,9 +2564,14 @@ function renderListaPaquetes(){
     });
     card.appendChild(acDiv);
 
+    // Guardar id en dataset para evitar problemas de closure en async
+    card.setAttribute('data-pkid-sel', pk.id);
     card.addEventListener('click',function(e){
-      if(e.target.tagName==='BUTTON')return;
-      seleccionarPaquete(pk);
+      // Ignorar clicks en botones o sus hijos (svg, span, etc.)
+      if(e.target.closest('button'))return;
+      var idSel=this.getAttribute('data-pkid-sel');
+      var pkSel=_paquetesCache.find(function(p){return p.id===idSel;});
+      if(pkSel) seleccionarPaquete(pkSel);
     });
 
     wrap.appendChild(card);
@@ -2622,12 +2627,16 @@ function abrirPaqueteEn(paso){
 }
 
 function seleccionarPaquete(pk){
+  if(!pk){console.warn('seleccionarPaquete: pk es null');return;}
+  console.log('[PKG] Seleccionando paquete:', pk.id, pk.nombre);
   paqueteActual=pk;
   // Habilitar botones "Continuar → Productos →" al seleccionar paquete
   ['btnNext0Paquete','btnNext0PaqueteTopNav'].forEach(function(bid){
     var b=document.getElementById(bid);
     if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}
   });
+  // Feedback visual inmediato — re-renderizar lista para marcar activo
+  renderListaPaquetes();
 
   // Cargar criterios
   if(pk.criterios&&pk.criterios.length){
