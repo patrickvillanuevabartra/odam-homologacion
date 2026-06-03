@@ -2309,7 +2309,6 @@ function getUsuarioNombre(){return _usuarioActual?_usuarioActual.nombre:'';}
 // ══════════════════════════════════════
 var paqueteActual = null;  // {id, nombre, criterios, escala, proveedores}
 var _paquetesCache = [];
-var _proveedoresCacheGlobal = []; // cache global de proveedores para evitar re-fetch
 
 function safeJsonParse(v,d){try{var s=String(v||'');return s&&s!=='false'?JSON.parse(s):d;}catch(e){return d;}}
 
@@ -2320,9 +2319,6 @@ function cargarPaquetesDesdeSheets(){
     var raw=(res&&res.ok)?(res.registros||res.paquetes||[]):[];
     if(!res||!res.ok){tst('⚠️ Tiempo agotado — sin conexión');renderListaPaquetes();return;}
     var uid=getUsuarioCorreo();
-    // Preservar _provCount ya calculados antes de regenerar cache
-    var _prevProvCount={};
-    _paquetesCache.forEach(function(pk){if(pk._provCount>0)_prevProvCount[pk.id]=pk._provCount;});
     _paquetesCache=raw.map(function(r){
       var esCampoQDB=r.criterios_json!==undefined||r.escala_json!==undefined;
       if(esCampoQDB){
@@ -2348,7 +2344,7 @@ function cargarPaquetesDesdeSheets(){
           productos:safeJsonParse(r.productos_json,[]),
           fechaCreacion:r.fecha_creacion||'',
           ultimaActualizacion:r.ultima_actualizacion||'',
-          _provCount:0
+          _provCount:safeJsonParse(r.proveedores_json,[]).length
         };
       }
       return r;
@@ -2357,26 +2353,16 @@ function cargarPaquetesDesdeSheets(){
       var uidLow=(uid||'').toLowerCase().trim();
       return pk.nombre&&(!pkProp||pkProp===''||pkProp===uidLow);
     });
-    // Restaurar _provCount previos mientras llega el nuevo conteo
-    _paquetesCache.forEach(function(pk){
-      if(_prevProvCount[pk.id]) pk._provCount=_prevProvCount[pk.id];
-    });
-    // Contar proveedores por paquete desde QDB y cachear registros
+    // Contar proveedores por paquete desde QDB
     qdbFetch({accion:'cargarProveedores'},function(resProv){
       if(resProv&&resProv.ok){
-        // Cachear todos los registros para reusar en seleccionarPaquete
-        _proveedoresCacheGlobal = resProv.registros||[];
-        // Construir mapa paquete→count usando el valor raw de r.paquete
         var rawCount={};
-        _proveedoresCacheGlobal.forEach(function(r){
+        (resProv.registros||[]).forEach(function(r){
           var val=(r.paquete||'').trim();
           if(val) rawCount[val]=(rawCount[val]||0)+1;
         });
-        // Cruzar por id O nombre del paquete
         _paquetesCache.forEach(function(pk){
-          var byId=rawCount[pk.id]||0;
-          var byNom=rawCount[pk.nombre]||0;
-          pk._provCount=Math.max(byId,byNom);
+          pk._provCount=Math.max(rawCount[pk.id]||0, rawCount[pk.nombre]||0);
         });
       }
       renderListaPaquetes();
@@ -2453,7 +2439,7 @@ function renderListaPaquetes(){
     meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
     var prodCount = (paqueteActual&&paqueteActual.id===pk.id) ? productos.length : (pk.productos||[]).length;
     // Proveedores: activo=count real de QDB, inactivo=count guardado en JSON
-    var provCount = pk._provCount!==undefined ? pk._provCount : (pk.proveedores||[]).length;
+    var provCount = (pk.proveedores||[]).length;
     meta.textContent='📦 '+prodCount+' productos · 📋 '+(pk.criterios||[]).length+' criterios · 🏅 calificación · 👥 '+provCount+' proveedores';
 
     left.appendChild(nomRow);
@@ -2621,8 +2607,6 @@ function seleccionarPaquete(pk){
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
-    console.log('PROV total QDB:', (qdbProvs||[]).length, 'pkId:', pkId);
-    console.log('Sample paquete field:', (qdbProvs||[]).slice(0,3).map(function(x){return x.paquete;}));
     var misProvs=(qdbProvs||[]).filter(function(qp){
       if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
       if(pkProvNoms.length){
@@ -2632,7 +2616,6 @@ function seleccionarPaquete(pk){
       }
       return false;
     });
-    console.log('misProvs encontrados:', misProvs.length);
 
     var fuente=misProvs.length?misProvs:(pk.proveedores||[]);
 
@@ -2670,12 +2653,9 @@ function seleccionarPaquete(pk){
     checkProvs();
     _proveedoresGuardados=misProvs.length>0;
     if(paqueteActual){
-      // Solo actualizar _provCount si realmente cargamos proveedores
-      if(provs.length>0){
-        paqueteActual._provCount=provs.length;
-        var cidx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
-        if(cidx>-1){_paquetesCache[cidx]._provCount=provs.length;}
-      }
+      paqueteActual._provCount=provs.length;
+      var cidx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
+      if(cidx>-1){_paquetesCache[cidx]._provCount=provs.length;}
       renderListaPaquetes();
     }
     });// fin cargarProveedoresDesdeQDB
@@ -3120,11 +3100,9 @@ function guardarPaqueteActual(){
   if(paqueteActual._escalaActual) paqueteActual.escalaActual=paqueteActual._escalaActual;
   // Guardar solo los nombres/rucs para el count del resumen
   // Los datos completos viven en tabla PROVEEDORES de QDB
-  if(provs.length>0){
-    paqueteActual._provCount = provs.length;
-    var idx2=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
-    if(idx2>-1) _paquetesCache[idx2]._provCount=provs.length;
-  }
+  paqueteActual._provCount = provs.length;
+  var idx2=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
+  if(idx2>-1) _paquetesCache[idx2]._provCount=provs.length;
   // Guardar lista mínima en proveedores_json para el count
   paqueteActual.proveedores=provs.map(function(p){return{nom:p.nom,ruc:p.ruc};});
   // Guardar historial simplificado (sin catItem para no inflar JSON)
@@ -3143,33 +3121,8 @@ function guardarPaqueteActual(){
 }
 function cargarProveedoresDesdeQDB(cb){
   var correo=getUsuarioCorreo();
-  // Si ya tenemos cache global (cargado al inicio), usarlo directamente
-  if(_proveedoresCacheGlobal&&_proveedoresCacheGlobal.length){
-    var ps=_proveedoresCacheGlobal.map(function(r){
-      return {
-        id:r.id||r._qid, _qid:r._qid,
-        nom:r.nombre||'', ruc:r.ruc||'',
-        dir:r.direccion||'', mat:r.rubro_sector||'',
-        producto:r.producto_servicio||'',
-        paquete:r.paquete||'',
-        contactoNom:r.contacto_nombre||'',
-        contactoCel:r.contacto_celular||'',
-        contactoEmail:r.contacto_email||'',
-        nCuenta:r.n_cuenta||'', cci:r.cci||'',
-        linkProducto:r.link_producto||'',
-        linkEmpresa:r.link_empresa||'',
-        linkOtros:r.link_otros||'',
-        descripcion:r.descripcion||'',
-        propietario:r.propietario||'',
-        guardado:true
-      };
-    });
-    if(cb)cb(ps);
-    return;
-  }
   qdbFetch({accion:'cargarProveedores'}, function(res){
     if(res&&res.ok){
-      _proveedoresCacheGlobal=res.registros||[];
       var ps=(res.registros||[]).map(function(r){
         return {
           id:r.id||r._qid, _qid:r._qid,
