@@ -1385,7 +1385,14 @@ function enviarASheets(d,callback){
     };}),
     escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};})
   };
+  console.log('ENVIANDO EVALUACION:', JSON.stringify({
+    accion:'guardarEvaluacion',
+    nom:payload.nom, paquete:payload.paquete,
+    propietario:payload.propietario, version:payload.version,
+    total:payload.total
+  }));
   qdbFetch({accion:'guardarEvaluacion', datos:JSON.stringify(payload)}, function(res){
+    console.log('RESPUESTA guardarEvaluacion:', JSON.stringify(res));
     if(callback)callback(!!(res&&res.ok));
   }, 30000);
 }
@@ -2753,6 +2760,8 @@ function _restaurarNotasDesdeHist(){
 
 function _cargarHistorialDesdeResumen(nombrePaquete, callback){
   qdbFetch({accion:'cargarResumen'}, function(res){
+    console.log('RESUMEN QDB total:', res&&res.registros?res.registros.length:0, 'ok:', res&&res.ok);
+    if(res&&res.registros&&res.registros.length) console.log('Primer registro:', JSON.stringify(res.registros[0]).substr(0,200));
     if(res&&res.ok&&res.registros){
       // Filtrar solo registros de este paquete
       // Filtrar ESTRICTAMENTE por proveedores de este paquete
@@ -2766,9 +2775,10 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
       var pkId=paqueteActual?paqueteActual.id:'';
       var regs=res.registros.filter(function(r){
         // Filtrar por propietario
-        var propOk=!r.propietario||r.propietario===correo;
+        var propOk=!r.propietario||r.propietario===''||r.propietario===correo;
         // Filtrar por paquete si está disponible
-        var paqOk=!r.paquete||r.paquete===pkId||r.paquete===nombrePaquete||r.paquete==='';
+        var pkNom=paqueteActual?paqueteActual.nombre:'';
+        var paqOk=!r.paquete||r.paquete===''||r.paquete===pkId||r.paquete===pkNom||r.paquete===nombrePaquete;
         // Filtrar por proveedor del paquete actual
         var nom=(r.proveedor||'').trim().toLowerCase();
         var ruc=(r.ruc||'').trim();
