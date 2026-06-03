@@ -1370,8 +1370,8 @@ function enviarASheets(d,callback){
     catInterp:d.catItem?d.catItem.interp:'',
     propietario:getUsuarioCorreo(),
     propietarioNombre:getUsuarioNombre(),
-    paquete:paqueteActual?paqueteActual.nombre:'',
-    paqueteId:paqueteActual?paqueteActual.id:'',
+    paquete:paqueteActual?paqueteActual.id:'',
+    paqueteNombre:paqueteActual?paqueteActual.nombre:'',
     producto:d.producto||'',
     contactoNom:d.contactoNom||'',contactoCel:d.contactoCel||'',
     contactoEmail:d.contactoEmail||'',
@@ -2768,7 +2768,7 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
         // Filtrar por propietario
         var propOk=!r.propietario||r.propietario===correo;
         // Filtrar por paquete si está disponible
-        var paqOk=!pkId||!r.paquete||r.paquete===pkId||r.paquete===nombrePaquete;
+        var paqOk=!r.paquete||r.paquete===pkId||r.paquete===nombrePaquete||r.paquete==='';
         // Filtrar por proveedor del paquete actual
         var nom=(r.proveedor||'').trim().toLowerCase();
         var ruc=(r.ruc||'').trim();
