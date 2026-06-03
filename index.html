@@ -2621,6 +2621,8 @@ function seleccionarPaquete(pk){
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
+    console.log('PROV total QDB:', (qdbProvs||[]).length, 'pkId:', pkId);
+    console.log('Sample paquete field:', (qdbProvs||[]).slice(0,3).map(function(x){return x.paquete;}));
     var misProvs=(qdbProvs||[]).filter(function(qp){
       if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
       if(pkProvNoms.length){
@@ -2630,6 +2632,7 @@ function seleccionarPaquete(pk){
       }
       return false;
     });
+    console.log('misProvs encontrados:', misProvs.length);
 
     var fuente=misProvs.length?misProvs:(pk.proveedores||[]);
 
