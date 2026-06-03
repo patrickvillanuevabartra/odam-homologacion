@@ -896,63 +896,85 @@ function appendProvRow(p, i){
 
   // ── Buscar proveedor existente ──
   var secBuscar=document.createElement('div');
-  secBuscar.style.cssText='grid-column:1/-1;display:flex;gap:8px;align-items:center;margin-bottom:8px;padding:10px 12px;background:#EFF6FF;border-radius:8px;border:1px solid #BAE6FD;';
+  secBuscar.style.cssText='grid-column:1/-1;position:relative;margin-bottom:8px;';
+  var buscarWrap=document.createElement('div');
+  buscarWrap.style.cssText='display:flex;gap:8px;align-items:center;padding:10px 12px;background:#EFF6FF;border-radius:8px;border:1px solid #BAE6FD;';
   var buscarInp=document.createElement('input');
-  buscarInp.type='text';buscarInp.placeholder='Buscar proveedor existente por nombre o RUC...';
+  buscarInp.type='text';
+  buscarInp.placeholder='🔍 Escribe nombre o RUC para buscar en todos los paquetes...';
   buscarInp.style.cssText='flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;font-family:inherit;font-size:.9rem;';
-  var btnBuscar=document.createElement('button');
-  btnBuscar.textContent='🔍 Buscar en QDB';
-  btnBuscar.style.cssText='padding:8px 14px;border-radius:7px;background:var(--primary);color:white;border:none;font-size:.86rem;font-weight:600;cursor:pointer;white-space:nowrap;';
+  buscarWrap.appendChild(buscarInp);
+  secBuscar.appendChild(buscarWrap);
+  // Lista de resultados autocomplete
+  var autoList=document.createElement('div');
+  autoList.style.cssText='display:none;position:absolute;left:0;right:0;top:100%;background:white;border:1.5px solid #BAE6FD;border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.12);';
+  secBuscar.appendChild(autoList);
   var resultBuscar=document.createElement('div');
   resultBuscar.style.cssText='grid-column:1/-1;display:none;';
+  var _buscarTimer=null;
   (function(pid){
-    btnBuscar.onclick=function(){
-      var q=buscarInp.value.trim().toLowerCase();
-      if(!q){tst('Escribe un nombre o RUC para buscar');return;}
-      tst('⏳ Buscando en QuintaDB...');
-      qdbFetch({accion:'cargarProveedores'},function(res){
-        if(!res||!res.ok){tst('⚠️ Sin conexión a QuintaDB');return;}
-        var encontrados=(res.registros||[]).filter(function(r){
-          return (r.nombre||'').toLowerCase().indexOf(q)>-1 || (r.ruc||'').indexOf(q)>-1;
+    buscarInp.oninput=function(){
+      clearTimeout(_buscarTimer);
+      var q=buscarInp.value.trim();
+      if(q.length<2){autoList.style.display='none';autoList.innerHTML='';return;}
+      autoList.innerHTML='<div style="padding:10px 14px;color:var(--muted);font-size:.85rem;">⏳ Buscando...</div>';
+      autoList.style.display='block';
+      _buscarTimer=setTimeout(function(){
+        qdbFetch({accion:'cargarProveedores'},function(res){
+          autoList.innerHTML='';
+          if(!res||!res.ok){
+            autoList.innerHTML='<div style="padding:10px 14px;color:var(--muted);font-size:.85rem;">⚠️ Sin conexión</div>';
+            return;
+          }
+          var ql=q.toLowerCase();
+          var encontrados=(res.registros||[]).filter(function(r){
+            return (r.nombre||'').toLowerCase().indexOf(ql)>-1||(r.ruc||'').indexOf(ql)>-1;
+          }).slice(0,15);
+          if(!encontrados.length){
+            autoList.innerHTML='<div style="padding:10px 14px;color:var(--muted);font-size:.85rem;">Sin resultados para "'+esc(q)+'"</div>';
+            return;
+          }
+          encontrados.forEach(function(r){
+            var item=document.createElement('div');
+            item.style.cssText='padding:9px 14px;cursor:pointer;border-bottom:1px solid #F0F9FF;display:flex;justify-content:space-between;align-items:center;';
+            item.innerHTML='<div><div style="font-weight:600;font-size:.9rem;">'+esc(r.nombre||'Sin nombre')+'</div>'
+              +'<div style="font-size:.78rem;color:var(--muted);">RUC: '+esc(r.ruc||'—')+'</div></div>'
+              +'<div style="font-size:.72rem;color:#0284c7;background:#EFF6FF;padding:2px 8px;border-radius:20px;">'+esc(r.paquete||'—')+'</div>';
+            item.onmouseover=function(){this.style.background='#EFF6FF';};
+            item.onmouseout=function(){this.style.background='white';};
+            item.onclick=function(){
+              autoList.style.display='none';
+              buscarInp.value=r.nombre||'';
+              // Cargar datos del proveedor en el formulario
+              var campos={nombre:r.nombre||'',ruc:r.ruc||'',dir:r.direccion||'',
+                mat:r.rubro_sector||'',prod:r.producto_servicio||'',
+                contactoNom:r.contacto_nombre||'',contactoCel:r.contacto_celular||'',
+                contactoEmail:r.contacto_email||'',nCuenta:r.n_cuenta||'',
+                cci:r.cci||'',linkProd:r.link_producto||'',
+                linkEmp:r.link_empresa||'',linkOtros:r.link_otros||'',
+                desc:r.descripcion||''};
+              var ids={nombre:'pNom_'+pid,ruc:'pRuc_'+pid,dir:'pDir_'+pid,
+                mat:'pMat_'+pid,prod:'pProd_'+pid,contactoNom:'pCNom_'+pid,
+                contactoCel:'pCCel_'+pid,contactoEmail:'pCEmail_'+pid,
+                nCuenta:'pNCuenta_'+pid,cci:'pCCI_'+pid,
+                linkProd:'pLinkProd_'+pid,linkEmp:'pLinkEmp_'+pid,
+                linkOtros:'pLinkOtros_'+pid,desc:'pDesc_'+pid};
+              Object.keys(ids).forEach(function(k){
+                var el=document.getElementById(ids[k]);
+                if(el&&campos[k]!==undefined)el.value=campos[k];
+              });
+              // Marcar productos suministrados si coinciden
+              _refrescarCheckboxsProveedores();
+              tst('✅ Datos de "'+esc(r.nombre)+'" cargados — revisa y guarda');
+            };
+            autoList.appendChild(item);
+          });
         });
-        if(!encontrados.length){tst('No se encontraron proveedores con ese nombre o RUC');return;}
-        resultBuscar.style.display='block';
-        resultBuscar.innerHTML='';
-        var lista=document.createElement('div');
-        lista.style.cssText='background:white;border:1.5px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;';
-        encontrados.forEach(function(r){
-          var item=document.createElement('div');
-          item.style.cssText='padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;';
-          item.innerHTML='<div><strong>'+esc(r.nombre||'')+' </strong><span style="color:var(--muted);font-size:.82rem;">RUC: '+esc(r.ruc||'')+'</span></div>'
-            +'<button style="padding:5px 12px;border-radius:6px;background:var(--primary);color:white;border:none;font-size:.82rem;cursor:pointer;font-family:inherit;">✓ Usar</button>';
-          item.querySelector('button').onclick=function(e){
-            e.stopPropagation();
-            var p=getProv(pid);
-            if(!p)return;
-            // Cargar todos los datos del proveedor encontrado
-            p.nom=r.nombre||'';p.ruc=r.ruc||'';p.dir=r.direccion||'';
-            p.mat=r.rubro_sector||'';p.producto=r.producto_servicio||'';
-            p.linkProducto=r.link_producto||'';p.linkEmpresa=r.link_empresa||'';
-            p.linkOtros=r.link_otros||'';p.descripcion=r.descripcion||'';
-            p.contactoNom=r.contacto_nombre||'';p.contactoCel=r.contacto_celular||'';
-            p.contactoEmail=r.contacto_email||'';
-            p.nCuenta=r.n_cuenta||'';p.cci=r.cci||'';
-            p._qid=r._qid||'';
-            // Re-renderizar la fila con los datos cargados
-            var row=document.getElementById('provrow-'+pid);
-            if(row){row.parentNode.removeChild(row);}
-            var idx=provs.findIndex(function(x){return x.id===pid;});
-            appendProvRow(p,idx);
-            tst('✅ Proveedor "'+p.nom+'" cargado desde QuintaDB');
-          };
-          lista.appendChild(item);
-        });
-        resultBuscar.appendChild(lista);
-      },8000);
+      },400);
     };
-  })(p.id);
-  secBuscar.appendChild(buscarInp);
-  secBuscar.appendChild(btnBuscar);
+    buscarInp.onblur=function(){setTimeout(function(){autoList.style.display='none';},200);};
+    buscarInp.onfocus=function(){if(autoList.innerHTML&&buscarInp.value.length>=2)autoList.style.display='block';};
+  }(pid));
   grid.appendChild(secBuscar);
   grid.appendChild(resultBuscar);
 
