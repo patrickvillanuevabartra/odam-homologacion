@@ -896,46 +896,85 @@ function appendProvRow(p, i){
 
   // ── Buscar proveedor existente ──
   var secBuscar=document.createElement('div');
-  secBuscar.style.cssText='grid-column:1/-1;display:flex;gap:8px;align-items:center;margin-bottom:8px;padding:10px 12px;background:#EFF6FF;border-radius:8px;border:1px solid #BAE6FD;';
+  secBuscar.style.cssText='grid-column:1/-1;position:relative;margin-bottom:8px;';
+  var buscarWrap=document.createElement('div');
+  buscarWrap.style.cssText='display:flex;gap:8px;align-items:center;padding:10px 12px;background:#EFF6FF;border-radius:8px;border:1px solid #BAE6FD;';
   var buscarInp=document.createElement('input');
-  buscarInp.type='text';buscarInp.placeholder='Buscar proveedor existente por nombre o RUC...';
+  buscarInp.type='text';
+  buscarInp.placeholder='🔍 Escribe nombre o RUC para buscar en todos los paquetes...';
   buscarInp.style.cssText='flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;font-family:inherit;font-size:.9rem;';
-  var btnBuscar=document.createElement('button');
-  btnBuscar.textContent='🔍 Buscar en QDB';
-  btnBuscar.style.cssText='padding:8px 14px;border-radius:7px;background:var(--primary);color:white;border:none;font-size:.86rem;font-weight:600;cursor:pointer;white-space:nowrap;';
+  buscarWrap.appendChild(buscarInp);
+  secBuscar.appendChild(buscarWrap);
+  // Lista de resultados autocomplete
+  var autoList=document.createElement('div');
+  autoList.style.cssText='display:none;position:absolute;left:0;right:0;top:100%;background:white;border:1.5px solid #BAE6FD;border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.12);';
+  secBuscar.appendChild(autoList);
   var resultBuscar=document.createElement('div');
   resultBuscar.style.cssText='grid-column:1/-1;display:none;';
+  var _buscarTimer=null;
   (function(pid){
-    btnBuscar.onclick=function(){
-      var q=buscarInp.value.trim().toLowerCase();
-      if(!q){tst('Escribe un nombre o RUC para buscar');return;}
-      tst('⏳ Buscando en QuintaDB...');
-      qdbFetch({accion:'cargarProveedores'},function(res){
-        if(!res||!res.ok){tst('⚠️ Sin conexión a QuintaDB');return;}
-        var encontrados=(res.registros||[]).filter(function(r){
-          return (r.nombre||'').toLowerCase().indexOf(q)>-1 || (r.ruc||'').indexOf(q)>-1;
+    buscarInp.oninput=function(){
+      clearTimeout(_buscarTimer);
+      var q=buscarInp.value.trim();
+      if(q.length<2){autoList.style.display='none';autoList.innerHTML='';return;}
+      autoList.innerHTML='<div style="padding:10px 14px;color:var(--muted);font-size:.85rem;">⏳ Buscando...</div>';
+      autoList.style.display='block';
+      _buscarTimer=setTimeout(function(){
+        qdbFetch({accion:'cargarProveedores'},function(res){
+          autoList.innerHTML='';
+          if(!res||!res.ok){
+            autoList.innerHTML='<div style="padding:10px 14px;color:var(--muted);font-size:.85rem;">⚠️ Sin conexión</div>';
+            return;
+          }
+          var ql=q.toLowerCase();
+          var encontrados=(res.registros||[]).filter(function(r){
+            return (r.nombre||'').toLowerCase().indexOf(ql)>-1||(r.ruc||'').indexOf(ql)>-1;
+          }).slice(0,15);
+          if(!encontrados.length){
+            autoList.innerHTML='<div style="padding:10px 14px;color:var(--muted);font-size:.85rem;">Sin resultados para "'+esc(q)+'"</div>';
+            return;
+          }
+          encontrados.forEach(function(r){
+            var item=document.createElement('div');
+            item.style.cssText='padding:9px 14px;cursor:pointer;border-bottom:1px solid #F0F9FF;display:flex;justify-content:space-between;align-items:center;';
+            item.innerHTML='<div><div style="font-weight:600;font-size:.9rem;">'+esc(r.nombre||'Sin nombre')+'</div>'
+              +'<div style="font-size:.78rem;color:var(--muted);">RUC: '+esc(r.ruc||'—')+'</div></div>'
+              +'<div style="font-size:.72rem;color:#0284c7;background:#EFF6FF;padding:2px 8px;border-radius:20px;">'+esc(r.paquete||'—')+'</div>';
+            item.onmouseover=function(){this.style.background='#EFF6FF';};
+            item.onmouseout=function(){this.style.background='white';};
+            item.onclick=function(){
+              autoList.style.display='none';
+              buscarInp.value=r.nombre||'';
+              // Cargar datos del proveedor en el formulario
+              var campos={nombre:r.nombre||'',ruc:r.ruc||'',dir:r.direccion||'',
+                mat:r.rubro_sector||'',prod:r.producto_servicio||'',
+                contactoNom:r.contacto_nombre||'',contactoCel:r.contacto_celular||'',
+                contactoEmail:r.contacto_email||'',nCuenta:r.n_cuenta||'',
+                cci:r.cci||'',linkProd:r.link_producto||'',
+                linkEmp:r.link_empresa||'',linkOtros:r.link_otros||'',
+                desc:r.descripcion||''};
+              var ids={nombre:'pNom_'+pid,ruc:'pRuc_'+pid,dir:'pDir_'+pid,
+                mat:'pMat_'+pid,prod:'pProd_'+pid,contactoNom:'pCNom_'+pid,
+                contactoCel:'pCCel_'+pid,contactoEmail:'pCEmail_'+pid,
+                nCuenta:'pNCuenta_'+pid,cci:'pCCI_'+pid,
+                linkProd:'pLinkProd_'+pid,linkEmp:'pLinkEmp_'+pid,
+                linkOtros:'pLinkOtros_'+pid,desc:'pDesc_'+pid};
+              Object.keys(ids).forEach(function(k){
+                var el=document.getElementById(ids[k]);
+                if(el&&campos[k]!==undefined)el.value=campos[k];
+              });
+              // Marcar productos suministrados si coinciden
+              _refrescarCheckboxsProveedores();
+              tst('✅ Datos de "'+esc(r.nombre)+'" cargados — revisa y guarda');
+            };
+            autoList.appendChild(item);
+          });
         });
-        if(!encontrados.length){tst('No se encontraron proveedores con ese criterio');return;}
-        resultBuscar.style.display='block';
-        resultBuscar.innerHTML='<div style="font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:6px;">'+encontrados.length+' resultado(s):</div>';
-        encontrados.slice(0,5).forEach(function(r){
-          var btn=document.createElement('button');
-          btn.style.cssText='display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border:1.5px solid var(--border);border-radius:7px;background:white;cursor:pointer;font-family:inherit;font-size:.86rem;';
-          btn.innerHTML='<strong>'+esc(r.nombre||'')+'</strong> <span style="color:var(--muted)">RUC: '+esc(r.ruc||'—')+'</span>';
-          btn.onclick=function(){
-            var ids={nombre:'pNom_'+pid,ruc:'pRuc_'+pid,dir:'pDir_'+pid,mat:'pMat_'+pid};
-            var vals={nombre:r.nombre||'',ruc:r.ruc||'',dir:r.direccion||'',mat:r.rubro_sector||''};
-            Object.keys(ids).forEach(function(k){var el=document.getElementById(ids[k]);if(el)el.value=vals[k]||'';});
-            resultBuscar.style.display='none';
-            tst('✅ Datos cargados — revisa y guarda');
-          };
-          resultBuscar.appendChild(btn);
-        });
-      });
+      },400);
     };
+    buscarInp.onblur=function(){setTimeout(function(){autoList.style.display='none';},200);};
+    buscarInp.onfocus=function(){if(autoList.innerHTML&&buscarInp.value.length>=2)autoList.style.display='block';};
   }(pid));
-  secBuscar.appendChild(buscarInp);
-  secBuscar.appendChild(btnBuscar);
   grid.appendChild(secBuscar);
   grid.appendChild(resultBuscar);
 
@@ -1307,7 +1346,7 @@ var GS_URL='https://script.google.com/macros/s/AKfycbw5dPz2akKPByRp-ozSWrHq-N3em
 // Usa fetch() en lugar de <script> injection para evitar el error
 // "Unsafe attempt to load URL" cuando se abre como file:///
 function qdbFetch(params, callback, timeoutMs){
-  timeoutMs = timeoutMs || 12000;
+  timeoutMs = timeoutMs || 20000;
   var url = GS_URL + '?' + Object.keys(params).map(function(k){
     return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
   }).join('&') + '&t=' + Date.now();
@@ -2309,16 +2348,31 @@ function getUsuarioNombre(){return _usuarioActual?_usuarioActual.nombre:'';}
 // ══════════════════════════════════════
 var paqueteActual = null;  // {id, nombre, criterios, escala, proveedores}
 var _paquetesCache = [];
-var _cacheProv = [];
 
 function safeJsonParse(v,d){try{var s=String(v||'');return s&&s!=='false'?JSON.parse(s):d;}catch(e){return d;}}
 
-function cargarPaquetesDesdeSheets(){
+function cargarPaquetesDesdeSheets(intento){
+  intento = intento || 1;
   var el=document.getElementById('listaPaquetes');
-  if(el)el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);">⏳ Cargando desde QuintaDB...</div>';
+  if(el)el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);">⏳ Conectando con QuintaDB'+(intento>1?' (intento '+intento+'/3)':'')+'…</div>';
   qdbFetch({accion:'cargarPaquetes'}, function(res){
     var raw=(res&&res.ok)?(res.registros||res.paquetes||[]):[];
-    if(!res||!res.ok){tst('⚠️ Tiempo agotado — sin conexión');renderListaPaquetes();return;}
+    if(!res||!res.ok){
+      if(intento<3){
+        // Reintentar automáticamente hasta 3 veces
+        if(el)el.innerHTML='<div style="text-align:center;padding:24px;color:var(--warn);">⏳ Reintentando conexión ('+(intento+1)+'/3)…</div>';
+        setTimeout(function(){cargarPaquetesDesdeSheets(intento+1);}, 2000);
+        return;
+      }
+      if(el)el.innerHTML='<div style="text-align:center;padding:24px;">'
+        +'<div style="color:#DC2626;font-weight:700;margin-bottom:8px;">⚠️ Sin conexión a QuintaDB</div>'
+        +'<div style="color:var(--muted);font-size:.88rem;margin-bottom:12px;">El servidor tardó demasiado. Puede ser un cold start del servidor.</div>'
+        +'<button onclick="cargarPaquetesDesdeSheets(1)" style="padding:9px 20px;border-radius:8px;background:var(--primary);color:white;border:none;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Reintentar</button>'
+        +'</div>';
+      tst('⚠️ Sin conexión a QuintaDB — usa el botón Reintentar',4000);
+      renderListaPaquetes();
+      return;
+    }
     var uid=getUsuarioCorreo();
     _paquetesCache=raw.map(function(r){
       var esCampoQDB=r.criterios_json!==undefined||r.escala_json!==undefined;
@@ -2357,21 +2411,26 @@ function cargarPaquetesDesdeSheets(){
     // Contar proveedores por paquete desde QDB
     qdbFetch({accion:'cargarProveedores'},function(resProv){
       if(resProv&&resProv.ok){
-        _cacheProv=resProv.registros||[];
-        var rawCount={};
-        _cacheProv.forEach(function(r){
-          var val=(r.paquete||'').trim();
-          if(val) rawCount[val]=(rawCount[val]||0)+1;
+        var correo=getUsuarioCorreo();
+        var todos=(resProv.registros||[]).filter(function(r){
+          return !r.propietario||r.propietario===correo;
+        });
+        // Contar por paquete.id
+        var countMap={};
+        todos.forEach(function(r){
+          if(r.paquete&&r.paquete.trim()){
+            countMap[r.paquete]=(countMap[r.paquete]||0)+1;
+          }
         });
         _paquetesCache.forEach(function(pk){
-          pk._provCount=Math.max(rawCount[pk.id]||0,rawCount[pk.nombre]||0);
+          pk._provCount=countMap[pk.id]||0;
         });
       }
       renderListaPaquetes();
       if(_paquetesCache.length)tst('✅ '+_paquetesCache.length+' paquetes cargados');
       else tst('Sin paquetes — crea el primero');
-    },5000);
-  }, 3000);
+    },15000);
+  }, 20000);
 }
 
 
@@ -2441,7 +2500,8 @@ function renderListaPaquetes(){
     meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
     var prodCount = (paqueteActual&&paqueteActual.id===pk.id) ? productos.length : (pk.productos||[]).length;
     // Proveedores: activo=count real de QDB, inactivo=count guardado en JSON
-    var provCount = (pk.proveedores||[]).length;
+    var isActive = paqueteActual&&paqueteActual.id===pk.id;
+    var provCount = isActive ? provs.length : (pk._provCount||0);
     meta.textContent='📦 '+prodCount+' productos · 📋 '+(pk.criterios||[]).length+' criterios · 🏅 calificación · 👥 '+provCount+' proveedores';
 
     left.appendChild(nomRow);
@@ -2561,7 +2621,6 @@ function abrirPaqueteEn(paso){
   goStep(paso);
 }
 
-
 function seleccionarPaquete(pk){
   paqueteActual=pk;
   // Habilitar botones "Continuar → Productos →" al seleccionar paquete
@@ -2596,50 +2655,87 @@ function seleccionarPaquete(pk){
     buildEscalaRows();
   }
 
-  // Cargar proveedores desde QDB filtrado por paquete.id
+  // Cargar productos primero, luego proveedores para que checkboxes funcionen
   provs=[];provSeq=0;notasEval={};evFiles={};
-  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando proveedores...</div>';
+  document.getElementById('provList').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.9rem;">⏳ Cargando proveedores desde QuintaDB…</div>';
 
-  function _cargarProveedoresDespues(){
+  function _cargarProveedoresDespues(intentoProv){
+    intentoProv = intentoProv || 1;
     cargarProveedoresDesdeQDB(function(qdbProvs){
+    console.log('[PROVS] Respuesta qdbProvs:', qdbProvs ? qdbProvs.length+' registros' : 'null/timeout', '| pkId:', pkId);
+    // Si viene null/undefined puede ser timeout — reintentar
+    if(qdbProvs===null && intentoProv<3){
+      document.getElementById('provList').innerHTML='<div style="padding:20px;text-align:center;color:var(--warn);font-size:.9rem;">⏳ Reintentando carga de proveedores ('+(intentoProv+1)+'/3)…</div>';
+      setTimeout(function(){_cargarProveedoresDespues(intentoProv+1);}, 2000);
+      return;
+    }
+    if(!qdbProvs||!qdbProvs.length){
+      if(intentoProv>=3){
+        document.getElementById('provList').innerHTML='<div style="padding:20px;text-align:center;">'
+          +'<div style="color:#DC2626;font-weight:700;margin-bottom:6px;">⚠️ No se pudieron cargar proveedores</div>'
+          +'<div style="color:var(--muted);font-size:.84rem;margin-bottom:10px;">Verifica tu conexión y que el servidor QuintaDB esté activo.</div>'
+          +'<button onclick="(function(){_cargarProveedoresDespues(1);})()" style="padding:8px 18px;border-radius:7px;background:var(--primary);color:white;border:none;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Reintentar</button>'
+          +'</div>';
+        tst('⚠️ No se cargaron proveedores — revisa QuintaDB',4000);
+      }
+    }
     document.getElementById('provList').innerHTML='';
     provs=[];provSeq=0;
 
+    // Filtrar proveedores: si el paquete tiene proveedores en su JSON, usar esos como referencia
+    // Si QDB devuelve el campo paquete, filtrar por él; sino cruzar por nombre/ruc con pk.proveedores
     var pkId=pk.id;
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
-      if(pkProvNoms.length){
-        var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
-        var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
-        return nomMatch||rucMatch;
-      }
-      return false;
+      return qp.paquete&&qp.paquete===pkId;
     });
 
-    var fuente=misProvs.length?misProvs:(pk.proveedores||[]);
+    // Fallback 1: cruzar por nombre o RUC con los proveedores guardados en el JSON del paquete
+    if(!misProvs.length && (pkProvNoms.length||pkProvRucs.length)){
+      misProvs=(qdbProvs||[]).filter(function(qp){
+        var nom=(qp.nom||'').trim().toLowerCase();
+        var ruc=(qp.ruc||'').trim();
+        return (nom&&pkProvNoms.indexOf(nom)>-1)||(ruc&&pkProvRucs.indexOf(ruc)>-1);
+      });
+      if(misProvs.length) console.log('Proveedores cargados por cruce nombre/RUC (fallback):', misProvs.length);
+    }
+
+    // Fallback 2: proveedores sin paquete asignado (caso legacy)
+    if(!misProvs.length && !pkProvNoms.length && (qdbProvs||[]).length){
+      misProvs=(qdbProvs||[]).filter(function(qp){ return !qp.paquete||qp.paquete.trim()===''||qp.paquete.trim()===pkId; });
+      if(misProvs.length) console.log('Proveedores legacy sin paquete asignado:', misProvs.length);
+    }
+
+    var fuente = misProvs;
 
     fuente.forEach(function(p){
       var np={
-        id:'p_'+(++provSeq), _qid:p._qid||'',
-        nom:p.nom||p.nombre||'', ruc:p.ruc||'',
-        dir:p.dir||p.direccion||'', mat:p.mat||p.rubro_sector||'',
-        producto:p.producto||p.producto_servicio||'',
-        productosIds:p.productosIds||[],
-        linkProducto:p.linkProducto||p.link_producto||'',
-        linkEmpresa:p.linkEmpresa||p.link_empresa||'',
-        linkOtros:p.linkOtros||p.link_otros||'',
-        descripcion:p.descripcion||'',
-        contactoNom:p.contactoNom||p.contacto_nombre||'',
-        contactoCel:p.contactoCel||p.contacto_celular||'',
-        contactoEmail:p.contactoEmail||p.contacto_email||'',
-        nCuenta:p.nCuenta||p.n_cuenta||'', cci:p.cci||'',
-        fec:p.fec||new Date().toISOString().slice(0,10),
-        eva:p.eva||'', guardado:!!p._qid, _arch:false,_dest:false
+        id:'p_'+(++provSeq),
+        _qid: p._qid||'',
+        nom: p.nom||p.nombre||'',
+        ruc: p.ruc||'',
+        dir: p.dir||p.direccion||'',
+        mat: p.mat||p.rubro_sector||'',
+        producto: p.producto||p.producto_servicio||'',
+        productosIds: p.productosIds||[],
+        linkProducto: p.linkProducto||p.link_producto||'',
+        linkEmpresa: p.linkEmpresa||p.link_empresa||'',
+        linkOtros: p.linkOtros||p.link_otros||'',
+        descripcion: p.descripcion||'',
+        contactoNom: p.contactoNom||p.contacto_nombre||'',
+        contactoCel: p.contactoCel||p.contacto_celular||'',
+        contactoEmail: p.contactoEmail||p.contacto_email||'',
+        nCuenta: p.nCuenta||p.n_cuenta||'',
+        cci: p.cci||'',
+        fec: p.fec||new Date().toISOString().slice(0,10),
+        eva: p.eva||'',
+        guardado: !!p._qid,
+        _arch:false, _dest:false
       };
-      if(!np.productosIds.length&&np.producto){
+      // Reconstruir productosIds desde campo producto si no existe
+      if(!np.productosIds.length && np.producto){
         var nombresGuard=np.producto.split(',').map(function(n){return n.trim().toLowerCase();});
         var prodRef=pk.productos&&pk.productos.length?pk.productos:productos;
         np.productosIds=prodRef.filter(function(pr){
@@ -2648,26 +2744,27 @@ function seleccionarPaquete(pk){
       }
       provs.push(np);
       notasEval[np.id]={};evFiles[np.id]={};
-      appendProvRow(np,provs.length-1);
+      appendProvRow(np, provs.length-1);
     });
 
     if(misProvs.length) tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB');
     checkProvs();
-    _proveedoresGuardados=misProvs.length>0;
+    _proveedoresGuardados = misProvs.length > 0;
+    // Actualizar _provCount en el paquete y re-renderizar resumen
     if(paqueteActual){
-      paqueteActual._provCount=provs.length;
-      var cidx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
-      if(cidx>-1){_paquetesCache[cidx]._provCount=provs.length;}
+      paqueteActual._provCount = provs.length;
+      var idx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
+      if(idx>-1) _paquetesCache[idx]._provCount=provs.length;
       renderListaPaquetes();
     }
     });// fin cargarProveedoresDesdeQDB
   }// fin _cargarProveedoresDespues
 
-  // Usar productos ya cargados del paquete
+  // Usar productos ya cargados del paquete (flujo definido en Paso 2)
   if(pk.productos&&pk.productos.length&&!productos.length){
     productos=pk.productos;
   }
-  _cargarProveedoresDespues();
+  _cargarProveedoresDespues(1);
 
     // Cargar historial del paquete (si existe en JSON)
   hist=[];
@@ -3123,27 +3220,12 @@ function guardarPaqueteActual(){
 }
 function cargarProveedoresDesdeQDB(cb){
   var correo=getUsuarioCorreo();
-  if(_cacheProv&&_cacheProv.length){
-    var ps=_cacheProv.map(function(r){
-      return{id:r.id||r._qid,_qid:r._qid,
-        nom:r.nombre||'',ruc:r.ruc||'',
-        dir:r.direccion||'',mat:r.rubro_sector||'',
-        producto:r.producto_servicio||'',
-        paquete:r.paquete||'',
-        contactoNom:r.contacto_nombre||'',
-        contactoCel:r.contacto_celular||'',
-        contactoEmail:r.contacto_email||'',
-        nCuenta:r.n_cuenta||'',cci:r.cci||'',
-        linkProducto:r.link_producto||'',
-        linkEmpresa:r.link_empresa||'',
-        linkOtros:r.link_otros||'',
-        descripcion:r.descripcion||'',
-        propietario:r.propietario||'',
-        guardado:true};
-    });
-    if(cb)cb(ps);return;
-  }
   qdbFetch({accion:'cargarProveedores'}, function(res){
+    if(res===null){
+      // Timeout genuino — retornar null para que el caller pueda reintentar
+      if(cb)cb(null);
+      return;
+    }
     if(res&&res.ok){
       var ps=(res.registros||[]).map(function(r){
         return {
@@ -3163,10 +3245,10 @@ function cargarProveedoresDesdeQDB(cb){
           propietario:r.propietario||'',
           guardado:true
         };
-      });// sin filtro por propietario — el filtro por paquete.id en _cargarProveedoresDespues es suficiente
+      }).filter(function(p){return !p.propietario||p.propietario===correo;});
       if(cb)cb(ps);
     } else {if(cb)cb([]);}
-  });
+  }, 20000);
 }
 
 
