@@ -3156,7 +3156,7 @@ function cargarProveedoresDesdeQDB(cb){
           propietario:r.propietario||'',
           guardado:true
         };
-      }).filter(function(p){return !p.propietario||p.propietario===correo;});
+      });// sin filtro por propietario — el filtro por paquete.id en _cargarProveedoresDespues es suficiente
       if(cb)cb(ps);
     } else {if(cb)cb([]);}
   });
