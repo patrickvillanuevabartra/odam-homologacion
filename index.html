@@ -3140,7 +3140,9 @@ function guardarPaqueteActual(){
 }
 function cargarProveedoresDesdeQDB(cb){
   var correo=getUsuarioCorreo();
+  console.log('cargarProveedoresDesdeQDB llamado');
   qdbFetch({accion:'cargarProveedores'}, function(res){
+    console.log('cargarProveedores res:', res&&res.ok, 'total:', res&&res.registros?res.registros.length:0);
     if(res&&res.ok){
       var ps=(res.registros||[]).map(function(r){
         return {
