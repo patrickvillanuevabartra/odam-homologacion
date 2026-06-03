@@ -2356,38 +2356,25 @@ function cargarPaquetesDesdeSheets(){
     // Contar proveedores por paquete desde QDB
     qdbFetch({accion:'cargarProveedores'},function(resProv){
       if(resProv&&resProv.ok){
-        var correo=getUsuarioCorreo();
-        // Contar por paquete.id (sin filtrar por propietario)
-        var countMap={};
+        // Construir mapa paquete→count usando el valor raw de r.paquete
+        var rawCount={};
         (resProv.registros||[]).forEach(function(r){
-          if(r.paquete&&r.paquete.trim()){
-            countMap[r.paquete]=(countMap[r.paquete]||0)+1;
-          }
+          var val=(r.paquete||'').trim();
+          if(val) rawCount[val]=(rawCount[val]||0)+1;
         });
+        console.log('countMap keys:', Object.keys(rawCount));
+        // Cruzar por id O nombre del paquete
         _paquetesCache.forEach(function(pk){
-          pk._provCount=countMap[pk.id]||0;
+          var byId=rawCount[pk.id]||0;
+          var byNom=rawCount[pk.nombre]||0;
+          pk._provCount=Math.max(byId,byNom);
+          console.log('paquete:',pk.nombre,'id:',pk.id,'byId:',byId,'byNom:',byNom,'_provCount:',pk._provCount);
         });
       }
       renderListaPaquetes();
       if(_paquetesCache.length)tst('✅ '+_paquetesCache.length+' paquetes cargados');
       else tst('Sin paquetes — crea el primero');
-      // Actualizar count desde QDB después de 3 segundos
-      setTimeout(function(){
-        qdbFetch({accion:'cargarProveedores'},function(resProv){
-          if(!resProv||!resProv.ok)return;
-          var cm2={};
-          (resProv.registros||[]).forEach(function(r){
-            if(r.paquete&&r.paquete.trim()) cm2[r.paquete]=(cm2[r.paquete]||0)+1;
-          });
-          var changed=false;
-          _paquetesCache.forEach(function(pk){
-            var c=cm2[pk.id]||0;
-            if(c!==pk._provCount){pk._provCount=c;changed=true;}
-          });
-          if(changed)renderListaPaquetes();
-        },10000);
-      },3000);
-    },5000);
+    },8000);
   }, 3000);
 }
 
