@@ -2319,6 +2319,9 @@ function cargarPaquetesDesdeSheets(){
     var raw=(res&&res.ok)?(res.registros||res.paquetes||[]):[];
     if(!res||!res.ok){tst('⚠️ Tiempo agotado — sin conexión');renderListaPaquetes();return;}
     var uid=getUsuarioCorreo();
+    // Preservar _provCount ya calculados antes de regenerar cache
+    var _prevProvCount={};
+    _paquetesCache.forEach(function(pk){if(pk._provCount>0)_prevProvCount[pk.id]=pk._provCount;});
     _paquetesCache=raw.map(function(r){
       var esCampoQDB=r.criterios_json!==undefined||r.escala_json!==undefined;
       if(esCampoQDB){
@@ -2344,7 +2347,7 @@ function cargarPaquetesDesdeSheets(){
           productos:safeJsonParse(r.productos_json,[]),
           fechaCreacion:r.fecha_creacion||'',
           ultimaActualizacion:r.ultima_actualizacion||'',
-          _provCount:safeJsonParse(r.proveedores_json,[]).length
+          _provCount:0
         };
       }
       return r;
@@ -2352,6 +2355,10 @@ function cargarPaquetesDesdeSheets(){
       var pkProp=(pk.propietario||'').toLowerCase().trim();
       var uidLow=(uid||'').toLowerCase().trim();
       return pk.nombre&&(!pkProp||pkProp===''||pkProp===uidLow);
+    });
+    // Restaurar _provCount previos mientras llega el nuevo conteo
+    _paquetesCache.forEach(function(pk){
+      if(_prevProvCount[pk.id]) pk._provCount=_prevProvCount[pk.id];
     });
     // Contar proveedores por paquete desde QDB
     qdbFetch({accion:'cargarProveedores'},function(resProv){
