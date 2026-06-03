@@ -2605,9 +2605,7 @@ function seleccionarPaquete(pk){
   document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando...</div>';
 
   function _cargarProveedoresDespues(){
-    console.log('_cargarProveedoresDespues INICIO pkId:', pk&&pk.id);
     cargarProveedoresDesdeQDB(function(qdbProvs){
-    console.log('QDB proveedores total:', (qdbProvs||[]).length, 'pkId:', pk&&pk.id);
     document.getElementById('provList').innerHTML='';
     provs=[];provSeq=0;
 
@@ -3902,8 +3900,13 @@ function goStep(n){
     if(paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length){
       productos=paqueteActual.productos;
     }
-    // Si hay proveedores renderizados y se agregaron productos nuevos, re-renderizar
-    if(provs.length && productos.length){
+    // Si no hay proveedores cargados, cargar desde QDB ahora
+    if(!provs.length && paqueteActual){
+      var provListEl=document.getElementById('provList');
+      if(provListEl)provListEl.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando proveedores...</div>';
+      _cargarProveedoresDespues();
+    } else if(provs.length && productos.length){
+      // Re-renderizar si hay productos nuevos
       var wrap=document.getElementById('provList');
       if(wrap){
         wrap.innerHTML='';
