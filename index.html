@@ -2654,9 +2654,17 @@ function seleccionarPaquete(pk){
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
+    var pkNombre=(pk.nombre||'').trim().toLowerCase();
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      // SOLO filtrar por paquete.id — campo obligatorio desde ahora
-      return qp.paquete&&qp.paquete===pkId;
+      var paqQdb=(qp.paquete||'').trim();
+      // Acepta por ID, por nombre, o sin campo paquete si coincide nom/ruc
+      if(paqQdb===pkId||paqQdb.toLowerCase()===pkNombre) return true;
+      if(!paqQdb&&pkProvNoms.length){
+        var n=(qp.nom||'').trim().toLowerCase();
+        var r=(qp.ruc||'').trim();
+        return (n&&pkProvNoms.indexOf(n)>-1)||(r&&pkProvRucs.indexOf(r)>-1);
+      }
+      return false;
     });
 
     // 2. Si no hay en QDB con campo paquete, usar los del JSON del paquete como fallback
