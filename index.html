@@ -2598,7 +2598,7 @@ function seleccionarPaquete(pk){
 
   // Cargar proveedores desde QDB filtrado por paquete.id
   provs=[];provSeq=0;notasEval={};evFiles={};
-  document.getElementById('provList').innerHTML='<div style="padding:16px 12px;color:var(--muted);font-size:.92rem;background:#EFF6FF;border-radius:8px;border:1px solid #BAE6FD;">⏳ Cargando proveedores desde QuintaDB...</div>';
+  document.getElementById('provList').innerHTML='<div style="padding:14px 16px;color:#0284c7;font-size:.92rem;background:#EFF6FF;border-radius:8px;border:1px solid #BAE6FD;">⏳ Cargando proveedores desde QuintaDB...</div>';
 
   function _cargarProveedoresDespues(){
     cargarProveedoresDesdeQDB(function(qdbProvs){
@@ -2606,33 +2606,25 @@ function seleccionarPaquete(pk){
     provs=[];provSeq=0;
 
     var pkId=pk.id;
-    var pkNombre=(pk.nombre||'').trim().toLowerCase();
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
+    var pkNom=(pk.nombre||'').trim().toLowerCase();
     var misProvs=(qdbProvs||[]).filter(function(qp){
       var qpPaq=(qp.paquete||'').trim();
-      // Coincidencia por ID exacto
+      if(!qpPaq) return false;
       if(qpPaq===pkId) return true;
-      // Coincidencia por nombre de paquete (por si se guardó con nombre en vez de id)
-      if(qpPaq&&qpPaq.toLowerCase()===pkNombre) return true;
-      // Coincidencia por nombre o RUC del proveedor en la lista JSON del paquete
-      if(pkProvNoms.length){
-        var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
-        var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
-        if(nomMatch||rucMatch) return true;
-      }
+      if(qpPaq.toLowerCase()===pkNom) return true;
       return false;
     });
 
-    // Si no hay coincidencias por paquete y la tabla QDB no tiene campo paquete
-    // cargamos TODOS los proveedores de QDB que no tengan paquete asignado
-    if(!misProvs.length&&(qdbProvs||[]).length){
-      var sinPaquete=(qdbProvs||[]).filter(function(qp){return !(qp.paquete&&qp.paquete.trim());});
-      if(sinPaquete.length){
-        tst('⚠️ Proveedores sin paquete asignado — mostrando todos ('+sinPaquete.length+')');
-        misProvs=sinPaquete;
-      }
+    // Fallback: buscar por nombre/RUC si no hay coincidencia por paquete id
+    if(!misProvs.length&&pkProvNoms.length){
+      misProvs=(qdbProvs||[]).filter(function(qp){
+        var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
+        var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
+        return nomMatch||rucMatch;
+      });
     }
 
     var fuente=misProvs.length?misProvs:(pk.proveedores||[]);
@@ -2667,8 +2659,8 @@ function seleccionarPaquete(pk){
       appendProvRow(np,provs.length-1);
     });
 
-    if(misProvs.length) tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB',4000);
-    else if(!(pk.proveedores&&pk.proveedores.length)) tst('ℹ️ No se encontraron proveedores en QuintaDB para este paquete');
+    if(misProvs.length){tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB para "'+pk.nombre+'"',4000);}
+    else{tst('⚠️ No se encontraron proveedores en QuintaDB para el paquete "'+pk.nombre+'" (id: '+pkId+')');}  
     checkProvs();
     _proveedoresGuardados=misProvs.length>0;
     if(paqueteActual){
@@ -3139,38 +3131,34 @@ function guardarPaqueteActual(){
   });
 }
 function _mapProvQDB(r){
-  return{id:r.id||r._qid,_qid:r._qid||r.id||'',
-    nom:r.nombre||'',ruc:r.ruc||'',
-    dir:r.direccion||'',mat:r.rubro_sector||'',
+  return{
+    id:r._qid||r.id||'', _qid:r._qid||r.id||'',
+    nom:r.nombre||'', ruc:r.ruc||'',
+    dir:r.direccion||'', mat:r.rubro_sector||'',
     producto:r.producto_servicio||'',
     paquete:r.paquete||'',
     contactoNom:r.contacto_nombre||'',
     contactoCel:r.contacto_celular||'',
     contactoEmail:r.contacto_email||'',
-    nCuenta:r.n_cuenta||'',cci:r.cci||'',
+    nCuenta:r.n_cuenta||'', cci:r.cci||'',
     linkProducto:r.link_producto||'',
     linkEmpresa:r.link_empresa||'',
     linkOtros:r.link_otros||'',
     descripcion:r.descripcion||'',
     propietario:r.propietario||'',
-    guardado:true};
+    guardado:true
+  };
 }
 function cargarProveedoresDesdeQDB(cb){
-  // SIEMPRE fetch fresco — no usar caché para garantizar datos actuales de QDB
+  // Siempre fetch fresco — ignorar caché para garantizar datos actuales
   qdbFetch({accion:'cargarProveedores'}, function(res){
     if(res&&res.ok){
-      var ps=(res.registros||[]).map(_mapProvQDB);
-      _cacheProv=res.registros||[]; // actualizar caché también
-      if(cb)cb(ps);
+      _cacheProv=res.registros||[];
+      if(cb)cb(_cacheProv.map(_mapProvQDB));
     } else {
-      // Si falla fetch fresco pero hay caché, usar caché como respaldo
-      if(_cacheProv&&_cacheProv.length){
-        if(cb)cb(_cacheProv.map(_mapProvQDB));
-      } else {
-        if(cb)cb([]);
-      }
+      if(cb)cb([]);
     }
-  }, 20000); // timeout 20s para conexiones lentas
+  }, 20000);
 }
 
 
