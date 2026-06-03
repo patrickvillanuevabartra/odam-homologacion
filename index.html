@@ -2415,16 +2415,14 @@ function cargarPaquetesDesdeSheets(intento){
         var todos=(resProv.registros||[]).filter(function(r){
           return !r.propietario||r.propietario===correo;
         });
-        // Contar por paquete.id
+        // Contar por pk.id (que es el valor guardado en campo paquete del proveedor)
         var countMap={};
         todos.forEach(function(r){
-          if(r.paquete&&r.paquete.trim()){
+          if(r.paquete&&r.paquete.trim())
             countMap[r.paquete]=(countMap[r.paquete]||0)+1;
-          }
         });
         _paquetesCache.forEach(function(pk){
-          // El campo paquete del proveedor puede ser _qid o id local
-          pk._provCount=countMap[pk._qid]||countMap[pk.id]||0;
+          pk._provCount=countMap[pk.id]||0;
         });
       }
       renderListaPaquetes();
@@ -2439,14 +2437,21 @@ function renderListaPaquetes(){
   var wrap=document.getElementById('listaPaquetes');
   if(!wrap)return;
 
-  // Deduplicar
-  var vistos={};
-  _paquetesCache=_paquetesCache.filter(function(pk){
-    var key=(pk.nombre||'').toLowerCase()+'|'+(pk.propietario||'').toLowerCase();
-    if(vistos[key])return false;
-    vistos[key]=true;
-    return true;
+  // Deduplicar — quedarse con el registro más completo (el que tenga más campos)
+  var vistosMap={};
+  _paquetesCache.forEach(function(pk){
+    var key=(pk.id||'')+'|'+(pk.propietario||'').toLowerCase();
+    if(!vistosMap[key]){
+      vistosMap[key]=pk;
+    } else {
+      // Preferir el que tenga más datos (criterios, productos, historial)
+      var prev=vistosMap[key];
+      var prevScore=(prev.criterios||[]).length+(prev.productos||[]).length+(prev.historial||[]).length+(prev.nombre?1:0)+(prev.propietario_nombre?1:0);
+      var curScore=(pk.criterios||[]).length+(pk.productos||[]).length+(pk.historial||[]).length+(pk.nombre?1:0)+(pk.propietario_nombre?1:0);
+      if(curScore>prevScore) vistosMap[key]=pk;
+    }
   });
+  _paquetesCache=Object.values(vistosMap);
 
   if(!_paquetesCache.length){
     wrap.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:.9rem;border:1.5px dashed var(--border);border-radius:10px;">No hay paquetes guardados. Crea tu primer paquete arriba.</div>';
@@ -2670,7 +2675,6 @@ function seleccionarPaquete(pk){
   document.getElementById('provList').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.9rem;">⏳ Cargando proveedores desde QuintaDB…</div>';
 
   function _cargarProveedoresDespues(){
-    // Mismo patron exacto que cargarProductosDesdeQDB
     qdbFetch({accion:'cargarProveedores'}, function(res){
       document.getElementById('provList').innerHTML='';
       provs=[];provSeq=0;
@@ -2686,7 +2690,7 @@ function seleccionarPaquete(pk){
         var pkOk=r.paquete&&r.paquete===pkId;
         return propOk&&pkOk&&r.nombre;
       });
-      console.log('[PROVS] Total QDB:',res.registros.length,'| filtrados para pkId='+pkId+':', remote.length);
+      console.log('[PROVS] Total:',res.registros.length,'| pkId:',pkId,'| encontrados:',remote.length);
       remote.forEach(function(r){
         var np={
           id:'p_'+(++provSeq), _qid:r._qid,
