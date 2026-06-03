@@ -1393,7 +1393,7 @@ function enviarASheets(d,callback){
     catInterp:d.catItem?d.catItem.interp:'',
     propietario:getUsuarioCorreo(),
     propietarioNombre:getUsuarioNombre(),
-    paquete:paqueteActual?paqueteActual.id:'',
+    paquete:paqueteActual?(paqueteActual._qid||paqueteActual.id):'',
     paqueteNombre:paqueteActual?paqueteActual.nombre:'',
     producto:d.producto||'',
     contactoNom:d.contactoNom||'',contactoCel:d.contactoCel||'',
@@ -1905,7 +1905,7 @@ function guardarEscalaExistente(escala,cb){
     color:escala.niveles[0]?escala.niveles[0].color:'',
     bg:escala.niveles[0]?escala.niveles[0].bg:'',
     propietario:getUsuarioCorreo(), propietario_nombre:getUsuarioNombre(),
-    paquete:paqueteActual?paqueteActual.id:'',
+    paquete:paqueteActual?(paqueteActual._qid||paqueteActual.id):'',
     fecha_registro:new Date().toISOString().slice(0,10)
   };
   qdbFetch({accion:'guardarEscala',datos:JSON.stringify(datos),qid:escala._qid||''},function(res){
@@ -1936,7 +1936,7 @@ function guardarEscalaEnBiblioteca(){
     bg: SCALE[0]?SCALE[0].bg:'#DCFCE7',
     propietario: getUsuarioCorreo(),
     propietario_nombre: getUsuarioNombre(),
-    paquete: paqueteActual?paqueteActual.id:'',
+    paquete: paqueteActual?(paqueteActual._qid||paqueteActual.id):'',
     fecha_registro: new Date().toISOString().slice(0,10)
   };
   tst('⏳ Guardando escala en biblioteca...');
@@ -2423,7 +2423,8 @@ function cargarPaquetesDesdeSheets(intento){
           }
         });
         _paquetesCache.forEach(function(pk){
-          pk._provCount=countMap[pk.id]||0;
+          // El campo paquete del proveedor puede ser _qid o id local
+          pk._provCount=countMap[pk._qid]||countMap[pk.id]||0;
         });
       }
       renderListaPaquetes();
@@ -2697,8 +2698,12 @@ function seleccionarPaquete(pk){
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
+    // pkId puede ser pk_xxx (id local) o el _qid de QuintaDB
+    // El proveedor guardado puede tener cualquiera de los dos como referencia
+    var pkQid = pk._qid || '';
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      return qp.paquete&&qp.paquete===pkId;
+      if(!qp.paquete) return false;
+      return qp.paquete===pkId || (pkQid && qp.paquete===pkQid);
     });
 
     // Fallback 1: cruzar por nombre o RUC con los proveedores guardados en el JSON del paquete
@@ -2713,7 +2718,9 @@ function seleccionarPaquete(pk){
 
     // Fallback 2: proveedores sin paquete asignado (caso legacy)
     if(!misProvs.length && !pkProvNoms.length && (qdbProvs||[]).length){
-      misProvs=(qdbProvs||[]).filter(function(qp){ return !qp.paquete||qp.paquete.trim()===''||qp.paquete.trim()===pkId; });
+      misProvs=(qdbProvs||[]).filter(function(qp){
+        return !qp.paquete||qp.paquete.trim()===''||qp.paquete.trim()===pkId||(pkQid&&qp.paquete.trim()===pkQid);
+      });
       if(misProvs.length) console.log('Proveedores legacy sin paquete asignado:', misProvs.length);
     }
 
@@ -2968,7 +2975,7 @@ function guardarProductosEnQDB(){
       nombre: p.nombre||'',
       descripcion: p.descripcion||'',
       unidad: p.unidad||'',
-      paquete: paqueteActual?paqueteActual.id:'',
+      paquete: paqueteActual?(paqueteActual._qid||paqueteActual.id):'',
       propietario: getUsuarioCorreo(),
       propietario_nombre: getUsuarioNombre(),
       fecha_registro: new Date().toISOString().slice(0,10)
@@ -3147,7 +3154,7 @@ function renderProductos(){
       var datos={
         id:prod.id, codigo:prod.codigo||'', nombre:prod.nombre||'', descripcion:prod.descripcion||'',
         unidad:prod.unidad||'', categoria:prod.categoria||'',
-        paquete:paqueteActual?paqueteActual.id:'',
+        paquete:paqueteActual?(paqueteActual._qid||paqueteActual.id):'',
         paquete_nombre:paqueteActual?paqueteActual.nombre:'',
         propietario:getUsuarioCorreo(), propietario_nombre:getUsuarioNombre(),
         fecha_registro:new Date().toISOString().slice(0,10)
@@ -3305,7 +3312,7 @@ function guardarProveedorEnQDB(p,cb){
     link_producto:p.linkProducto||'', link_empresa:p.linkEmpresa||'',
     link_otros:p.linkOtros||'', descripcion:p.descripcion||'',
     propietario:getUsuarioCorreo(), propietario_nombre:getUsuarioNombre(),
-    paquete:paqueteActual?paqueteActual.id:''
+    paquete:paqueteActual?(paqueteActual._qid||paqueteActual.id):''
   };
   qdbFetch({accion:'guardarProveedor', datos:JSON.stringify(datos), qid:p._qid||''}, function(res){
     if(res&&res.qid)p._qid=res.qid;
@@ -3608,7 +3615,7 @@ function guardarPlantillaEnSheets(pt, callback){
     propietario: getUsuarioCorreo(),
     propietario_nombre: getUsuarioNombre(),
     fecha_creacion: pt.fechaCreacion||new Date().toISOString(),
-    paquete: paqueteActual?paqueteActual.id:''
+    paquete: paqueteActual?(paqueteActual._qid||paqueteActual.id):''
   };
   qdbFetch({accion:'guardarPlantilla', datos:JSON.stringify(datos), qid:pt._qid||''}, function(res){
     if(res&&res.qid)pt._qid=res.qid;
