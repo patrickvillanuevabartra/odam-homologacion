@@ -2605,7 +2605,9 @@ function seleccionarPaquete(pk){
   document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando...</div>';
 
   function _cargarProveedoresDespues(){
+    console.log('_cargarProveedoresDespues INICIO pkId:', pk&&pk.id);
     cargarProveedoresDesdeQDB(function(qdbProvs){
+    console.log('QDB proveedores total:', (qdbProvs||[]).length, 'pkId:', pk&&pk.id);
     document.getElementById('provList').innerHTML='';
     provs=[];provSeq=0;
 
