@@ -2566,51 +2566,14 @@ function abrirPaqueteEn(paso){
   goStep(paso);
 }
 
-function seleccionarPaquete(pk){
-  paqueteActual=pk;
-  // Habilitar botones "Continuar → Productos →" al seleccionar paquete
-  ['btnNext0Paquete','btnNext0PaqueteTopNav'].forEach(function(bid){
-    var b=document.getElementById(bid);
-    if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}
-  });
-
-  // Cargar criterios
-  if(pk.criterios&&pk.criterios.length){
-    crits=[];document.getElementById('critList').innerHTML='';seq=0;
-    pk.criterios.forEach(function(c){addCrit(c);});
-    checkWeight();
-  } else {
-    crits=[];document.getElementById('critList').innerHTML='';seq=0;
-    checkWeight();
-  }
-
-  // Limpiar datos del paquete anterior inmediatamente
-  productos=[];prodSeq=0;
-  provs=[];provSeq=0;
-  var prodListEl=document.getElementById('productosList');
-  if(prodListEl)prodListEl.innerHTML='';
-
-  // Cargar escala
-  if(pk.escala&&pk.escala.length){
-    SCALE=pk.escala.map(function(s){
-      return{cat:s.cat,min:parseFloat(s.min)||0,max:parseFloat(s.max)||1,
-        label:s.label||'Calificación '+s.cat,interp:s.interp||'',
-        color:getScaleColor(s.cat),bg:getScaleBg(s.cat)};
-    });
-    buildEscalaRows();
-  }
-
-  // Cargar productos primero, luego proveedores para que checkboxes funcionen
-  provs=[];provSeq=0;notasEval={};evFiles={};
-  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando...</div>';
-
-  function _cargarProveedoresDespues(){
+function _cargarProveedoresDespues(){
     cargarProveedoresDesdeQDB(function(qdbProvs){
     document.getElementById('provList').innerHTML='';
     provs=[];provSeq=0;
 
     // Filtrar proveedores: si el paquete tiene proveedores en su JSON, usar esos como referencia
     // Si QDB devuelve el campo paquete, filtrar por él; sino cruzar por nombre/ruc con pk.proveedores
+    var pk=paqueteActual; if(!pk)return;
     var pkId=pk.id;
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
@@ -2674,7 +2637,48 @@ function seleccionarPaquete(pk){
       renderListaPaquetes();
     }
     });// fin cargarProveedoresDesdeQDB
-  }// fin _cargarProveedoresDespues
+}// fin _cargarProveedoresDespues
+
+function seleccionarPaquete(pk){
+  paqueteActual=pk;
+  // Habilitar botones "Continuar → Productos →" al seleccionar paquete
+  ['btnNext0Paquete','btnNext0PaqueteTopNav'].forEach(function(bid){
+    var b=document.getElementById(bid);
+    if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}
+  });
+
+  // Cargar criterios
+  if(pk.criterios&&pk.criterios.length){
+    crits=[];document.getElementById('critList').innerHTML='';seq=0;
+    pk.criterios.forEach(function(c){addCrit(c);});
+    checkWeight();
+  } else {
+    crits=[];document.getElementById('critList').innerHTML='';seq=0;
+    checkWeight();
+  }
+
+  // Limpiar datos del paquete anterior inmediatamente
+  productos=[];prodSeq=0;
+  provs=[];provSeq=0;
+  var prodListEl=document.getElementById('productosList');
+  if(prodListEl)prodListEl.innerHTML='';
+
+  // Cargar escala
+  if(pk.escala&&pk.escala.length){
+    SCALE=pk.escala.map(function(s){
+      return{cat:s.cat,min:parseFloat(s.min)||0,max:parseFloat(s.max)||1,
+        label:s.label||'Calificación '+s.cat,interp:s.interp||'',
+        color:getScaleColor(s.cat),bg:getScaleBg(s.cat)};
+    });
+    buildEscalaRows();
+  }
+
+  // Cargar productos primero, luego proveedores para que checkboxes funcionen
+  provs=[];provSeq=0;notasEval={};evFiles={};
+  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando...</div>';
+
+
+
 
   // Usar productos ya cargados del paquete (flujo definido en Paso 2)
   if(pk.productos&&pk.productos.length&&!productos.length){
