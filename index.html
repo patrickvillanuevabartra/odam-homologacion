@@ -2362,13 +2362,11 @@ function cargarPaquetesDesdeSheets(){
           var val=(r.paquete||'').trim();
           if(val) rawCount[val]=(rawCount[val]||0)+1;
         });
-        console.log('countMap keys:', Object.keys(rawCount));
         // Cruzar por id O nombre del paquete
         _paquetesCache.forEach(function(pk){
           var byId=rawCount[pk.id]||0;
           var byNom=rawCount[pk.nombre]||0;
           pk._provCount=Math.max(byId,byNom);
-          console.log('paquete:',pk.nombre,'id:',pk.id,'byId:',byId,'byNom:',byNom,'_provCount:',pk._provCount);
         });
       }
       renderListaPaquetes();
@@ -2659,9 +2657,12 @@ function seleccionarPaquete(pk){
     checkProvs();
     _proveedoresGuardados=misProvs.length>0;
     if(paqueteActual){
-      paqueteActual._provCount=provs.length;
-      var cidx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
-      if(cidx>-1){_paquetesCache[cidx]._provCount=provs.length;}
+      // Solo actualizar _provCount si realmente cargamos proveedores
+      if(provs.length>0){
+        paqueteActual._provCount=provs.length;
+        var cidx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
+        if(cidx>-1){_paquetesCache[cidx]._provCount=provs.length;}
+      }
       renderListaPaquetes();
     }
     });// fin cargarProveedoresDesdeQDB
@@ -3106,9 +3107,11 @@ function guardarPaqueteActual(){
   if(paqueteActual._escalaActual) paqueteActual.escalaActual=paqueteActual._escalaActual;
   // Guardar solo los nombres/rucs para el count del resumen
   // Los datos completos viven en tabla PROVEEDORES de QDB
-  paqueteActual._provCount = provs.length;
-  var idx2=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
-  if(idx2>-1) _paquetesCache[idx2]._provCount=provs.length;
+  if(provs.length>0){
+    paqueteActual._provCount = provs.length;
+    var idx2=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
+    if(idx2>-1) _paquetesCache[idx2]._provCount=provs.length;
+  }
   // Guardar lista mínima en proveedores_json para el count
   paqueteActual.proveedores=provs.map(function(p){return{nom:p.nom,ruc:p.ruc};});
   // Guardar historial simplificado (sin catItem para no inflar JSON)
