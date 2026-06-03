@@ -3885,7 +3885,12 @@ function goStep(n){
     if(paqueteActual&&paqueteActual.productos&&paqueteActual.productos.length){
       productos=paqueteActual.productos;
     }
-    // Si hay proveedores renderizados y se agregaron productos nuevos, re-renderizar
+    // Si no hay proveedores cargados, recargar seleccionando el paquete de nuevo
+    if(!provs.length&&paqueteActual){
+      seleccionarPaquete(paqueteActual);
+      return;
+    }
+    // Re-renderizar si hay productos nuevos
     if(provs.length && productos.length){
       var wrap=document.getElementById('provList');
       if(wrap){
