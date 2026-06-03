@@ -2311,7 +2311,9 @@ var paqueteActual = null;  // {id, nombre, criterios, escala, proveedores}
 var _paquetesCache = [];
 
 function _actualizarConteoProveedores(){
+  console.log('_actualizarConteoProveedores llamado');
   qdbFetch({accion:'cargarProveedores'},function(resProv){
+    console.log('cargarProveedores respuesta:', resProv&&resProv.ok, resProv&&resProv.registros?resProv.registros.length:0);
     if(!resProv||!resProv.ok)return;
     var countMap={};
     (resProv.registros||[]).forEach(function(r){
