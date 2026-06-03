@@ -2597,61 +2597,50 @@ function seleccionarPaquete(pk){
     buildEscalaRows();
   }
 
-  // Cargar productos primero, luego proveedores para que checkboxes funcionen
+  // Cargar proveedores desde QDB filtrado por paquete.id
   provs=[];provSeq=0;notasEval={};evFiles={};
-  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando...</div>';
-
-
-
+  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando proveedores...</div>';
 
   function _cargarProveedoresDespues(){
     cargarProveedoresDesdeQDB(function(qdbProvs){
     document.getElementById('provList').innerHTML='';
     provs=[];provSeq=0;
 
-    // Filtrar proveedores: si el paquete tiene proveedores en su JSON, usar esos como referencia
-    // Si QDB devuelve el campo paquete, filtrar por él; sino cruzar por nombre/ruc con pk.proveedores
     var pkId=pk.id;
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
 
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      // Si tiene campo paquete, filtrar por ID
       if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
-      // Sin campo paquete: incluir siempre (proveedores antiguos)
-      return true;
+      if(pkProvNoms.length){
+        var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
+        var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
+        return nomMatch||rucMatch;
+      }
+      return false;
     });
 
-    // 2. Si no hay en QDB con campo paquete, usar los del JSON del paquete como fallback
-    // Esto cubre proveedores guardados antes de que existiera el campo paquete
-    var fuente = misProvs.length ? misProvs : [];
+    var fuente=misProvs.length?misProvs:(pk.proveedores||[]);
 
     fuente.forEach(function(p){
       var np={
-        id:'p_'+(++provSeq),
-        _qid: p._qid||'',
-        nom: p.nom||p.nombre||'',
-        ruc: p.ruc||'',
-        dir: p.dir||p.direccion||'',
-        mat: p.mat||p.rubro_sector||'',
-        producto: p.producto||p.producto_servicio||'',
-        productosIds: p.productosIds||[],
-        linkProducto: p.linkProducto||p.link_producto||'',
-        linkEmpresa: p.linkEmpresa||p.link_empresa||'',
-        linkOtros: p.linkOtros||p.link_otros||'',
-        descripcion: p.descripcion||'',
-        contactoNom: p.contactoNom||p.contacto_nombre||'',
-        contactoCel: p.contactoCel||p.contacto_celular||'',
-        contactoEmail: p.contactoEmail||p.contacto_email||'',
-        nCuenta: p.nCuenta||p.n_cuenta||'',
-        cci: p.cci||'',
-        fec: p.fec||new Date().toISOString().slice(0,10),
-        eva: p.eva||'',
-        guardado: !!p._qid,
-        _arch:false, _dest:false
+        id:'p_'+(++provSeq), _qid:p._qid||'',
+        nom:p.nom||p.nombre||'', ruc:p.ruc||'',
+        dir:p.dir||p.direccion||'', mat:p.mat||p.rubro_sector||'',
+        producto:p.producto||p.producto_servicio||'',
+        productosIds:p.productosIds||[],
+        linkProducto:p.linkProducto||p.link_producto||'',
+        linkEmpresa:p.linkEmpresa||p.link_empresa||'',
+        linkOtros:p.linkOtros||p.link_otros||'',
+        descripcion:p.descripcion||'',
+        contactoNom:p.contactoNom||p.contacto_nombre||'',
+        contactoCel:p.contactoCel||p.contacto_celular||'',
+        contactoEmail:p.contactoEmail||p.contacto_email||'',
+        nCuenta:p.nCuenta||p.n_cuenta||'', cci:p.cci||'',
+        fec:p.fec||new Date().toISOString().slice(0,10),
+        eva:p.eva||'', guardado:!!p._qid, _arch:false,_dest:false
       };
-      // Reconstruir productosIds desde campo producto si no existe
-      if(!np.productosIds.length && np.producto){
+      if(!np.productosIds.length&&np.producto){
         var nombresGuard=np.producto.split(',').map(function(n){return n.trim().toLowerCase();});
         var prodRef=pk.productos&&pk.productos.length?pk.productos:productos;
         np.productosIds=prodRef.filter(function(pr){
@@ -2660,15 +2649,14 @@ function seleccionarPaquete(pk){
       }
       provs.push(np);
       notasEval[np.id]={};evFiles[np.id]={};
-      appendProvRow(np, provs.length-1);
+      appendProvRow(np,provs.length-1);
     });
 
     if(misProvs.length) tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB');
     checkProvs();
-    _proveedoresGuardados = misProvs.length > 0;
-    // Actualizar _provCount
+    _proveedoresGuardados=misProvs.length>0;
     if(paqueteActual){
-      paqueteActual._provCount = provs.length;
+      paqueteActual._provCount=provs.length;
       var cidx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
       if(cidx>-1){_paquetesCache[cidx]._provCount=provs.length;}
       renderListaPaquetes();
@@ -2676,7 +2664,7 @@ function seleccionarPaquete(pk){
     });// fin cargarProveedoresDesdeQDB
   }// fin _cargarProveedoresDespues
 
-  // Usar productos ya cargados del paquete (flujo definido en Paso 2)
+  // Usar productos ya cargados del paquete
   if(pk.productos&&pk.productos.length&&!productos.length){
     productos=pk.productos;
   }
