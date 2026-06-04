@@ -601,7 +601,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div id="resComparativa" style="margin-bottom:24px;"></div>
 
   <!-- EVOLUCIÓN POR PROVEEDOR -->
-  <div id="histSection" style="display:none;margin-top:8px;">
+  <div id="histSection" style="display:none !important;margin-top:8px;">
     <p class="stitle" style="margin-bottom:14px;">📈 Evolución de Reevaluaciones</p>
     <div id="compWrap"></div>
   </div>
@@ -4669,7 +4669,7 @@ function sanitizarHist(){
 function calcularEstadoProveedor(provId){
   var ph=hist.filter(function(h){return h.provId===provId;});
   if(!ph.length) return 'normal';
-  ph.sort(function(a,b){return (a.ts||'').localeCompare(b.ts||'');});
+  ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
   var p=getProv(provId);
   if(p&&p._reactivado) return 'normal';
   var cons=0;
@@ -4687,7 +4687,7 @@ function getBadgeEstado(estado){
   if(estado==='alerta') return '<span style="background:#FEF9C3;color:#92400E;border:1px solid #D97706;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700;">⚠️ Alerta</span>';
   if(estado==='lista_negra') return '<span style="background:#FEE2E2;color:#991B1B;border:1px solid #DC2626;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700;">🚫 Lista negra</span>';
   if(estado==='vetado') return '<span style="background:#1E293B;color:white;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700;">❌ Vetado</span>';
-  return '';
+  return '—';
 }
 
 function buildResults(){
@@ -4732,18 +4732,17 @@ function buildResults(){
     }
   });
   var datosFiltrados=filtrarDatos(datos.sort(function(a,b){
-    if(a.nom!==b.nom)return (a.nom||'').localeCompare(b.nom||'');
-    // inicial primero, luego reevaluaciones
-    var aI=(a.version||'').toLowerCase().indexOf('inici')>-1?0:1;
-    var bI=(b.version||'').toLowerCase().indexOf('inici')>-1?0:1;
-    return aI-bI;
+    // Ordenar por fecha+hora ascendente
+    var aT=(a.ts||a.fec||'');
+    var bT=(b.ts||b.fec||'');
+    return aT.localeCompare(bT);
   }));
 
   var tableWrap=document.createElement('div');
   tableWrap.style.cssText='overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);';
   var tableEl=document.createElement('table');
   tableEl.className='dt'; tableEl.style.cssText='margin:0;min-width:700px;';
-  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Categoría</th><th>Estado</th><th>Acciones</th></tr></thead>';
+  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Categoría</th><th>Variación</th><th>% Var.</th><th>Estado</th><th>Acciones</th></tr></thead>';
   var tbodyEl=document.createElement('tbody');
   tableEl.appendChild(tbodyEl);
   if(!datosFiltrados.length){
@@ -4772,11 +4771,24 @@ function buildResults(){
       : SCALE.map(function(s){return s.cat+': '+s.min.toFixed(2)+'-'+s.max.toFixed(2)}).join(' | ');
     var versionLabel=(d.version||'').toLowerCase().indexOf('inici')>-1?'Evaluación inicial':d.version||'—';
     var isInicial=(d.version||'').toLowerCase().indexOf('inici')>-1;
+    // Calcular hora
+    var horaStr=d.ts&&d.ts.indexOf('T')>-1?new Date(d.ts).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):(d.fecHora||'—');
+    // Calcular variación respecto a evaluación anterior del mismo proveedor
+    var provHistPrev=datosFiltrados.slice(0,i).filter(function(x){return x.provId===d.provId;});
+    var prevEval=provHistPrev.length?provHistPrev[provHistPrev.length-1]:null;
+    var diffVal=prevEval?parseFloat((d.total-prevEval.total).toFixed(3)):null;
+    var diffPct=prevEval&&prevEval.total>0?parseFloat(((d.total-prevEval.total)/prevEval.total*100).toFixed(1)):null;
+    var diffColor=diffVal===null?'var(--muted)':diffVal>0?'#059669':diffVal<0?'#DC2626':'#64748B';
+    var diffStr=diffVal===null?'—':(diffVal>=0?'▲ +':'▼ ')+Math.abs(diffVal).toFixed(3);
+    var pctStr=diffPct===null?'—':(diffPct>=0?'+':'')+diffPct+'%';
+    var estProv=calcularEstadoProveedor(d.provId);
+
     tr.innerHTML='<td style="font-weight:700;color:var(--muted)">'+(i+1)+'</td>'
       +'<td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;background:'+(isInicial?'#DCFCE7':'#EFF6FF')+';color:'+(isInicial?'#059669':'#0284c7')+';">'+esc(versionLabel)+'</span></td>'
       +'<td style="font-weight:700">'+esc(d.nom)+'</td>'
       +'<td>'+esc(d.ruc)+'</td>'
       +'<td>'+fmtFecha(d.fec)+'</td>'
+      +'<td style="font-size:.84rem;color:var(--muted)">'+horaStr+'</td>'
       +'<td style="font-size:.86rem">'+esc(d.eva||'—')+'</td>'
       +'<td style="font-size:.78rem;color:var(--muted);max-width:200px;">'+esc(critsUsados)+'</td>'
       +'<td style="font-size:.75rem;color:var(--muted);">'+esc(scaleUsada)+'</td>'
@@ -4785,7 +4797,9 @@ function buildResults(){
         +'<div style="height:4px;background:rgba(0,0,0,.1);border-radius:2px;margin-top:3px;"><div style="height:100%;width:'+bar+'%;background:'+(ci?ci.color:'var(--border)')+';border-radius:2px;"></div></div>'
       +'</td>'
       +'<td><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;background:'+(ci?ci.color:'var(--subtle)')+';color:white;font-weight:700;font-size:1rem;">'+(d.catFinal||'—')+'</span></td>'
-      +'<td>'+getBadgeEstado(calcularEstadoProveedor(d.provId))+'</td>'
+      +'<td style="font-weight:700;color:'+diffColor+'">'+diffStr+'</td>'
+      +'<td style="font-weight:700;color:'+diffColor+'">'+pctStr+'</td>'
+      +'<td>'+getBadgeEstado(estProv)+'</td>'
       +'<td></td>';
 
     // botones con addEventListener para evitar problemas de comillas
@@ -4881,27 +4895,29 @@ function buildResults(){
 
     // ── Botón Eliminar evaluación ──
 
-    var btnElim=document.createElement('button');
-    btnElim.className='btn btn-o btn-sm';
-    btnElim.style.cssText='margin-left:4px;color:var(--no);border-color:var(--no);';
-    btnElim.textContent='🗑 Eliminar';
-    (function(pid,ver,tot){
-      btnElim.addEventListener('click',function(){
-        if(!confirm('¿Eliminar esta evaluación?'))return;
+    // Botón Eliminar evaluación
+    var btnEliminar=document.createElement('button');
+    btnEliminar.className='btn btn-o btn-sm';
+    btnEliminar.style.cssText='margin-left:4px;color:var(--no);border-color:var(--no);';
+    btnEliminar.title='Eliminar esta evaluación';
+    btnEliminar.textContent='🗑 Eliminar';
+    (function(pid,version,total){
+      btnEliminar.addEventListener('click',function(){
+        if(!confirm('¿Eliminar esta evaluación de '+pid+'?'))return;
         hist=hist.filter(function(h){
-          return !(h.provId===pid&&h.version===ver&&Math.abs(h.total-tot)<0.001);
+          return !(h.provId===pid&&h.version===version&&Math.abs(h.total-total)<0.001);
         });
         if(paqueteActual)guardarPaqueteActual();
         buildResults();
         tst('✅ Evaluación eliminada');
       });
-    })(d.provId,d.version,d.total);
+    })(d.provId, d.version, d.total);
 
     tdBtns.appendChild(btnEditar);
     tdBtns.appendChild(btnStar);
     tdBtns.appendChild(btnArch);
     tdBtns.appendChild(btnReeval);
-    tdBtns.appendChild(btnElim);
+    tdBtns.appendChild(btnEliminar);
     tbodyEl.appendChild(tr);
   });
   comp.innerHTML='';
