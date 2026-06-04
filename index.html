@@ -1301,7 +1301,7 @@ function seleccionarProv(id){
 
 // -- GUARDAR EVALUACION ACTUAL --
 // ── GOOGLE SHEETS ──
-var GS_URL='https://script.google.com/macros/s/AKfycbw5dPz2akKPByRp-ozSWrHq-N3em5uD9MsexO5iqDJqeB7w04ySsj7lxggl3k3ykLCA/exec';
+var GS_URL='https://script.google.com/macros/s/AKfycbwAnHoBDBZI6cgO8QnxrrXd081Jy5PSadufj5kYHtQMMBH_w2GBc5ZltRVu67DS7Lg1/exec';
 
 // ── Wrapper fetch para reemplazar JSONP ──
 // Usa fetch() en lugar de <script> injection para evitar el error
@@ -2364,14 +2364,14 @@ function cargarPaquetesDesdeSheets(){
           if(val) rawCount[val]=(rawCount[val]||0)+1;
         });
         _paquetesCache.forEach(function(pk){
-          pk._provCount=Math.max(rawCount[pk.id]||0,rawCount[pk.nombre]||0);
+          pk._provCount=Math.max(rawCount[pk.id]||0, rawCount[pk.nombre]||0);
         });
       }
       renderListaPaquetes();
       if(_paquetesCache.length)tst('✅ '+_paquetesCache.length+' paquetes cargados');
       else tst('Sin paquetes — crea el primero');
-    },15000);
-  }, 15000);
+    },8000);
+  }, 3000);
 }
 
 
@@ -2441,7 +2441,7 @@ function renderListaPaquetes(){
     meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
     var prodCount = (paqueteActual&&paqueteActual.id===pk.id) ? productos.length : (pk.productos||[]).length;
     // Proveedores: activo=count real de QDB, inactivo=count guardado en JSON
-    var provCount = (pk.proveedores||[]).length;
+    var provCount = pk._provCount!==undefined ? pk._provCount : (pk.proveedores||[]).length;
     meta.textContent='📦 '+prodCount+' productos · 📋 '+(pk.criterios||[]).length+' criterios · 🏅 calificación · 👥 '+provCount+' proveedores';
 
     left.appendChild(nomRow);
@@ -2499,7 +2499,7 @@ function renderListaPaquetes(){
       var b=document.createElement('button');
       b.textContent=parts[0];
       b.style.cssText='padding:8px 14px;border-radius:8px;background:white;border:1.5px solid var(--border);font-size:.86rem;cursor:pointer;font-family:inherit;';
-      (function(paso,pkCapture){b.onclick=function(e){e.stopPropagation();abrirPaqueteEn(paso,pkCapture);};})(parseInt(parts[1]),pk);
+      b.onclick=function(e){e.stopPropagation();abrirPaqueteEn(parseInt(parts[1]));};
       acDiv.appendChild(b);
     });
     card.appendChild(acDiv);
@@ -2507,7 +2507,6 @@ function renderListaPaquetes(){
     card.addEventListener('click',function(e){
       if(e.target.tagName==='BUTTON')return;
       seleccionarPaquete(pk);
-      goStep(0);
     });
 
     wrap.appendChild(card);
@@ -2550,12 +2549,10 @@ function irAResultados(){
   else{tst('Guarda al menos una evaluación primero');}
 }
 
-function abrirPaqueteEn(paso,pkRef){
-  var pk=pkRef||paqueteActual;
-  if(!pk){tst('Selecciona un paquete primero');return;}
-  if(pk!==paqueteActual) seleccionarPaquete(pk);
+function abrirPaqueteEn(paso){
+  if(!paqueteActual){tst('Selecciona un paquete primero');return;}
   // Habilitar Ver Resultados siempre al abrir un paquete existente
-  if((pk.proveedores||[]).length>0){
+  if((paqueteActual.proveedores||[]).length>0){
     ['btnVerResultados','btnVReval'].forEach(function(id){
       var b=document.getElementById(id);
       if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}
@@ -3125,32 +3122,43 @@ function guardarPaqueteActual(){
   });
 }
 function cargarProveedoresDesdeQDB(cb){
-  // Siempre fetch fresco — garantiza datos actuales al seleccionar paquete
+  var correo=getUsuarioCorreo();
+  if(_cacheProv&&_cacheProv.length){
+    var ps=_cacheProv.map(function(r){
+      return{id:r.id||r._qid,_qid:r._qid,nom:r.nombre||'',ruc:r.ruc||'',
+        dir:r.direccion||'',mat:r.rubro_sector||'',producto:r.producto_servicio||'',
+        paquete:r.paquete||'',contactoNom:r.contacto_nombre||'',
+        contactoCel:r.contacto_celular||'',contactoEmail:r.contacto_email||'',
+        nCuenta:r.n_cuenta||'',cci:r.cci||'',linkProducto:r.link_producto||'',
+        linkEmpresa:r.link_empresa||'',linkOtros:r.link_otros||'',
+        descripcion:r.descripcion||'',propietario:r.propietario||'',guardado:true};
+    });
+    if(cb)cb(ps);return;
+  }
   qdbFetch({accion:'cargarProveedores'}, function(res){
     if(res&&res.ok){
-      _cacheProv=res.registros||[];
-      var ps=_cacheProv.map(function(r){
-        return{id:r._qid||r.id||'',_qid:r._qid||r.id||'',
-          nom:r.nombre||'',ruc:r.ruc||'',
-          dir:r.direccion||'',mat:r.rubro_sector||'',
+      var ps=(res.registros||[]).map(function(r){
+        return {
+          id:r.id||r._qid, _qid:r._qid,
+          nom:r.nombre||'', ruc:r.ruc||'',
+          dir:r.direccion||'', mat:r.rubro_sector||'',
           producto:r.producto_servicio||'',
           paquete:r.paquete||'',
           contactoNom:r.contacto_nombre||'',
           contactoCel:r.contacto_celular||'',
           contactoEmail:r.contacto_email||'',
-          nCuenta:r.n_cuenta||'',cci:r.cci||'',
+          nCuenta:r.n_cuenta||'', cci:r.cci||'',
           linkProducto:r.link_producto||'',
           linkEmpresa:r.link_empresa||'',
           linkOtros:r.link_otros||'',
           descripcion:r.descripcion||'',
           propietario:r.propietario||'',
-          guardado:true};
-      });
+          guardado:true
+        };
+      });// sin filtro por propietario — el filtro por paquete.id en _cargarProveedoresDespues es suficiente
       if(cb)cb(ps);
-    } else {
-      if(cb)cb([]);
-    }
-  }, 20000);
+    } else {if(cb)cb([]);}
+  });
 }
 
 
