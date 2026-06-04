@@ -4078,6 +4078,26 @@ function _cancelarReeval(){
   tst('Reevaluación cancelada');
 }
 
+// ══ CARGAR DETALLE DE EVALUACIÓN DESDE QDB ══
+function cargarDetalleEvaluacion(provNom, version, ts, callback){
+  qdbFetch({accion:'cargarDetalle'},function(res){
+    if(!res||!res.ok){if(callback)callback({});return;}
+    var correo=getUsuarioCorreo();
+    var regs=(res.registros||[]).filter(function(r){
+      var propOk=!r.propietario||r.propietario===correo;
+      var nomOk=(r.proveedor||'').trim().toLowerCase()===(provNom||'').trim().toLowerCase();
+      var verOk=(r.version||'')===(version||'');
+      return propOk&&nomOk&&verOk;
+    });
+    var notas={};
+    regs.forEach(function(r){
+      var critAct=crits.find(function(cc){return cc.label===(r.criterio||'');});
+      if(critAct){notas[critAct.id]=parseFloat(r.calificacion)||0;}
+    });
+    if(callback)callback(notas);
+  },8000);
+}
+
 // ══ SELECTOR DE VERSIÓN EN EVALUACIÓN ══
 function buildVersionSelector(provId){
   var wrap=document.getElementById('versionSelectorWrap');
@@ -4159,22 +4179,24 @@ function seleccionarVersion(){
   var critsActuales=crits.map(function(cc){return cc.label+'_'+cc.weight;}).sort().join('|');
   var critsSnap=(hSel.critsSnap||[]).map(function(cc){return cc.label+'_'+cc.weight;}).sort().join('|');
   var critsDifieren=critsSnap&&critsActuales!==critsSnap;
+
+  // Función para aplicar notas y construir eval
+  function aplicarNotasYBuild(notas){
+    notasEval[provActualId]=notas;
+    buildEval();
+  }
+
   if(critsDifieren){
     notasEval[provActualId]={};
     if(warn)warn.style.display='block';
+    buildEval();
   } else {
     if(warn)warn.style.display='none';
-    var notas={};
-    if(hSel.notasSnap&&Object.keys(hSel.notasSnap).length>0){
-      var cAntes=hSel.critsSnap||[];
-      Object.keys(hSel.notasSnap).forEach(function(oldId){
-        var ca=cAntes.find(function(cc){return cc.id===oldId;});
-        if(ca){var critAct=crits.find(function(cc){return cc.label===ca.label;});if(critAct)notas[critAct.id]=hSel.notasSnap[oldId];}
-      });
-    } else if(hSel.det&&hSel.det.length>0){
-      hSel.det.forEach(function(d){var critAct=crits.find(function(cc){return cc.label===d.label;});if(critAct)notas[critAct.id]=parseFloat(d.nota)||0;});
-    }
-    notasEval[provActualId]=notas;
+    // Siempre cargar desde DETALLE de QDB — fuente de verdad
+    tst('⏳ Cargando calificaciones...');
+    cargarDetalleEvaluacion(hSel.nom||'', hSel.version||'', hSel.ts||'', function(notasQDB){
+      aplicarNotasYBuild(notasQDB);
+    });
   }
 
   var fecEl=document.getElementById('evalFecha');
@@ -4192,7 +4214,6 @@ function seleccionarVersion(){
   }
   window._versionEditando=hSel.version||'';
   window._tsEditando=hSel.ts||'';
-  buildEval();
 }
 
 function buildEval(){
