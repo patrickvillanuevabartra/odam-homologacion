@@ -2505,8 +2505,7 @@ function renderListaPaquetes(){
     card.appendChild(acDiv);
 
     card.addEventListener('click',function(e){
-      var t=e.target;
-      while(t&&t!==card){if(t.tagName==='BUTTON')return;t=t.parentElement;}
+      if(e.target.closest('button'))return;
       seleccionarPaquete(pk);
     });
 
