@@ -477,6 +477,20 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
     <div id="provEstado" style="font-size:.84rem;color:var(--muted);"></div>
   </div>
 
+  <!-- Selector de versión -->
+  <div id="versionSelectorWrap" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div style="font-size:.96rem;font-weight:700;color:var(--text);">Versión:</div>
+      <select id="versionSelectorDrop" onchange="seleccionarVersion(this.value)"
+        style="flex:1;min-width:220px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.96rem;font-weight:600;color:var(--primary);background:white;outline:none;cursor:pointer;">
+      </select>
+      <div id="versionIndicativo" style="font-size:.84rem;font-weight:700;padding:6px 14px;border-radius:20px;background:#EFF6FF;color:#0284c7;border:1px solid #BAE6FD;display:none;"></div>
+    </div>
+    <div id="criterioDiffWarn" style="display:none;margin-top:10px;padding:10px 14px;background:#FEF9C3;border:1.5px solid #D97706;border-radius:8px;font-size:.86rem;color:#92400E;">
+      ⚠️ Los criterios de esta versión difieren de los actuales del paquete. Las notas han sido limpiadas — califica desde cero con los criterios actuales.
+    </div>
+  </div>
+
   <!-- Banner de reevaluación -->
   <div id="reevalBanner" style="display:none;margin-bottom:14px;background:#FEF9C3;border:1.5px solid #D97706;border-radius:10px;padding:12px 16px;">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -1291,7 +1305,7 @@ function seleccionarProv(id){
     }
   }
 
-  buildEval();
+  buildVersionSelector(id);
   buildProvSelector();
   mostrarMetaFields(id);
 }
@@ -3930,7 +3944,9 @@ function goStep(n){
         }
       }
     });
-    buildEval(); buildProvSelector();
+    if(provActualId)buildVersionSelector(provActualId);
+    else buildEval();
+    buildProvSelector();
     var mf=document.getElementById('evalMetaFields');
     if(mf)mf.style.display='block';
     if(provActualId)mostrarMetaFields(provActualId);
@@ -4060,6 +4076,123 @@ function _cancelarReeval(){
   var portal=document.querySelector('.portal');
   if(portal)portal.style.paddingTop='0';
   tst('Reevaluación cancelada');
+}
+
+// ══ SELECTOR DE VERSIÓN EN EVALUACIÓN ══
+function buildVersionSelector(provId){
+  var wrap=document.getElementById('versionSelectorWrap');
+  var drop=document.getElementById('versionSelectorDrop');
+  var indic=document.getElementById('versionIndicativo');
+  var warn=document.getElementById('criterioDiffWarn');
+  if(!wrap||!drop)return;
+  var ph=hist.filter(function(h){return h.provId===provId;});
+  ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+  if(!ph.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  if(indic)indic.style.display='none';
+  if(warn)warn.style.display='none';
+  drop.innerHTML='';
+  ph.forEach(function(h,i){
+    var opt=document.createElement('option');
+    opt.value=String(i);
+    var vLabel=h.version||'Evaluación inicial';
+    var fec=h.fec?fmtFecha(h.fec.split('T')[0]):'';
+    opt.textContent=vLabel+(fec?' — '+fec:'');
+    drop.appendChild(opt);
+  });
+  var optNew=document.createElement('option');
+  optNew.value='__nueva__';
+  optNew.textContent='↺ + Nueva reevaluación';
+  drop.appendChild(optNew);
+  drop.selectedIndex=ph.length-1;
+  seleccionarVersion();
+}
+
+function seleccionarVersion(){
+  var drop=document.getElementById('versionSelectorDrop');
+  var indic=document.getElementById('versionIndicativo');
+  var warn=document.getElementById('criterioDiffWarn');
+  var titleEl=document.getElementById('evalStepTitle');
+  var lblFec=document.getElementById('labelFecEval');
+  var lblEva=document.getElementById('labelEvaEval');
+  var metaTitle=document.getElementById('evalMetaTitle');
+  if(!provActualId||!drop)return;
+  var ph=hist.filter(function(h){return h.provId===provActualId;});
+  ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+  var selVal=drop.value;
+
+  if(selVal==='__nueva__'){
+    var ultima=ph.length?ph[ph.length-1]:null;
+    if(ultima&&ultima.notasSnap&&Object.keys(ultima.notasSnap).length>0){
+      notasEval[provActualId]=JSON.parse(JSON.stringify(ultima.notasSnap));
+    } else { notasEval[provActualId]={}; }
+    var numReev=ph.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length+1;
+    var vLabel='Nueva Reevaluación '+numReev;
+    if(indic){indic.textContent='\u21ba '+vLabel;indic.style.display='block';indic.style.background='#FEF9C3';indic.style.color='#92400E';indic.style.borderColor='#D97706';}
+    if(titleEl)titleEl.textContent='Paso 6 — \u21ba '+vLabel;
+    if(lblFec)lblFec.innerHTML='Fecha de '+vLabel+' <span style="color:var(--no)">*</span>';
+    if(lblEva)lblEva.innerHTML='Evaluador de '+vLabel+' <span style="color:var(--no)">*</span>';
+    if(metaTitle)metaTitle.textContent='Datos de la '+vLabel;
+    if(warn)warn.style.display='none';
+    var fecEl=document.getElementById('evalFecha');
+    if(fecEl)fecEl.value=new Date().toISOString().slice(0,16);
+    window._versionEditando='';window._tsEditando='';
+    buildEval();return;
+  }
+
+  var hSel=ph[parseInt(selVal)||0];
+  if(!hSel)return;
+  var vLabel=hSel.version||'Evaluación inicial';
+  var isInicial=(vLabel||'').toLowerCase().indexOf('inici')>-1;
+  if(indic){
+    indic.textContent=(isInicial?'Eval. inicial: ':'Reevaluación: ')+vLabel;
+    indic.style.display='block';
+    indic.style.background=isInicial?'#DCFCE7':'#EFF6FF';
+    indic.style.color=isInicial?'#059669':'#0284c7';
+    indic.style.borderColor=isInicial?'#86EFAC':'#BAE6FD';
+  }
+  if(titleEl)titleEl.textContent='Paso 6 — Editando: '+vLabel;
+  if(lblFec)lblFec.innerHTML='Fecha de '+vLabel+' <span style="color:var(--no)">*</span>';
+  if(lblEva)lblEva.innerHTML='Evaluador de '+vLabel+' <span style="color:var(--no)">*</span>';
+  if(metaTitle)metaTitle.textContent='Editando: '+vLabel;
+
+  var critsActuales=crits.map(function(cc){return cc.label+'_'+cc.weight;}).sort().join('|');
+  var critsSnap=(hSel.critsSnap||[]).map(function(cc){return cc.label+'_'+cc.weight;}).sort().join('|');
+  var critsDifieren=critsSnap&&critsActuales!==critsSnap;
+  if(critsDifieren){
+    notasEval[provActualId]={};
+    if(warn)warn.style.display='block';
+  } else {
+    if(warn)warn.style.display='none';
+    var notas={};
+    if(hSel.notasSnap&&Object.keys(hSel.notasSnap).length>0){
+      var cAntes=hSel.critsSnap||[];
+      Object.keys(hSel.notasSnap).forEach(function(oldId){
+        var ca=cAntes.find(function(cc){return cc.id===oldId;});
+        if(ca){var critAct=crits.find(function(cc){return cc.label===ca.label;});if(critAct)notas[critAct.id]=hSel.notasSnap[oldId];}
+      });
+    } else if(hSel.det&&hSel.det.length>0){
+      hSel.det.forEach(function(d){var critAct=crits.find(function(cc){return cc.label===d.label;});if(critAct)notas[critAct.id]=parseFloat(d.nota)||0;});
+    }
+    notasEval[provActualId]=notas;
+  }
+
+  var fecEl=document.getElementById('evalFecha');
+  var evaEl=document.getElementById('evalResponsable');
+  var selEva=document.getElementById('evalResponsableSelect');
+  if(fecEl&&hSel.fec){
+    var fecVal=hSel.fec.indexOf('T')>-1?hSel.fec.slice(0,16):hSel.fec+'T00:00';
+    fecEl.value=fecVal;
+  }
+  if(hSel.eva&&selEva){
+    var found=false;
+    for(var j=0;j<selEva.options.length;j++){if(selEva.options[j].value===hSel.eva){selEva.selectedIndex=j;found=true;break;}}
+    if(!found){selEva.value='';if(evaEl){evaEl.style.display='block';evaEl.value=hSel.eva;}}
+    else{if(evaEl)evaEl.style.display='none';}
+  }
+  window._versionEditando=hSel.version||'';
+  window._tsEditando=hSel.ts||'';
+  buildEval();
 }
 
 function buildEval(){
@@ -4845,12 +4978,13 @@ function buildResults(){
     btnEditar.style.marginLeft='4px';
     btnEditar.title='Modificar la evaluación de este proveedor';
     btnEditar.textContent='✏️ Editar';
-    (function(pid){btnEditar.addEventListener('click',function(){
-      // ir al paso 4 con este proveedor seleccionado (como edición, no reevaluación)
+    (function(pid,dVersion,dTs){btnEditar.addEventListener('click',function(){
       provActualId=pid;
-      // restaurar notas de la última evaluación guardada
-      var ultimaEval=null;
-      for(var hi=hist.length-1;hi>=0;hi--){if(hist[hi].provId===pid){ultimaEval=hist[hi];break;}}
+      // Buscar la versión específica clickeada
+      var ph=hist.filter(function(h){return h.provId===pid;});
+      ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+      var ultimaEval=ph.find(function(h){return h.version===dVersion&&(h.ts||'')===(dTs||'');});
+      if(!ultimaEval)for(var hi=hist.length-1;hi>=0;hi--){if(hist[hi].provId===pid){ultimaEval=hist[hi];break;}}
       // Restaurar solo notas de criterios coincidentes por nombre
       var notasRest2={};
       if(ultimaEval){
