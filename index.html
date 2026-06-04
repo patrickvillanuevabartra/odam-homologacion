@@ -4937,9 +4937,8 @@ function buildResults(){
         hist=hist.filter(function(h){
           return !(h.provId===pid&&h.version===version&&Math.abs(h.total-total)<0.001);
         });
-        if(paqueteActual)guardarPaqueteActual();
         buildResults();
-        // Eliminar de QDB si tiene _qid
+        // Eliminar de QDB si tiene _qid — NO guardar paquete para no sobreescribir historial
         if(hElim&&hElim._qid){
           qdbFetch({accion:'eliminarResumen',qid:hElim._qid},function(res){
             tst(res&&res.ok?'✅ Evaluación eliminada de QDB':'✅ Eliminada localmente (sin conexión)');
