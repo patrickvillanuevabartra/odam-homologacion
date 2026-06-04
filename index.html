@@ -4716,7 +4716,8 @@ function buildResults(){
           provId:p.id, nom:p.nom||h.nom, ruc:p.ruc||h.ruc,
           total:h.total||0, catFinal:getFinalCat(h.total||0),
           catItem:ci, catInterp:h.catInterp||(ci?ci.interp:''),
-          fec:h.fec||'', eva:h.eva||'', version:h.version||'Evaluación inicial',
+          fec:h.fec||'', fecHora:h.fecHora||'', ts:h.ts||'',
+          eva:h.eva||'', version:h.version||'Evaluación inicial',
           critsSnap:h.critsSnap||[], scaleSnap:h.scaleSnap||[],
           _arch:p._arch||false, _dest:p._dest||false,
           det:h.det||[]
@@ -4778,11 +4779,12 @@ function buildResults(){
     var diffColor=diffVal===null?'var(--muted)':diffVal>0?'#059669':diffVal<0?'#DC2626':'#64748B';
     var diffStr=diffVal===null?'—':(diffVal>=0?'▲ +':'▼ ')+Math.abs(diffVal).toFixed(3);
     var pctStr=diffPct===null?'—':(diffPct>=0?'+':'')+diffPct+'%';
-    // Calcular estado desde datos ya filtrados y ordenados
-    var evalsProv=datosFiltrados.filter(function(x){return x.provId===d.provId;});
+    // Calcular estado desde hist ordenado
+    var histProv=hist.filter(function(h){return h.provId===d.provId;});
+    histProv.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
     var consD=0;
-    for(var ei=evalsProv.length-1;ei>=0;ei--){
-      if(evalsProv[ei].catFinal==='D') consD++;
+    for(var ei=histProv.length-1;ei>=0;ei--){
+      if(getFinalCat(histProv[ei].total||0)==='D') consD++;
       else break;
     }
     var estProv=consD===0?'normal':consD===1?'alerta':consD===2?'lista_negra':'vetado';
