@@ -1225,10 +1225,20 @@ function mostrarMetaFields(pid){
   var title=document.getElementById('evalMetaTitle');
   var lblFec=document.getElementById('labelFecEval');
   var lblEva=document.getElementById('labelEvaEval');
-  var isReeval=p&&p.guardado;
-  if(title)title.textContent=isReeval?'Datos de la Reevaluación':'Datos de la Evaluación';
-  if(lblFec)lblFec.textContent=isReeval?'📅 Fecha de Reevaluación':'📅 Fecha de Evaluación';
-  if(lblEva)lblEva.textContent=isReeval?'👤 Responsable de Reevaluación':'👤 Responsable de Evaluación';
+  // Obtener versión activa del dropdown
+  var drop=document.getElementById('versionSelectorDrop');
+  var versionActiva='Evaluación inicial';
+  if(drop&&drop.value==='__nueva__'){
+    var ph=hist.filter(function(h){return h.provId===pid;});
+    var numReev=ph.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length+1;
+    versionActiva='Nueva Reevaluación '+numReev;
+  } else if(drop&&drop.value!=='__inicial__'&&drop.selectedIndex>=0){
+    var selOpt=drop.options[drop.selectedIndex];
+    if(selOpt)versionActiva=selOpt.textContent.split(' — ')[0];
+  }
+  if(title)title.textContent='Datos de: '+versionActiva;
+  if(lblFec)lblFec.innerHTML='📅 Fecha de '+versionActiva+' <span style="color:var(--no)">*</span>';
+  if(lblEva)lblEva.innerHTML='👤 Evaluador de '+versionActiva+' <span style="color:var(--no)">*</span>';
   // Set datetime-local value (format: YYYY-MM-DDTHH:mm)
   var nowDT=new Date().toISOString().slice(0,16);
   var savedDT=p?(p.fec&&p.fec.indexOf('T')>-1?p.fec.slice(0,16):(p.fec?p.fec+'T00:00':nowDT)):nowDT;
