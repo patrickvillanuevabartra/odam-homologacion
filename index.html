@@ -923,7 +923,7 @@ function appendProvRow(p, i){
           btn.style.cssText='display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border:1.5px solid var(--border);border-radius:7px;background:white;cursor:pointer;font-family:inherit;font-size:.86rem;';
           btn.innerHTML='<strong>'+esc(r.nombre||'')+'</strong> <span style="color:var(--muted)">RUC: '+esc(r.ruc||'—')+'</span>';
           btn.onclick=function(){
-            var ids={nombre:'pNom_'+pid,ruc:'pRuc_'+pid,dir:'pDir_'+pid,mat:'pMat_'+pid};
+            var ids={nombre:'pNom_'+p.id,ruc:'pRuc_'+p.id,dir:'pDir_'+p.id,mat:'pMat_'+p.id};
             var vals={nombre:r.nombre||'',ruc:r.ruc||'',dir:r.direccion||'',mat:r.rubro_sector||''};
             Object.keys(ids).forEach(function(k){var el=document.getElementById(ids[k]);if(el)el.value=vals[k]||'';});
             resultBuscar.style.display='none';
