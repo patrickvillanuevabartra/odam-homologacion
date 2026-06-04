@@ -601,10 +601,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div id="resComparativa" style="margin-bottom:24px;"></div>
 
   <!-- EVOLUCIÓN POR PROVEEDOR -->
-  <div id="histSection" style="display:none !important;margin-top:8px;">
-    <p class="stitle" style="margin-bottom:14px;">📈 Evolución de Reevaluaciones</p>
-    <div id="compWrap"></div>
-  </div>
+  <div <div id="histSection" style="display:none !important;"></div>
 
   <!-- GUARDAR -->
   <div class="acts" style="margin-top:20px">
@@ -4772,7 +4769,7 @@ function buildResults(){
     var versionLabel=(d.version||'').toLowerCase().indexOf('inici')>-1?'Evaluación inicial':d.version||'—';
     var isInicial=(d.version||'').toLowerCase().indexOf('inici')>-1;
     // Calcular hora
-    var horaStr=d.ts&&d.ts.indexOf('T')>-1?new Date(d.ts).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):(d.fecHora||'—');
+    var horaStr=d.fecHora||(d.ts&&d.ts.indexOf('T')>-1?new Date(d.ts).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'—');
     // Calcular variación respecto a evaluación anterior del mismo proveedor
     var provHistPrev=datosFiltrados.slice(0,i).filter(function(x){return x.provId===d.provId;});
     var prevEval=provHistPrev.length?provHistPrev[provHistPrev.length-1]:null;
@@ -4781,7 +4778,14 @@ function buildResults(){
     var diffColor=diffVal===null?'var(--muted)':diffVal>0?'#059669':diffVal<0?'#DC2626':'#64748B';
     var diffStr=diffVal===null?'—':(diffVal>=0?'▲ +':'▼ ')+Math.abs(diffVal).toFixed(3);
     var pctStr=diffPct===null?'—':(diffPct>=0?'+':'')+diffPct+'%';
-    var estProv=calcularEstadoProveedor(d.provId);
+    // Calcular estado desde datos ya filtrados y ordenados
+    var evalsProv=datosFiltrados.filter(function(x){return x.provId===d.provId;});
+    var consD=0;
+    for(var ei=evalsProv.length-1;ei>=0;ei--){
+      if(evalsProv[ei].catFinal==='D') consD++;
+      else break;
+    }
+    var estProv=consD===0?'normal':consD===1?'alerta':consD===2?'lista_negra':'vetado';
 
     tr.innerHTML='<td style="font-weight:700;color:var(--muted)">'+(i+1)+'</td>'
       +'<td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;background:'+(isInicial?'#DCFCE7':'#EFF6FF')+';color:'+(isInicial?'#059669':'#0284c7')+';">'+esc(versionLabel)+'</span></td>'
