@@ -3929,6 +3929,26 @@ function goStep(n){
 
   // ── Paso 6 (Evaluación) ──
   if(n===5){
+    // Cargar criterios desde paquete si están vacíos
+    if(paqueteActual&&paqueteActual.criterios&&paqueteActual.criterios.length&&!crits.length){
+      crits=[];
+      var critListEl=document.getElementById('critList');
+      if(critListEl)critListEl.innerHTML='';
+      paqueteActual.criterios.forEach(function(cc){
+        var id='c'+(++seq);
+        crits.push({id:id,label:cc.label,weight:cc.weight});
+        evFiles[id]=[];
+      });
+      tst('📋 '+crits.length+' criterios cargados desde paquete');
+    }
+    // También cargar escala si está vacía
+    if(paqueteActual&&paqueteActual.escala&&paqueteActual.escala.length&&(!SCALE.length||SCALE.length<2)){
+      SCALE=paqueteActual.escala.map(function(s){
+        return{cat:s.cat,min:parseFloat(s.min)||0,max:parseFloat(s.max)||1,
+          label:s.label||'Calificación '+s.cat,interp:s.interp||'',
+          color:getScaleColor(s.cat),bg:getScaleBg(s.cat)};
+      });
+    }
     if(paqueteActual)guardarPaqueteActual();
     // Restaurar notas de todos los proveedores antes de construir sliders
     provs.forEach(function(p){
