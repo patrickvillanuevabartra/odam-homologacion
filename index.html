@@ -3124,8 +3124,13 @@ function renderProductos(){
 
 function guardarPaqueteActual(){
   if(!paqueteActual)return;
-  paqueteActual.criterios=crits.map(function(c){return{label:c.label,weight:c.weight};});
-  paqueteActual.escala=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};});
+  // Solo sobrescribir criterios si crits tiene datos
+  if(crits.length>0){
+    paqueteActual.criterios=crits.map(function(c){return{label:c.label,weight:c.weight};});
+  }
+  if(SCALE.length>0){
+    paqueteActual.escala=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};});
+  }
   // Preservar nombres de plantilla y escala activas
   if(paqueteActual._plantillaActual) paqueteActual.plantillaActual=paqueteActual._plantillaActual;
   if(paqueteActual._escalaActual) paqueteActual.escalaActual=paqueteActual._escalaActual;
