@@ -4854,10 +4854,29 @@ function buildResults(){
 
     // ── Botón Eliminar evaluación ──
 
+    // Botón Eliminar evaluación
+    var btnEliminar=document.createElement('button');
+    btnEliminar.className='btn btn-o btn-sm';
+    btnEliminar.style.cssText='margin-left:4px;color:var(--no);border-color:var(--no);';
+    btnEliminar.title='Eliminar esta evaluación';
+    btnEliminar.textContent='🗑 Eliminar';
+    (function(pid,version,total){
+      btnEliminar.addEventListener('click',function(){
+        if(!confirm('¿Eliminar esta evaluación de '+pid+'?'))return;
+        hist=hist.filter(function(h){
+          return !(h.provId===pid&&h.version===version&&Math.abs(h.total-total)<0.001);
+        });
+        if(paqueteActual)guardarPaqueteActual();
+        buildResults();
+        tst('✅ Evaluación eliminada');
+      });
+    })(d.provId, d.version, d.total);
+
     tdBtns.appendChild(btnEditar);
     tdBtns.appendChild(btnStar);
     tdBtns.appendChild(btnArch);
     tdBtns.appendChild(btnReeval);
+    tdBtns.appendChild(btnEliminar);
     tbodyEl.appendChild(tr);
   });
   comp.innerHTML='';
