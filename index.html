@@ -1225,20 +1225,14 @@ function mostrarMetaFields(pid){
   var title=document.getElementById('evalMetaTitle');
   var lblFec=document.getElementById('labelFecEval');
   var lblEva=document.getElementById('labelEvaEval');
-  // Obtener versión activa del dropdown
+  // Labels los maneja buildVersionSelector/seleccionarVersion — aquí solo mostramos el panel
+  // Solo actualizar si el dropdown no está activo
   var drop=document.getElementById('versionSelectorDrop');
-  var versionActiva='Evaluación inicial';
-  if(drop&&drop.value==='__nueva__'){
-    var ph=hist.filter(function(h){return h.provId===pid;});
-    var numReev=ph.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length+1;
-    versionActiva='Nueva Reevaluación '+numReev;
-  } else if(drop&&drop.value!=='__inicial__'&&drop.selectedIndex>=0){
-    var selOpt=drop.options[drop.selectedIndex];
-    if(selOpt)versionActiva=selOpt.textContent.split(' — ')[0];
+  if(!drop||!drop.value||drop.value===''){
+    if(title)title.textContent='Datos de: Evaluación inicial';
+    if(lblFec)lblFec.innerHTML='📅 Fecha de Evaluación inicial <span style="color:var(--no)">*</span>';
+    if(lblEva)lblEva.innerHTML='👤 Evaluador de Evaluación inicial <span style="color:var(--no)">*</span>';
   }
-  if(title)title.textContent='Datos de: '+versionActiva;
-  if(lblFec)lblFec.innerHTML='📅 Fecha de '+versionActiva+' <span style="color:var(--no)">*</span>';
-  if(lblEva)lblEva.innerHTML='👤 Evaluador de '+versionActiva+' <span style="color:var(--no)">*</span>';
   // Set datetime-local value (format: YYYY-MM-DDTHH:mm)
   var nowDT=new Date().toISOString().slice(0,16);
   var savedDT=p?(p.fec&&p.fec.indexOf('T')>-1?p.fec.slice(0,16):(p.fec?p.fec+'T00:00':nowDT)):nowDT;
@@ -4142,7 +4136,10 @@ function buildVersionSelector(provId){
     if(titleEl)titleEl.textContent='Paso 6 — Nueva Evaluación inicial';
     if(lblFec)lblFec.innerHTML='📅 Fecha de Evaluación inicial <span style="color:var(--no)">*</span>';
     if(lblEva)lblEva.innerHTML='👤 Evaluador de Evaluación inicial <span style="color:var(--no)">*</span>';
-    if(metaTitle)metaTitle.textContent='Datos de la Evaluación inicial';
+    if(metaTitle)metaTitle.textContent='Datos de: Evaluación inicial';
+    // Mostrar el panel de meta fields
+    var mf=document.getElementById('evalMetaFields');
+    if(mf)mf.style.display='block';
     window._versionEditando='';window._tsEditando='';
     return;
   }
