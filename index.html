@@ -236,7 +236,6 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div id="paqueteBadge" style="display:none;align-items:center;gap:6px;padding:5px 12px;background:#EFF6FF;border:1.5px solid #BAE6FD;border-radius:8px;flex-shrink:0;font-size:.82rem;color:#0284c7;font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
   📦 <span id="paqueteBadgeNom">—</span>
 </div>
-<button onclick="abrirPanelAdmin()" id="btnAdmin" style="display:none;padding:6px 14px;border-radius:8px;background:#1E293B;color:white;border:none;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;">⚙️ Admin</button>
 <div id="userBadge" style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;flex-shrink:0;"><span style="font-size:1.1rem;">👤</span><div><div id="userBadgeName" style="font-size:.82rem;font-weight:700;color:var(--text);line-height:1.2;">—</div><div id="userBadgeEmail" style="font-size:.72rem;color:var(--muted);line-height:1.2;">—</div></div><button onclick="doLogout()" title="Cerrar sesión" style="background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:.75rem;color:var(--muted);padding:3px 7px;font-family:inherit;">✕ Salir</button></div>
 </div>
 
@@ -751,88 +750,6 @@ function getScaleByNota(v){
 function getFinalCat(total){return getScaleByNota(total).cat;}
 function getScaleItem(cat){return SCALE.find(function(s){return s.cat===cat;})||SCALE[SCALE.length-1];}
 
-
-// ══ SISTEMA DE ESTADOS DE PROVEEDOR ══
-var ADMIN_EMAIL = 'patrick.villanueva@urp.edu.pe';
-var CONFIG_ESTADOS = {mesesBloqueo: 6}; // configurable por admin
-
-function calcularEstadoProveedor(provId){
-  // Obtener historial del proveedor ordenado cronológicamente
-  var ph = hist.filter(function(h){return h.provId===provId;});
-  if(!ph.length) return {estado:'normal',consecutivasD:0};
-  
-  // Ordenar por ts
-  ph.sort(function(a,b){return (a.ts||'').localeCompare(b.ts||'');});
-  
-  // Verificar si está manualmente reactivado
-  var p=getProv(provId);
-  if(p&&p._reactivado) return {estado:'normal',consecutivasD:0,reactivado:true};
-  
-  // Contar D consecutivas desde la última evaluación hacia atrás
-  var consecutivas=0;
-  for(var i=ph.length-1;i>=0;i--){
-    if(ph[i].catFinal==='D') consecutivas++;
-    else break;
-  }
-  
-  if(consecutivas===0) return {estado:'normal',consecutivasD:0};
-  if(consecutivas===1) return {estado:'alerta',consecutivasD:1};
-  
-  // 2+ D consecutivas — verificar periodo de bloqueo
-  if(consecutivas>=3){
-    return {estado:'vetado',consecutivasD:consecutivas};
-  }
-  
-  // Lista negra — verificar si expiró el periodo
-  var ultimaEval=ph[ph.length-1];
-  var fechaBloqueo=new Date(ultimaEval.ts||ultimaEval.fec||'');
-  var ahora=new Date();
-  var mesesTranscurridos=(ahora-fechaBloqueo)/(1000*60*60*24*30);
-  if(mesesTranscurridos>=CONFIG_ESTADOS.mesesBloqueo){
-    return {estado:'normal',consecutivasD:0,expirado:true};
-  }
-  return {estado:'lista_negra',consecutivasD:consecutivas,
-    fechaExpira:new Date(fechaBloqueo.getTime()+CONFIG_ESTADOS.mesesBloqueo*30*24*60*60*1000)};
-}
-
-function getBadgeEstado(estado){
-  var badges={
-    normal:'',
-    alerta:'<span style="background:#FEF9C3;color:#92400E;border:1px solid #D97706;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700;">⚠️ Alerta</span>',
-    lista_negra:'<span style="background:#FEE2E2;color:#991B1B;border:1px solid #DC2626;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700;">🚫 Lista negra</span>',
-    vetado:'<span style="background:#1E293B;color:white;border:1px solid #0F172A;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700;">❌ Vetado</span>'
-  };
-  return badges[estado]||'';
-}
-
-function esProveedorBloqueado(provId){
-  var est=calcularEstadoProveedor(provId);
-  return est.estado==='lista_negra'||est.estado==='vetado';
-}
-
-function reactivarProveedor(provId){
-  if(getUsuarioCorreo()!==ADMIN_EMAIL){
-    tst('⚠️ Solo el administrador puede reactivar proveedores');return;
-  }
-  var p=getProv(provId);
-  if(!p)return;
-  p._reactivado=true;
-  tst('✅ Proveedor "'+p.nom+'" reactivado');
-  buildResults();
-}
-
-function abrirPanelAdmin(){
-  if(getUsuarioCorreo()!==ADMIN_EMAIL){
-    tst('⚠️ Acceso solo para administrador');return;
-  }
-  var meses=prompt('Meses de bloqueo para Lista Negra (actual: '+CONFIG_ESTADOS.mesesBloqueo+'):',CONFIG_ESTADOS.mesesBloqueo);
-  if(meses&&!isNaN(meses)&&parseInt(meses)>0){
-    CONFIG_ESTADOS.mesesBloqueo=parseInt(meses);
-    tst('✅ Periodo de bloqueo actualizado a '+CONFIG_ESTADOS.mesesBloqueo+' meses');
-    buildResults();
-  }
-}
-
 var crits=[], evFiles={}, hist=[], notasEval={}, seq=0;
 // proveedores: [{id, nom, ruc, dir, fec, mat, eva, guardado}]
 var provs=[], provSeq=0, provActualId=null;
@@ -1230,10 +1147,7 @@ function buildProvSelector(){
     var hasNotas=notasEval[p.id]&&Object.keys(notasEval[p.id]).length>0;
     var hasHist=hist.some(function(h){return h.provId===p.id;});
     var isEval=hasNotas||(p.guardado&&hasHist);
-    var estOpt=calcularEstadoProveedor(p.id);
-    var bloq=estOpt.estado==='lista_negra'||estOpt.estado==='vetado';
-    opt.textContent=(bloq?'🚫 ':(isEval?'✓ ':'')+'')+( p.nom||'Sin nombre')+(p.ruc?' — '+p.ruc:'')+(bloq?' ['+estOpt.estado.replace('_',' ')+']':'');
-    opt.disabled=bloq;
+    opt.textContent=(isEval?'✓ ':'')+( p.nom||'Sin nombre')+(p.ruc?' — '+p.ruc:'');
     if(p.id===curVal)opt.selected=true;
     drop.appendChild(opt);
   });
@@ -2382,9 +2296,6 @@ function aplicarUsuario(){
   var bEmail=document.getElementById('userBadgeEmail');
   if(bName)bName.textContent=_usuarioActual.nombre;
   if(bEmail)bEmail.textContent=_usuarioActual.correo;
-  // Mostrar botón admin si es administrador
-  var btnAdmin=document.getElementById('btnAdmin');
-  if(btnAdmin)btnAdmin.style.display=_usuarioActual.correo===ADMIN_EMAIL?'block':'none';
 }
 
 function getUsuarioId()    {return _usuarioActual?_usuarioActual.id:'anonimo';}
@@ -4806,7 +4717,7 @@ function buildResults(){
   tableWrap.style.cssText='overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);';
   var tableEl=document.createElement('table');
   tableEl.className='dt'; tableEl.style.cssText='margin:0;min-width:700px;';
-  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Categoría</th><th>Estado</th><th>Acciones</th></tr></thead>';
+  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Categoría</th><th>Acciones</th></tr></thead>';
   var tbodyEl=document.createElement('tbody');
   tableEl.appendChild(tbodyEl);
   if(!datosFiltrados.length){
@@ -4848,7 +4759,6 @@ function buildResults(){
         +'<div style="height:4px;background:rgba(0,0,0,.1);border-radius:2px;margin-top:3px;"><div style="height:100%;width:'+bar+'%;background:'+(ci?ci.color:'var(--border)')+';border-radius:2px;"></div></div>'
       +'</td>'
       +'<td><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;background:'+(ci?ci.color:'var(--subtle)')+';color:white;font-weight:700;font-size:1rem;">'+(d.catFinal||'—')+'</span></td>'
-      +'<td>'+getBadgeEstado(calcularEstadoProveedor(d.provId).estado)+'</td>'
       +'<td></td>';
 
     // botones con addEventListener para evitar problemas de comillas
@@ -4944,36 +4854,10 @@ function buildResults(){
 
     // ── Botón Eliminar evaluación ──
 
-    // Botón Eliminar
-    var btnElim=document.createElement('button');
-    btnElim.className='btn btn-o btn-sm';
-    btnElim.style.cssText='margin-left:4px;color:var(--no);border-color:var(--no);';
-    btnElim.textContent='🗑 Eliminar';
-    (function(pid,ver,tot){
-      btnElim.addEventListener('click',function(){
-        if(!confirm('¿Eliminar esta evaluación?'))return;
-        hist=hist.filter(function(h){return !(h.provId===pid&&h.version===ver&&Math.abs(h.total-tot)<0.001);});
-        if(paqueteActual)guardarPaqueteActual();
-        buildResults();tst('✅ Evaluación eliminada');
-      });
-    })(d.provId,d.version,d.total);
-
-    // Botón Reactivar (solo si está vetado o lista negra y es admin)
-    var estProv=calcularEstadoProveedor(d.provId);
-    if((estProv.estado==='vetado'||estProv.estado==='lista_negra')&&getUsuarioCorreo()===ADMIN_EMAIL){
-      var btnReact=document.createElement('button');
-      btnReact.className='btn btn-o btn-sm';
-      btnReact.style.cssText='margin-left:4px;color:#059669;border-color:#059669;';
-      btnReact.textContent='↺ Reactivar';
-      (function(pid){btnReact.addEventListener('click',function(){reactivarProveedor(pid);});})(d.provId);
-      tdBtns.appendChild(btnReact);
-    }
-
     tdBtns.appendChild(btnEditar);
     tdBtns.appendChild(btnStar);
     tdBtns.appendChild(btnArch);
     tdBtns.appendChild(btnReeval);
-    tdBtns.appendChild(btnElim);
     tbodyEl.appendChild(tr);
   });
   comp.innerHTML='';
