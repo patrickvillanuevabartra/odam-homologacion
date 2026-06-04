@@ -4664,6 +4664,32 @@ function sanitizarHist(){
   });
 }
 
+
+// ══ ESTADOS DE PROVEEDOR ══
+function calcularEstadoProveedor(provId){
+  var ph=hist.filter(function(h){return h.provId===provId;});
+  if(!ph.length) return 'normal';
+  ph.sort(function(a,b){return (a.ts||'').localeCompare(b.ts||'');});
+  var p=getProv(provId);
+  if(p&&p._reactivado) return 'normal';
+  var cons=0;
+  for(var i=ph.length-1;i>=0;i--){
+    if(ph[i].catFinal==='D') cons++;
+    else break;
+  }
+  if(cons===0) return 'normal';
+  if(cons===1) return 'alerta';
+  if(cons===2) return 'lista_negra';
+  return 'vetado';
+}
+
+function getBadgeEstado(estado){
+  if(estado==='alerta') return '<span style="background:#FEF9C3;color:#92400E;border:1px solid #D97706;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700;">⚠️ Alerta</span>';
+  if(estado==='lista_negra') return '<span style="background:#FEE2E2;color:#991B1B;border:1px solid #DC2626;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700;">🚫 Lista negra</span>';
+  if(estado==='vetado') return '<span style="background:#1E293B;color:white;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700;">❌ Vetado</span>';
+  return '';
+}
+
 function buildResults(){
   sanitizarHist();
   buildDashboard();
@@ -4717,7 +4743,7 @@ function buildResults(){
   tableWrap.style.cssText='overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);';
   var tableEl=document.createElement('table');
   tableEl.className='dt'; tableEl.style.cssText='margin:0;min-width:700px;';
-  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Categoría</th><th>Acciones</th></tr></thead>';
+  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Categoría</th><th>Estado</th><th>Acciones</th></tr></thead>';
   var tbodyEl=document.createElement('tbody');
   tableEl.appendChild(tbodyEl);
   if(!datosFiltrados.length){
@@ -4759,6 +4785,7 @@ function buildResults(){
         +'<div style="height:4px;background:rgba(0,0,0,.1);border-radius:2px;margin-top:3px;"><div style="height:100%;width:'+bar+'%;background:'+(ci?ci.color:'var(--border)')+';border-radius:2px;"></div></div>'
       +'</td>'
       +'<td><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;background:'+(ci?ci.color:'var(--subtle)')+';color:white;font-weight:700;font-size:1rem;">'+(d.catFinal||'—')+'</span></td>'
+      +'<td>'+getBadgeEstado(calcularEstadoProveedor(d.provId))+'</td>'
       +'<td></td>';
 
     // botones con addEventListener para evitar problemas de comillas
@@ -4854,10 +4881,27 @@ function buildResults(){
 
     // ── Botón Eliminar evaluación ──
 
+    var btnElim=document.createElement('button');
+    btnElim.className='btn btn-o btn-sm';
+    btnElim.style.cssText='margin-left:4px;color:var(--no);border-color:var(--no);';
+    btnElim.textContent='🗑 Eliminar';
+    (function(pid,ver,tot){
+      btnElim.addEventListener('click',function(){
+        if(!confirm('¿Eliminar esta evaluación?'))return;
+        hist=hist.filter(function(h){
+          return !(h.provId===pid&&h.version===ver&&Math.abs(h.total-tot)<0.001);
+        });
+        if(paqueteActual)guardarPaqueteActual();
+        buildResults();
+        tst('✅ Evaluación eliminada');
+      });
+    })(d.provId,d.version,d.total);
+
     tdBtns.appendChild(btnEditar);
     tdBtns.appendChild(btnStar);
     tdBtns.appendChild(btnArch);
     tdBtns.appendChild(btnReeval);
+    tdBtns.appendChild(btnElim);
     tbodyEl.appendChild(tr);
   });
   comp.innerHTML='';
