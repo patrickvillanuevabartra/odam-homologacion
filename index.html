@@ -4113,11 +4113,29 @@ function buildVersionSelector(provId){
   if(!wrap||!drop)return;
   var ph=hist.filter(function(h){return h.provId===provId;});
   ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
-  if(!ph.length){wrap.style.display='none';return;}
   wrap.style.display='block';
   if(indic)indic.style.display='none';
   if(warn)warn.style.display='none';
   drop.innerHTML='';
+  // Si no hay historial, mostrar solo "Evaluación inicial"
+  if(!ph.length){
+    var optIni=document.createElement('option');
+    optIni.value='__inicial__';
+    optIni.textContent='Evaluación inicial';
+    drop.appendChild(optIni);
+    // Mostrar indicativo
+    var titleEl=document.getElementById('evalStepTitle');
+    var lblFec=document.getElementById('labelFecEval');
+    var lblEva=document.getElementById('labelEvaEval');
+    var metaTitle=document.getElementById('evalMetaTitle');
+    if(indic){indic.textContent='📋 Evaluación inicial';indic.style.display='block';indic.style.background='#DCFCE7';indic.style.color='#059669';indic.style.borderColor='#86EFAC';}
+    if(titleEl)titleEl.textContent='Paso 6 — Nueva Evaluación inicial';
+    if(lblFec)lblFec.innerHTML='📅 Fecha de Evaluación inicial <span style="color:var(--no)">*</span>';
+    if(lblEva)lblEva.innerHTML='👤 Evaluador de Evaluación inicial <span style="color:var(--no)">*</span>';
+    if(metaTitle)metaTitle.textContent='Datos de la Evaluación inicial';
+    window._versionEditando='';window._tsEditando='';
+    return;
+  }
   ph.forEach(function(h,i){
     var opt=document.createElement('option');
     opt.value=String(i);
