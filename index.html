@@ -2796,6 +2796,7 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
           catInterp:r.interpretacion||'',
           catItem:ci,version:rVersion,
           ts:r.timestamp||rFec||'',
+          _qid:r._qid||'',
           det:[],notasSnap:{}
         });
         pMatch.guardado=true;
@@ -4929,12 +4930,23 @@ function buildResults(){
     (function(pid,version,total){
       btnEliminar.addEventListener('click',function(){
         if(!confirm('¿Eliminar esta evaluación de '+pid+'?'))return;
+        // Buscar _qid para eliminar de QDB
+        var hElim=hist.find(function(h){
+          return h.provId===pid&&h.version===version&&Math.abs(h.total-total)<0.001;
+        });
         hist=hist.filter(function(h){
           return !(h.provId===pid&&h.version===version&&Math.abs(h.total-total)<0.001);
         });
         if(paqueteActual)guardarPaqueteActual();
         buildResults();
-        tst('✅ Evaluación eliminada');
+        // Eliminar de QDB si tiene _qid
+        if(hElim&&hElim._qid){
+          qdbFetch({accion:'eliminarResumen',qid:hElim._qid},function(res){
+            tst(res&&res.ok?'✅ Evaluación eliminada de QDB':'✅ Eliminada localmente (sin conexión)');
+          },5000);
+        } else {
+          tst('✅ Evaluación eliminada');
+        }
       });
     })(d.provId, d.version, d.total);
 
