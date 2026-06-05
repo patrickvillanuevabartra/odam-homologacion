@@ -4172,41 +4172,23 @@ function _cancelarReeval(){
 
 // ══ CARGAR DETALLE DE EVALUACIÓN DESDE QDB ══
 function cargarDetalleEvaluacion(provNom, version, ts, callback){
-  qdbFetch({accion:'cargarDetalle'},function(res){
+  // Usar acción filtrada en servidor — evita traer 500 registros al cliente
+  var correo=getUsuarioCorreo();
+  var pkNom=paqueteActual?paqueteActual.nombre:'';
+  qdbFetch({
+    accion:'cargarDetalleFiltrado',
+    proveedor:encodeURIComponent(provNom||''),
+    version:encodeURIComponent(version||''),
+    propietario:encodeURIComponent(correo||''),
+    paquete:encodeURIComponent(pkNom||'')
+  },function(res){
     if(!res||!res.ok){if(callback)callback({});return;}
-    var correo=getUsuarioCorreo();
-    function normVer(v){return (v||'').toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').trim();}
-    var verNorm=normVer(version);
-    var pkId=paqueteActual?paqueteActual.id:'';
-    var pkNom=paqueteActual?paqueteActual.nombre:'';
-    // Filtrar por propietario + proveedor + version
-    var regs=(res.registros||[]).filter(function(r){
-      var propOk=r.propietario===correo;
-      var nomOk=(r.proveedor||'').trim().toLowerCase()===(provNom||'').trim().toLowerCase();
-      var verOk=normVer(r.version)===verNorm;
-      return propOk&&nomOk&&verOk;
-    });
-    // Si hay múltiples detalles (registros viejos), agrupar por timestamp
-    // y quedarse con los del timestamp más reciente
-    if(regs.length>0){
-      // Obtener timestamps únicos y tomar el más reciente
-      var tsList=regs.map(function(r){return normalizarFechaQDB(r.timestamp)||r.timestamp||'';});
-      tsList.sort();
-      var tsMax=tsList[tsList.length-1];
-      // Si hay ts válido, filtrar por el más reciente; si no, usar todos
-      if(tsMax){
-        var regsLatest=regs.filter(function(r){
-          return (normalizarFechaQDB(r.timestamp)||r.timestamp||'')=== tsMax;
-        });
-        if(regsLatest.length>0) regs=regsLatest;
-      }
-    }
     var notas={};
-    regs.forEach(function(r){
+    (res.registros||[]).forEach(function(r){
       var critAct=crits.find(function(cc){return cc.label===(r.criterio||'');});
-      if(critAct){notas[critAct.id]=parseFloat(r.calificacion)||0;}
+      if(critAct) notas[critAct.id]=parseFloat(r.calificacion)||0;
     });
-    console.log('cargarDetalle: regs='+regs.length+' notas='+JSON.stringify(notas));
+    console.log('cargarDetalleFiltrado: regs='+(res.registros||[]).length+' notas='+JSON.stringify(notas));
     if(callback)callback(notas);
   },8000);
 }
