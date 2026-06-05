@@ -4151,15 +4151,15 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
   qdbFetch({accion:'cargarDetalle'},function(res){
     if(!res||!res.ok){if(callback)callback({});return;}
     var correo=getUsuarioCorreo();
-    function normVer(v){return (v||'').toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').trim();}
-    var verNorm=normVer(version);
+    function normStr(v){return (v||'').toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').trim();}
     var pkId=paqueteActual?paqueteActual.id:'';
     var pkNom=paqueteActual?paqueteActual.nombre:'';
-    // Filtrar: propietario correcto O sin propietario (registros legacy), + proveedor + versión + paquete
+    var verNorm=normStr(version);
+    // Filtrar por proveedor + version + paquete
     var regs=(res.registros||[]).filter(function(r){
       var propOk=!r.propietario||r.propietario===''||r.propietario===correo;
-      var nomOk=(r.proveedor||'').trim().toLowerCase()===(provNom||'').trim().toLowerCase();
-      var verOk=normVer(r.version)===verNorm;
+      var nomOk=normStr(r.proveedor)===normStr(provNom);
+      var verOk=normStr(r.version)===verNorm;
       var pkOk=!r.paquete||r.paquete===''||r.paquete===pkId||r.paquete===pkNom;
       return propOk&&nomOk&&verOk&&pkOk;
     });
@@ -4211,6 +4211,7 @@ function buildVersionSelector(provId){
     var mf=document.getElementById('evalMetaFields');
     if(mf)mf.style.display='block';
     window._versionEditando='';window._tsEditando='';
+    notasEval[provActualId]={};
     buildEval();
     return;
   }
@@ -4285,7 +4286,7 @@ function seleccionarVersion(){
   // Función para aplicar notas y construir eval
   function aplicarNotasYBuild(notas){
     notasEval[provActualId]=notas;
-    setTimeout(function(){buildEval();},50);
+    buildEval();
   }
 
   if(critsDifieren){
@@ -4317,17 +4318,21 @@ function seleccionarVersion(){
   var fecEl=document.getElementById('evalFecha');
   var evaEl=document.getElementById('evalResponsable');
   var selEva=document.getElementById('evalResponsableSelect');
-  // Usar ts (ISO) si está disponible, sino fec
-  var fecSource=hSel.ts||hSel.fec||'';
+  // Usar fec del historial para el input (fecha de evaluación, no timestamp)
+  var fecSource=hSel.fec||'';
   if(fecEl&&fecSource){
-    var fecRaw=fecSource;
     var fecVal='';
-    if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(fecRaw)){
-      fecVal=fecRaw.slice(0,16);
-    } else if(/^\d{4}-\d{2}-\d{2}$/.test(fecRaw)){
-      fecVal=fecRaw+'T00:00';
+    if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(fecSource)){
+      fecVal=fecSource.slice(0,16);
+    } else if(/^\d{4}-\d{2}-\d{2}$/.test(fecSource)){
+      fecVal=fecSource+'T00:00';
     } else {
-      fecVal=new Date().toISOString().slice(0,16);
+      // Formato español - convertir usando ts si existe
+      if(hSel.ts&&/^\d{4}-\d{2}-\d{2}T/.test(hSel.ts)){
+        fecVal=hSel.ts.slice(0,16);
+      } else {
+        fecVal=new Date().toISOString().slice(0,16);
+      }
     }
     fecEl.value=fecVal;
   }
