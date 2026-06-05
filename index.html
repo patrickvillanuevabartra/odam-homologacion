@@ -4273,7 +4273,17 @@ function seleccionarVersion(){
   var evaEl=document.getElementById('evalResponsable');
   var selEva=document.getElementById('evalResponsableSelect');
   if(fecEl&&hSel.fec){
-    var fecVal=hSel.fec.indexOf('T')>-1?hSel.fec.slice(0,16):hSel.fec+'T00:00';
+    var fecRaw=hSel.fec||'';
+    var fecVal='';
+    // Si ya tiene formato yyyy-MM-ddTHH:mm
+    if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(fecRaw)){
+      fecVal=fecRaw.slice(0,16);
+    } else if(/^\d{4}-\d{2}-\d{2}$/.test(fecRaw)){
+      fecVal=fecRaw+'T00:00';
+    } else {
+      // Formato español o desconocido - usar fecha actual
+      fecVal=new Date().toISOString().slice(0,16);
+    }
     fecEl.value=fecVal;
   }
   if(hSel.eva&&selEva){
