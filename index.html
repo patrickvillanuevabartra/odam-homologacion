@@ -2801,8 +2801,8 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
         var rFec=r.fecha_evaluacion||r.timestamp||'';
         var ci=getScaleItem(getFinalCat(totalVal));
         var isDuplicate=hist.some(function(h){
-          return h.provId===pMatch.id&&h.version===rVersion&&
-                 Math.abs(h.total-totalVal)<0.001;
+          return (r._qid&&h._qid===r._qid)||
+                 (h.provId===pMatch.id&&h.version===rVersion&&Math.abs(h.total-totalVal)<0.001&&h.fec===rFec);
         });
         if(isDuplicate)return;
         hist.push({
@@ -4317,16 +4317,16 @@ function seleccionarVersion(){
   var fecEl=document.getElementById('evalFecha');
   var evaEl=document.getElementById('evalResponsable');
   var selEva=document.getElementById('evalResponsableSelect');
-  if(fecEl&&hSel.fec){
-    var fecRaw=hSel.fec||'';
+  // Usar ts (ISO) si está disponible, sino fec
+  var fecSource=hSel.ts||hSel.fec||'';
+  if(fecEl&&fecSource){
+    var fecRaw=fecSource;
     var fecVal='';
-    // Si ya tiene formato yyyy-MM-ddTHH:mm
     if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(fecRaw)){
       fecVal=fecRaw.slice(0,16);
     } else if(/^\d{4}-\d{2}-\d{2}$/.test(fecRaw)){
       fecVal=fecRaw+'T00:00';
     } else {
-      // Formato español o desconocido - usar fecha actual
       fecVal=new Date().toISOString().slice(0,16);
     }
     fecEl.value=fecVal;
@@ -5088,7 +5088,6 @@ function buildResults(){
       var consD=0;
       for(var ei=histProv.length-1;ei>=0;ei--){
         var catH=histProv[ei].catFinal||getFinalCat(histProv[ei].total||0);
-        console.log('Estado check - catH:',catH,'total:',histProv[ei].total,'provId:',d.provId);
         if(catH==='D') consD++;
         else break;
       }
