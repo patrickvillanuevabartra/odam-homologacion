@@ -3947,6 +3947,16 @@ function goStep(n){
 
   // ── Paso 6 (Evaluación) ──
   if(n===5){
+    // Resetear selección de proveedor al entrar al Paso 6
+    provActualId=null;
+    var dropReset=document.getElementById('provSelectorDrop');
+    if(dropReset)dropReset.value='';
+    var vswReset=document.getElementById('versionSelectorWrap');
+    if(vswReset)vswReset.style.display='none';
+    var mfReset=document.getElementById('evalMetaFields');
+    if(mfReset)mfReset.style.display='none';
+    var contReset=document.getElementById('evalCont');
+    if(contReset)contReset.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:1rem;background:var(--surface);border-radius:10px;">👆 Selecciona un proveedor del desplegable para comenzar a evaluar.</div>';
     // Cargar criterios desde paquete SIEMPRE al entrar al Paso 6
     if(paqueteActual&&paqueteActual.criterios&&paqueteActual.criterios.length){
       crits=[];
@@ -4262,10 +4272,23 @@ function seleccionarVersion(){
     buildEval();
   } else {
     if(warn)warn.style.display='none';
-    // Siempre cargar desde DETALLE de QDB — fuente de verdad
+    // Cargar desde DETALLE de QDB — fuente de verdad
     tst('⏳ Cargando calificaciones...');
     cargarDetalleEvaluacion(hSel.nom||'', hSel.version||'', hSel.ts||'', function(notasQDB){
-      aplicarNotasYBuild(notasQDB);
+      // Si QDB no devuelve notas, intentar desde notasSnap del historial
+      if(!notasQDB||Object.keys(notasQDB).length===0){
+        var notas={};
+        if(hSel.notasSnap&&Object.keys(hSel.notasSnap).length>0){
+          var cAntes=hSel.critsSnap||[];
+          Object.keys(hSel.notasSnap).forEach(function(oldId){
+            var ca=cAntes.find(function(cc){return cc.id===oldId;});
+            if(ca){var critAct=crits.find(function(cc){return cc.label===ca.label;});if(critAct)notas[critAct.id]=hSel.notasSnap[oldId];}
+          });
+        }
+        aplicarNotasYBuild(Object.keys(notas).length>0?notas:notasQDB);
+      } else {
+        aplicarNotasYBuild(notasQDB);
+      }
     });
   }
 
