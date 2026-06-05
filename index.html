@@ -4984,7 +4984,7 @@ function buildResults(){
   tableWrap.style.cssText='overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);';
   var tableEl=document.createElement('table');
   tableEl.className='dt'; tableEl.style.cssText='margin:0;min-width:700px;';
-  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Categoría</th><th>Variación</th><th>% Var.</th><th>Estado</th><th>Acciones</th></tr></thead>';
+  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Nivel</th><th>Variación</th><th>% Var.</th><th>Estado</th><th>Acciones</th></tr></thead>';
   var tbodyEl=document.createElement('tbody');
   tableEl.appendChild(tbodyEl);
   if(!datosFiltrados.length){
@@ -5032,7 +5032,8 @@ function buildResults(){
       histProv.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
       var consD=0;
       for(var ei=histProv.length-1;ei>=0;ei--){
-        if(getFinalCat(histProv[ei].total||0)==='D') consD++;
+        var catH=histProv[ei].catFinal||getFinalCat(histProv[ei].total||0);
+        if(catH==='D') consD++;
         else break;
       }
       estProv=consD===0?'normal':consD===1?'alerta':consD===2?'lista_negra':'vetado';
