@@ -4012,7 +4012,23 @@ function goStep(n){
 
   // ── Paso 6 (Evaluación) — ya manejado arriba ──
   // ── Paso 7 (Resultados) ──
-  if(n===6){if(paqueteActual)guardarPaqueteActual();buildResults();}
+  if(n===6){
+    if(paqueteActual)guardarPaqueteActual();
+    // Esperar a que historial esté cargado antes de buildResults
+    if(hist.length>0){
+      buildResults();
+    } else {
+      tst('⏳ Cargando historial...');
+      var _waitHist=setInterval(function(){
+        if(hist.length>0){
+          clearInterval(_waitHist);
+          buildResults();
+        }
+      },300);
+      // Timeout de 8 segundos
+      setTimeout(function(){clearInterval(_waitHist);buildResults();},8000);
+    }
+  }
 
   window.scrollTo({top:0,behavior:'smooth'});
 }
