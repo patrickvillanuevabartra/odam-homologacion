@@ -4179,11 +4179,12 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
     var verNorm=normVer(version);
     var pkId=paqueteActual?paqueteActual.id:'';
     var pkNom=paqueteActual?paqueteActual.nombre:'';
-    // Filtrar SOLO por proveedor + version (paquete y propietario no se guardan en DETALLE)
+    // Filtrar por propietario + proveedor + version
     var regs=(res.registros||[]).filter(function(r){
+      var propOk=r.propietario===correo;
       var nomOk=(r.proveedor||'').trim().toLowerCase()===(provNom||'').trim().toLowerCase();
       var verOk=normVer(r.version)===verNorm;
-      return nomOk&&verOk;
+      return propOk&&nomOk&&verOk;
     });
     // Si hay múltiples detalles (registros viejos), agrupar por timestamp
     // y quedarse con los del timestamp más reciente
