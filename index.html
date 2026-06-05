@@ -4169,6 +4169,12 @@ function buildVersionSelector(provId){
   if(indic)indic.style.display='none';
   if(warn)warn.style.display='none';
   drop.innerHTML='';
+  // Opción por defecto
+  var optDef=document.createElement('option');
+  optDef.value='';
+  optDef.textContent='— Seleccione versión —';
+  optDef.disabled=true;
+  drop.appendChild(optDef);
   // Si no hay historial, mostrar solo "Evaluación inicial"
   if(!ph.length){
     var optIni=document.createElement('option');
@@ -4204,8 +4210,8 @@ function buildVersionSelector(provId){
   optNew.value='__nueva__';
   optNew.textContent='↺ + Nueva reevaluación';
   drop.appendChild(optNew);
-  drop.selectedIndex=ph.length-1;
-  seleccionarVersion();
+  drop.selectedIndex=0;
+  // No llamar seleccionarVersion automáticamente - esperar que usuario elija
 }
 
 function seleccionarVersion(){
