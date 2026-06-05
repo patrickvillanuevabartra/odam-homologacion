@@ -556,7 +556,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 <!-- ══════════ P4: RESULTADOS / VISOR ══════════ -->
 <div class="panel" id="panel-5">
   <div class="acts" style="margin-bottom:16px;">
-    <button class="btn btn-o" onclick="goStepBack(5)">← Evaluación</button>
+    <button class="btn btn-o" onclick="goStep(5)">← Evaluación</button>
   </div>
   <p class="stitle">Paso 7 — Resultados de Todos los Proveedores</p>
 
@@ -615,11 +615,11 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div id="resComparativa" style="margin-bottom:24px;"></div>
 
   <!-- EVOLUCIÓN POR PROVEEDOR -->
-  <div <div id="histSection" style="display:none !important;"></div>
+  <div id="histSection" style="display:none !important;"></div>
 
   <!-- GUARDAR -->
   <div class="acts" style="margin-top:20px">
-    <button class="btn btn-o" onclick="goStepBack(4)">← Evaluación</button>
+    <button class="btn btn-o" onclick="goStep(5)">← Evaluación</button>
     <button class="btn btn-g" onclick="doExport(true)">⬇ Descargar Excel</button>
   </div>
   <div id="sheetsStatus" style="margin-top:10px;padding:10px 14px;border-radius:8px;font-size:.88rem;display:none;"></div>
@@ -713,7 +713,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
       <div>
         <label style="font-size:.78rem;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Correo electrónico *</label>
         <input id="loginCorreo" type="email" placeholder="usuario@empresa.com" maxlength="120"
-          style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.96rem;font-family:inherit;color:var(--text);"
+          style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.96rem;font-family:inherit;color:var(--text);">
       </div>
       <div id="loginError" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:7px;padding:9px 12px;font-size:.86rem;color:#DC2626;margin-bottom:8px;"></div>
       <div style="margin-top:20px;"></div>
@@ -1234,10 +1234,9 @@ function mostrarMetaFields(pid){
     if(lblEva)lblEva.innerHTML='👤 Evaluador de Evaluación inicial <span style="color:var(--no)">*</span>';
   }
   // Set datetime-local value (format: YYYY-MM-DDTHH:mm)
-  var nowDT=new Date().toISOString().slice(0,16);
-  var savedDT=p?(p.fec&&p.fec.indexOf('T')>-1?p.fec.slice(0,16):(p.fec?p.fec+'T00:00':nowDT)):nowDT;
-  // Siempre poner fecha/hora actual del sistema
-  if(fec)fec.value=new Date().toISOString().slice(0,16);
+  var nowDT=nowLocalDT();
+  // Siempre poner fecha/hora actual del sistema para nueva evaluación
+  if(fec)fec.value=nowDT;
   // Restore evaluador — try select first, fallback to text
   var evaVal=p?(p.eva||''):'';
   if(eva)eva.value=evaVal;
@@ -1384,6 +1383,7 @@ function enviarASheets(d,callback){
     propietarioNombre:getUsuarioNombre(),
     paquete:paqueteActual?paqueteActual.id:'',
     paqueteNombre:paqueteActual?paqueteActual.nombre:'',
+    paqueteId:paqueteActual?paqueteActual.id:'',
     producto:d.producto||'',
     contactoNom:d.contactoNom||'',contactoCel:d.contactoCel||'',
     contactoEmail:d.contactoEmail||'',
@@ -1450,6 +1450,7 @@ function guardarEvalActual(){
   d.ts=_now.toISOString();
   d.fecHora=_now.toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   d.paquete=paqueteActual?paqueteActual.nombre:'Sin paquete';
+  d.paqueteId=paqueteActual?paqueteActual.id:'';
   // Guardar notasSnap para poder restaurar en reevaluación
   d.notasSnap=JSON.parse(JSON.stringify(notasEval[provActualId]||{}));
   // Guardar snapshot de criterios, escala y plantilla usados en esta evaluación
@@ -2688,6 +2689,11 @@ function seleccionarPaquete(pk){
       if(cidx>-1){_paquetesCache[cidx]._provCount=provs.length;}
       renderListaPaquetes();
     }
+    // Si el panel de Resultados está activo, reconstruir con los datos ya cargados
+    var panelResActivo=document.getElementById('panel-5');
+    if(panelResActivo&&panelResActivo.classList.contains('active')){
+      sanitizarHist();buildResults();
+    }
     });// fin cargarProveedoresDesdeQDB
   }// fin _cargarProveedoresDespues
 
@@ -2698,7 +2704,9 @@ function seleccionarPaquete(pk){
   _cargarProveedoresDespues();
 
     // Cargar historial del paquete (si existe en JSON)
-  hist=[];
+  // Solo limpiar hist si el paquete cambió — no borrar evaluaciones locales recién guardadas
+  var _mismosPaquete=paqueteActual&&hist.length>0&&hist.some(function(h){return h.paquete===pk.nombre||h.paquete===pk.id;});
+  if(!_mismosPaquete) hist=[];
   if(pk.historial&&pk.historial.length){
     pk.historial.forEach(function(h){
       var totalVal=parseFloat(h.total)||0;
@@ -2722,6 +2730,12 @@ function seleccionarPaquete(pk){
   _cargarHistorialDesdeResumen(pk.nombre, function(){
     _restaurarNotasDesdeHist();
     _actualizarAcciones(pk);
+    // Si el panel de Resultados está activo, reconstruir con los datos ya cargados
+    var panelRes=document.getElementById('panel-5');
+    if(panelRes&&panelRes.classList.contains('active')){
+      sanitizarHist();
+      buildResults();
+    }
   });
   // Mostrar paquete activo en header
   var pbadge=document.getElementById('paqueteBadge');
@@ -2800,20 +2814,29 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
         var rVersion=r.version||'Evaluacion inicial';
         var rFec=r.fecha_evaluacion||r.timestamp||'';
         var ci=getScaleItem(getFinalCat(totalVal));
-        var isDuplicate=hist.some(function(h){
-          return (r._qid&&h._qid===r._qid)||
-                 (h.provId===pMatch.id&&h.version===rVersion&&Math.abs(h.total-totalVal)<0.001&&h.fec===rFec);
+        // Deduplicar: mismo proveedor + misma versión (sin importar el total)
+        // Priorizar el registro con _qid (viene de QDB) sobre el local sin _qid
+        var dupIdx=hist.findIndex(function(h){
+          return h.provId===pMatch.id&&h.version===rVersion;
         });
-        if(isDuplicate)return;
+        if(dupIdx>-1){
+          // Si el existente no tiene _qid pero este sí, reemplazar
+          if(!hist[dupIdx]._qid&&r._qid){
+            hist.splice(dupIdx,1); // quitar el local sin _qid
+          } else {
+            return; // ya existe con _qid, ignorar duplicado
+          }
+        }
+        var rFecNorm=normalizarFechaQDB(r.timestamp)||normalizarFechaQDB(rFec)||'';
         hist.push({
           provId:pMatch.id,nom:rNom,ruc:rRuc,
-          fec:rFec,eva:r.evaluador||'',
+          fec:rFecNorm||rFec,eva:r.evaluador||'',
           paquete:r.paquete||'',
           total:totalVal,
           catFinal:r.categoria&&r.categoria.trim()?r.categoria.trim():getFinalCat(totalVal),
           catInterp:r.interpretacion||'',
           catItem:ci,version:rVersion,
-          ts:r.timestamp||rFec||'',
+          ts:rFecNorm||r.timestamp||rFec||'',
           _qid:r._qid||'',
           det:[],notasSnap:{}
         });
@@ -3947,25 +3970,37 @@ function goStep(n){
 
   // ── Paso 6 (Evaluación) ──
   if(n===5){
-    // Resetear selección de proveedor al entrar al Paso 6
-    provActualId=null;
-    var dropReset=document.getElementById('provSelectorDrop');
-    if(dropReset)dropReset.value='';
-    var vswReset=document.getElementById('versionSelectorWrap');
-    if(vswReset)vswReset.style.display='none';
-    var mfReset=document.getElementById('evalMetaFields');
-    if(mfReset)mfReset.style.display='none';
-    var contReset=document.getElementById('evalCont');
-    if(contReset)contReset.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:1rem;background:var(--surface);border-radius:10px;">👆 Selecciona un proveedor del desplegable para comenzar a evaluar.</div>';
-    // Cargar criterios desde paquete SIEMPRE al entrar al Paso 6
-    if(paqueteActual&&paqueteActual.criterios&&paqueteActual.criterios.length){
+    // Cargar criterios desde paquete SOLO si no están cargados o cambiaron
+    // CRÍTICO: no regenerar IDs si ya existen — notasEval depende de esos IDs
+    var _pkCrits=paqueteActual&&paqueteActual.criterios?paqueteActual.criterios:[];
+    var _critLabels=crits.map(function(c){return c.label+'_'+c.weight;}).join('|');
+    var _pkLabels=_pkCrits.map(function(c){return c.label+'_'+c.weight;}).join('|');
+    if(_pkCrits.length&&(!crits.length||_critLabels!==_pkLabels)){
+      // Guardar notas actuales por label antes de reasignar IDs
+      var _notasPorLabel={};
+      provs.forEach(function(p){
+        var nev=notasEval[p.id]||{};
+        _notasPorLabel[p.id]={};
+        crits.forEach(function(c){
+          if(nev[c.id]!==undefined) _notasPorLabel[p.id][c.label]=nev[c.id];
+        });
+      });
       crits=[];
       var critListEl=document.getElementById('critList');
       if(critListEl)critListEl.innerHTML='';
-      paqueteActual.criterios.forEach(function(cc){
+      _pkCrits.forEach(function(cc){
         var id='c'+(++seq);
         crits.push({id:id,label:cc.label,weight:cc.weight});
         evFiles[id]=[];
+      });
+      // Reasignar notas a los nuevos IDs por label
+      provs.forEach(function(p){
+        var nueNotas={};
+        crits.forEach(function(c){
+          var v=_notasPorLabel[p.id]&&_notasPorLabel[p.id][c.label];
+          if(v!==undefined) nueNotas[c.id]=v;
+        });
+        if(Object.keys(nueNotas).length) notasEval[p.id]=nueNotas;
       });
       tst('📋 '+crits.length+' criterios cargados desde paquete');
     }
@@ -4014,20 +4049,9 @@ function goStep(n){
   // ── Paso 7 (Resultados) ──
   if(n===6){
     if(paqueteActual)guardarPaqueteActual();
-    // Esperar a que historial esté cargado antes de buildResults
-    if(hist.length>0){
-      buildResults();
-    } else {
-      tst('⏳ Cargando historial...');
-      var _waitHist=setInterval(function(){
-        if(hist.length>0){
-          clearInterval(_waitHist);
-          buildResults();
-        }
-      },300);
-      // Timeout de 8 segundos
-      setTimeout(function(){clearInterval(_waitHist);buildResults();},8000);
-    }
+    // Asegurar que el historial esté sanitizado antes de mostrar
+    sanitizarHist();
+    buildResults();
   }
 
   window.scrollTo({top:0,behavior:'smooth'});
@@ -4151,23 +4175,37 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
   qdbFetch({accion:'cargarDetalle'},function(res){
     if(!res||!res.ok){if(callback)callback({});return;}
     var correo=getUsuarioCorreo();
-    function normStr(v){return (v||'').toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').trim();}
+    function normVer(v){return (v||'').toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').trim();}
+    var verNorm=normVer(version);
     var pkId=paqueteActual?paqueteActual.id:'';
     var pkNom=paqueteActual?paqueteActual.nombre:'';
-    var verNorm=normStr(version);
-    // Filtrar por proveedor + version + paquete
+    // Filtrar SOLO por proveedor + version (paquete y propietario no se guardan en DETALLE)
     var regs=(res.registros||[]).filter(function(r){
-      var propOk=!r.propietario||r.propietario===''||r.propietario===correo;
-      var nomOk=normStr(r.proveedor)===normStr(provNom);
-      var verOk=normStr(r.version)===verNorm;
-      var pkOk=!r.paquete||r.paquete===''||r.paquete===pkId||r.paquete===pkNom;
-      return propOk&&nomOk&&verOk&&pkOk;
+      var nomOk=(r.proveedor||'').trim().toLowerCase()===(provNom||'').trim().toLowerCase();
+      var verOk=normVer(r.version)===verNorm;
+      return nomOk&&verOk;
     });
+    // Si hay múltiples detalles (registros viejos), agrupar por timestamp
+    // y quedarse con los del timestamp más reciente
+    if(regs.length>0){
+      // Obtener timestamps únicos y tomar el más reciente
+      var tsList=regs.map(function(r){return normalizarFechaQDB(r.timestamp)||r.timestamp||'';});
+      tsList.sort();
+      var tsMax=tsList[tsList.length-1];
+      // Si hay ts válido, filtrar por el más reciente; si no, usar todos
+      if(tsMax){
+        var regsLatest=regs.filter(function(r){
+          return (normalizarFechaQDB(r.timestamp)||r.timestamp||'')=== tsMax;
+        });
+        if(regsLatest.length>0) regs=regsLatest;
+      }
+    }
     var notas={};
     regs.forEach(function(r){
       var critAct=crits.find(function(cc){return cc.label===(r.criterio||'');});
       if(critAct){notas[critAct.id]=parseFloat(r.calificacion)||0;}
     });
+    console.log('cargarDetalle: regs='+regs.length+' notas='+JSON.stringify(notas));
     if(callback)callback(notas);
   },8000);
 }
@@ -4185,12 +4223,6 @@ function buildVersionSelector(provId){
   if(indic)indic.style.display='none';
   if(warn)warn.style.display='none';
   drop.innerHTML='';
-  // Opción por defecto
-  var optDef=document.createElement('option');
-  optDef.value='';
-  optDef.textContent='— Seleccione versión —';
-  optDef.disabled=true;
-  drop.appendChild(optDef);
   // Si no hay historial, mostrar solo "Evaluación inicial"
   if(!ph.length){
     var optIni=document.createElement('option');
@@ -4211,7 +4243,6 @@ function buildVersionSelector(provId){
     var mf=document.getElementById('evalMetaFields');
     if(mf)mf.style.display='block';
     window._versionEditando='';window._tsEditando='';
-    notasEval[provActualId]={};
     buildEval();
     return;
   }
@@ -4227,8 +4258,8 @@ function buildVersionSelector(provId){
   optNew.value='__nueva__';
   optNew.textContent='↺ + Nueva reevaluación';
   drop.appendChild(optNew);
-  drop.selectedIndex=0;
-  // No llamar seleccionarVersion automáticamente - esperar que usuario elija
+  drop.selectedIndex=ph.length-1;
+  seleccionarVersion();
 }
 
 function seleccionarVersion(){
@@ -4258,7 +4289,7 @@ function seleccionarVersion(){
     if(metaTitle)metaTitle.textContent='Datos de la '+vLabel;
     if(warn)warn.style.display='none';
     var fecEl=document.getElementById('evalFecha');
-    if(fecEl)fecEl.value=new Date().toISOString().slice(0,16);
+    if(fecEl)fecEl.value=nowLocalDT();
     window._versionEditando='';window._tsEditando='';
     buildEval();return;
   }
@@ -4295,22 +4326,31 @@ function seleccionarVersion(){
     buildEval();
   } else {
     if(warn)warn.style.display='none';
-    // Cargar desde DETALLE de QDB — fuente de verdad
+    // Intentar cargar desde DETALLE de QDB, con fallback a notasSnap local
     tst('⏳ Cargando calificaciones...');
     cargarDetalleEvaluacion(hSel.nom||'', hSel.version||'', hSel.ts||'', function(notasQDB){
-      // Si QDB no devuelve notas, intentar desde notasSnap del historial
-      if(!notasQDB||Object.keys(notasQDB).length===0){
-        var notas={};
+      if(notasQDB&&Object.keys(notasQDB).length>0){
+        aplicarNotasYBuild(notasQDB);
+      } else {
+        // Fallback: usar notasSnap guardado localmente en hist
+        var snap={};
         if(hSel.notasSnap&&Object.keys(hSel.notasSnap).length>0){
+          // notasSnap tiene IDs de crits — mapear por label
           var cAntes=hSel.critsSnap||[];
           Object.keys(hSel.notasSnap).forEach(function(oldId){
-            var ca=cAntes.find(function(cc){return cc.id===oldId;});
-            if(ca){var critAct=crits.find(function(cc){return cc.label===ca.label;});if(critAct)notas[critAct.id]=hSel.notasSnap[oldId];}
+            var ca=cAntes.find(function(c){return c.id===oldId;});
+            if(ca){
+              var cActual=crits.find(function(c){return c.label===ca.label;});
+              if(cActual) snap[cActual.id]=hSel.notasSnap[oldId];
+            }
+          });
+        } else if(hSel.det&&hSel.det.length>0){
+          hSel.det.forEach(function(d){
+            var c=crits.find(function(cc){return cc.label===d.label;});
+            if(c) snap[c.id]=parseFloat(d.nota)||0;
           });
         }
-        aplicarNotasYBuild(Object.keys(notas).length>0?notas:notasQDB);
-      } else {
-        aplicarNotasYBuild(notasQDB);
+        aplicarNotasYBuild(Object.keys(snap).length>0?snap:{});
       }
     });
   }
@@ -4318,22 +4358,8 @@ function seleccionarVersion(){
   var fecEl=document.getElementById('evalFecha');
   var evaEl=document.getElementById('evalResponsable');
   var selEva=document.getElementById('evalResponsableSelect');
-  // Usar fec del historial para el input (fecha de evaluación, no timestamp)
-  var fecSource=hSel.fec||'';
-  if(fecEl&&fecSource){
-    var fecVal='';
-    if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(fecSource)){
-      fecVal=fecSource.slice(0,16);
-    } else if(/^\d{4}-\d{2}-\d{2}$/.test(fecSource)){
-      fecVal=fecSource+'T00:00';
-    } else {
-      // Formato español - convertir usando ts si existe
-      if(hSel.ts&&/^\d{4}-\d{2}-\d{2}T/.test(hSel.ts)){
-        fecVal=hSel.ts.slice(0,16);
-      } else {
-        fecVal=new Date().toISOString().slice(0,16);
-      }
-    }
+  if(fecEl&&hSel.fec){
+    var fecVal=normalizarFechaQDB(hSel.fec)||normalizarFechaQDB(hSel.ts)||nowLocalDT();
     fecEl.value=fecVal;
   }
   if(hSel.eva&&selEva){
@@ -5002,11 +5028,16 @@ function buildResults(){
     return;
   }
 
-  // Deduplicar historial antes de usarlo
-  var seenH={};
+  // Deduplicar historial: mismo proveedor+versión → conservar el que tiene _qid
+  var seenPV={};
   hist=hist.filter(function(h){
-    var k=(h.nom||'')+'|'+(h.version||'')+'|'+(h.fec||'')+'|'+(h.total||0).toFixed(3);
-    if(seenH[k])return false;seenH[k]=true;return true;
+    var k=(h.provId||h.nom||'')+'|'+(h.version||'');
+    if(seenPV[k]){
+      // ya existe: conservar el que tiene _qid
+      if(h._qid&&!seenPV[k]._qid) seenPV[k]=h;
+      return false;
+    }
+    seenPV[k]=h; return true;
   });
 
   // Mostrar TODAS las evaluaciones de todos los proveedores
@@ -5715,6 +5746,38 @@ function fmtFecha(f){
   m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
   if(m)return m[1]+'.'+m[2]+'.'+m[3];
   return s;
+}
+
+// Hora local del navegador en formato datetime-local (evita problema UTC de toISOString)
+function nowLocalDT(){
+  var n=new Date();
+  return n.getFullYear()+'-'
+    +String(n.getMonth()+1).padStart(2,'0')+'-'
+    +String(n.getDate()).padStart(2,'0')+'T'
+    +String(n.getHours()).padStart(2,'0')+':'
+    +String(n.getMinutes()).padStart(2,'0');
+}
+
+// Convierte cualquier formato de fecha de QDB a "YYYY-MM-DDTHH:mm" para input datetime-local
+// Soporta: "05/06/2026, 09:45 a. m.", "2026-06-05T09:45:00", "2026-06-05"
+function normalizarFechaQDB(f){
+  if(!f) return '';
+  var s = String(f).trim();
+  // Ya está en formato ISO
+  if(s.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)) return s.slice(0,16);
+  if(s.match(/^\d{4}-\d{2}-\d{2}$/)) return s + 'T00:00';
+  // Formato "DD/MM/YYYY, HH:MM a. m." o "DD/MM/YYYY, HH:MM p. m."
+  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4}),?\s*(\d{1,2}):(\d{2})\s*(a\.?\s*m\.?|p\.?\s*m\.?)?/i);
+  if(m){
+    var d=m[1], mo=m[2], y=m[3], h=parseInt(m[4]), mi=m[5], ampm=(m[6]||'').replace(/\s|\.?/g,'').toLowerCase();
+    if(ampm==='pm'&&h<12) h+=12;
+    if(ampm==='am'&&h===12) h=0;
+    return y+'-'+mo+'-'+d+'T'+String(h).padStart(2,'0')+':'+mi;
+  }
+  // Formato "DD/MM/YYYY"
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(m) return m[3]+'-'+m[2]+'-'+m[1]+'T00:00';
+  return '';
 }
 
 // ── INICIALIZAR ──
