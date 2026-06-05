@@ -2527,7 +2527,7 @@ function renderListaPaquetes(){
       var b=document.createElement('button');
       b.textContent=parts[0];
       b.style.cssText='padding:8px 14px;border-radius:8px;background:white;border:1.5px solid var(--border);font-size:.86rem;cursor:pointer;font-family:inherit;';
-      b.onclick=function(e){e.stopPropagation();abrirPaqueteEn(parseInt(parts[1]));};
+      (function(paso){b.onclick=function(e){e.stopPropagation();abrirPaqueteEn(paso);};})(parseInt(parts[1]));
       acDiv.appendChild(b);
     });
     card.appendChild(acDiv);
