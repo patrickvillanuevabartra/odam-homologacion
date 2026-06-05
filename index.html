@@ -4269,7 +4269,7 @@ function seleccionarVersion(){
   // Función para aplicar notas y construir eval
   function aplicarNotasYBuild(notas){
     notasEval[provActualId]=notas;
-    buildEval();
+    setTimeout(function(){buildEval();},50);
   }
 
   if(critsDifieren){
@@ -5072,6 +5072,7 @@ function buildResults(){
       var consD=0;
       for(var ei=histProv.length-1;ei>=0;ei--){
         var catH=histProv[ei].catFinal||getFinalCat(histProv[ei].total||0);
+        console.log('Estado check - catH:',catH,'total:',histProv[ei].total,'provId:',d.provId);
         if(catH==='D') consD++;
         else break;
       }
