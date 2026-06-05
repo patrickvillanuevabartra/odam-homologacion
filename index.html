@@ -1555,7 +1555,7 @@ function buildEscalaRows(){
     var isLast=(i===SCALE.length-1);
     row.innerHTML=
       '<div class="escala-chip" style="background:'+s.color+'">'
-        +'<input type="text" value="'+esc(s.cat)+'" maxlength="2" style="width:32px;background:transparent;border:none;color:white;font-weight:700;font-family:inherit;font-size:inherit;text-align:center;" oninput="SCALE['+i+'].cat=this.value;_escalaGuardada=false;buildEscalaRows();">'
+        +'<input type="text" value="'+esc(s.cat)+'" maxlength="10" style="width:60px;background:transparent;border:none;color:white;font-weight:700;font-family:inherit;font-size:inherit;text-align:center;" oninput="SCALE['+i+'].cat=this.value;_escalaGuardada=false;buildEscalaRows();">'
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:4px;">'
         +'<input class="escala-nota-inp" type="number" min="0" max="1" step="0.01" value="'+s.min+'"'
@@ -2864,8 +2864,21 @@ function _actualizarAcciones(pk){
   }
 }
 
-function getScaleColor(cat){return{A:'#059669',B:'#0284c7',C:'#D97706',D:'#DC2626'}[cat]||'#64748B';}
-function getScaleBg(cat){return{A:'#DCFCE7',B:'#DBEAFE',C:'#FEF9C3',D:'#FEE2E2'}[cat]||'#F8FAFC';}
+function getScaleColor(cat){
+  var fixed={A:'#059669',B:'#0284c7',C:'#D97706',D:'#DC2626'};
+  if(fixed[cat])return fixed[cat];
+  // Color dinámico para categorías personalizadas basado en posición en SCALE
+  var idx=SCALE.findIndex(function(s){return s.cat===cat;});
+  var palette=['#059669','#0284c7','#D97706','#DC2626','#7C3AED','#DB2777','#0891B2','#65A30D'];
+  return palette[idx]||'#64748B';
+}
+function getScaleBg(cat){
+  var fixed={A:'#DCFCE7',B:'#DBEAFE',C:'#FEF9C3',D:'#FEE2E2'};
+  if(fixed[cat])return fixed[cat];
+  var idx=SCALE.findIndex(function(s){return s.cat===cat;});
+  var palette=['#DCFCE7','#DBEAFE','#FEF9C3','#FEE2E2','#EDE9FE','#FCE7F3','#CFFAFE','#ECFCCB'];
+  return palette[idx]||'#F8FAFC';
+}
 
 // ── PRODUCTOS/SERVICIOS ──
 var productos = [];
