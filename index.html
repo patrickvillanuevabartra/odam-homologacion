@@ -4285,9 +4285,14 @@ function buildEval(){
   var prevNotas=notasEval[provActualId];
   var p=getProv(provActualId);
   var info=document.getElementById('evalInfo');
+  // Construir texto dinámico según la escala actual
+  var minEsc=SCALE.length?SCALE[SCALE.length-1].min:0;
+  var maxEsc=SCALE.length?SCALE[0].max:1;
+  var cats=SCALE.map(function(s){return s.cat;}).join('/');
+  var rangosTexto=SCALE.map(function(s){return s.cat+': '+s.min+'-'+s.max;}).join(' | ');
   info.innerHTML='Evaluando: <strong>'+(p&&p.nom?p.nom:'Proveedor sin nombre')+'</strong>'
-    +' &nbsp;|&nbsp; Ingresa una puntaje de <strong>0.00 a 1.00</strong> para cada criterio.'
-    +'<br><span style="font-size:.88rem;color:var(--muted);">El nivel A/B/C/D se asigna automáticamente. Calificación ponderada = calificación × peso.</span>';
+    +' &nbsp;|&nbsp; Ingresa un puntaje de <strong>'+minEsc.toFixed(2)+' a '+maxEsc.toFixed(2)+'</strong> para cada criterio.'
+    +'<br><span style="font-size:.88rem;color:var(--muted);">El nivel '+cats+' se asigna automáticamente según tu escala ('+rangosTexto+'). Calificación ponderada = calificación × peso.</span>';
 
   crits.forEach(function(c){
     if(!evFiles[c.id]) evFiles[c.id]=[];
