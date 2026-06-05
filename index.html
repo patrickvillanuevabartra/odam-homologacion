@@ -3935,6 +3935,7 @@ function goStep(n){
   // ── Paso 6 (Evaluación) ──
   if(n===5){
     // Cargar criterios desde paquete SIEMPRE al entrar al Paso 6
+    alert('crits:'+crits.length+' paqCrits:'+(paqueteActual&&paqueteActual.criterios?paqueteActual.criterios.length:'null'));
     if(paqueteActual&&paqueteActual.criterios&&paqueteActual.criterios.length){
       crits=[];
       var critListEl=document.getElementById('critList');
