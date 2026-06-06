@@ -2610,10 +2610,13 @@ function seleccionarPaquete(pk){
     crits=[];document.getElementById('critList').innerHTML='';seq=0;
     pk.criterios.forEach(function(c){addCrit(c);});
     checkWeight();
+    if(pk._qid) _criteriosGuardados=true;
   } else {
     crits=[];document.getElementById('critList').innerHTML='';seq=0;
     checkWeight();
   }
+  // Marcar escala como guardada si viene de QDB
+  if(pk._qid&&pk.escala&&pk.escala.length) _escalaGuardada=true;
 
   // Limpiar datos del paquete anterior inmediatamente
   productos=[];prodSeq=0;
