@@ -1280,43 +1280,23 @@ function seleccionarProv(id){
     provActualId=null;
     var cont=document.getElementById('evalCont');
     if(cont)cont.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:1rem;background:var(--surface);border-radius:10px;">👆 Selecciona un proveedor del desplegable para comenzar a evaluar.</div>';
-    document.getElementById('evalMetaFields').style.display='none';
+    var mf=document.getElementById('evalMetaFields');if(mf)mf.style.display='none';
     return;
-  }
-  if(provActualId&&provActualId!==id){
-    notasEval[provActualId]=JSON.parse(JSON.stringify(notasEval[provActualId]||{}));
   }
   provActualId=id;
 
-  // Si no hay notas cargadas, intentar restaurar desde historial
-  if(!notasEval[id]||Object.keys(notasEval[id]).length===0){
-    var ultimaEval=null;
-    for(var hi=hist.length-1;hi>=0;hi--){
-      if(hist[hi].provId===id){ultimaEval=hist[hi];break;}
-    }
-    if(ultimaEval){
-      if(ultimaEval.notasSnap&&Object.keys(ultimaEval.notasSnap).length>0){
-        notasEval[id]=JSON.parse(JSON.stringify(ultimaEval.notasSnap));
-      } else if(ultimaEval.det&&ultimaEval.det.length>0){
-        var snap={};
-        ultimaEval.det.forEach(function(d){
-          var crit=crits.find(function(c){return c.label===d.label;});
-          if(crit)snap[crit.id]=parseFloat(d.nota)||0;
-        });
-        if(Object.keys(snap).length>0)notasEval[id]=snap;
-      }
-    }
-  }
+  // Si venimos con un modo editar ya configurado (desde botón Editar en Resultados),
+  // no resetear el modo — buildVersionSelector seleccionará la versión correcta
+  // Si no hay modo previo, resetear a 'nueva' y dejar que buildVersionSelector lo determine
+  if(!_evalModo||_evalModo==='') _evalModo='nueva';
+
+  // Limpiar notas para que se carguen fresh desde QDB
+  // (solo si NO estamos en modo editar con versión ya definida)
+  if(_evalModo!=='editar') notasEval[id]={};
 
   buildVersionSelector(id);
   buildProvSelector();
   mostrarMetaFields(id);
-  // Si no hay historial para este proveedor, buildVersionSelector ya llama buildEval()
-  // Si hay historial, seleccionarVersion() hace fetch async y llama buildEval() en callback
-  // Para el caso raro en que ambos fallen, forzar buildEval() como respaldo:
-  if(!hist.some(function(h){return h.provId===id;})){
-    buildEval();
-  }
 }
 
 // -- GUARDAR EVALUACION ACTUAL --
@@ -1409,8 +1389,9 @@ function enviarASheets(d,callback){
     propietario:payload.propietario, version:payload.version,
     total:payload.total
   }));
-  // Si es edición, pasar el _qid del RESUMEN para UPDATE
+  // Pasar _resumenQid para UPDATE si es edición
   if(d._resumenQid) payload._resumenQid=d._resumenQid;
+  console.log('ENVIANDO modo:'+_evalModo+' version:'+payload.version+' qid:'+( payload._resumenQid||'nuevo'));
   qdbFetch({accion:'guardarEvaluacion', datos:JSON.stringify(payload)}, function(res){
     console.log('RESPUESTA guardarEvaluacion:', JSON.stringify(res));
     if(callback)callback(!!(res&&res.ok));
@@ -1420,86 +1401,84 @@ function enviarASheets(d,callback){
 function guardarEvalActual(){
   if(!provActualId){tst('Selecciona un proveedor primero.');return;}
   var p=getProv(provActualId);if(!p)return;
-  // Validar campos obligatorios
-  var fecCheck=document.getElementById('evalFecha');
-  var selCheck=document.getElementById('evalResponsableSelect');
-  var txtCheck=document.getElementById('evalResponsable');
-  if(!fecCheck||!fecCheck.value){
-    tst('⚠️ La fecha y hora de evaluación es obligatoria');
-    if(fecCheck)fecCheck.focus();return;
-  }
-  var evaCheck=(selCheck&&selCheck.value&&selCheck.value.trim()!==''?selCheck.value.trim():'')
-               ||(txtCheck&&txtCheck.value&&txtCheck.value.trim()!==''?txtCheck.value.trim():'');
-  if(!evaCheck){
-    tst('⚠️ El evaluador es obligatorio');
-    if(selCheck)selCheck.focus();return;
-  }
-  // Sync evaluador — prioridad: select > text input
+
+  // Validar fecha y evaluador
+  var fecEl=document.getElementById('evalFecha');
   var selEva=document.getElementById('evalResponsableSelect');
   var txtEva=document.getElementById('evalResponsable');
-  var evaVal='';
-  if(selEva&&selEva.value&&selEva.value.trim()!='')evaVal=selEva.value.trim();
-  else if(txtEva&&txtEva.value&&txtEva.value.trim()!='')evaVal=txtEva.value.trim();
-  if(evaVal){p.eva=evaVal;}
-  // Sync fecha
-  var fecEl=document.getElementById('evalFecha');
-  if(fecEl&&fecEl.value)p.fec=fecEl.value;
+  if(!fecEl||!fecEl.value){tst('⚠️ La fecha y hora es obligatoria');if(fecEl)fecEl.focus();return;}
+  var evaVal=(selEva&&selEva.value&&selEva.value.trim())?selEva.value.trim():
+             (txtEva&&txtEva.value&&txtEva.value.trim())?txtEva.value.trim():'';
+  if(!evaVal){tst('⚠️ El evaluador es obligatorio');if(selEva)selEva.focus();return;}
+
+  // Sync datos del proveedor
+  p.eva=evaVal;
+  if(fecEl.value)p.fec=fecEl.value;
+
   var d=getProvData(provActualId);
-  // Si estamos editando una versión existente, mantener su versión y hacer UPDATE
-  var _modoEdicion=window._editandoVersion&&window._editandoVersion!=='';
-  if(_modoEdicion){
-    d.version=window._editandoVersion;
-    d._resumenQid=window._editandoQid||'';
+
+  // Determinar versión y _qid según modo
+  if(_evalModo==='editar'){
+    // ACTUALIZAR registro existente
+    d.version=_evalVersionNom;
+    d._resumenQid=_evalVersionQid;
+  } else if(_evalModo==='reeval'){
+    // CREAR nuevo registro de reevaluación
+    var numReev=hist.filter(function(h){
+      return h.provId===provActualId&&(h.version||'').toLowerCase().indexOf('inici')===-1;
+    }).length+1;
+    d.version='Reevaluacion '+numReev;
+    d._resumenQid='';
   } else {
-    // Es reevaluación solo si ya existe al menos una evaluación guardada en hist
-    var histProv=hist.filter(function(h){return h.provId===provActualId;});
-    // Excluir la que se está editando del conteo
-    var histProvNueva=histProv.filter(function(h){return h.version!==window._editandoVersion;});
-    var isReeval=histProvNueva.length>0;
-    if(isReeval){
-      var prevReev=histProvNueva.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
-      d.version='Reevaluacion '+(prevReev+1);
-    } else {
-      d.version='Evaluacion inicial';
-    }
+    // CREAR Evaluación inicial
+    d.version='Evaluacion inicial';
+    d._resumenQid='';
   }
+
   var _now=new Date();
   d.ts=_now.toISOString();
   d.fecHora=_now.toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   d.paquete=paqueteActual?paqueteActual.nombre:'Sin paquete';
   d.paqueteId=paqueteActual?paqueteActual.id:'';
-  // Guardar notasSnap para poder restaurar en reevaluación
   d.notasSnap=JSON.parse(JSON.stringify(notasEval[provActualId]||{}));
-  // Guardar snapshot de criterios, escala y plantilla usados en esta evaluación
   d.critsSnap=crits.map(function(c){return{id:c.id,label:c.label,weight:c.weight};});
   d.scaleSnap=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,color:s.color,bg:s.bg};});
-  d.plantilla=paqueteActual&&(paqueteActual._plantillaActual||paqueteActual.plantillaActual)||'';
   d.propietario=getUsuarioCorreo();
-  hist.push(d);
+
+  // Actualizar o agregar en historial local
+  if(_evalModo==='editar'&&_evalVersionNom){
+    var hi=hist.findIndex(function(h){return h.provId===provActualId&&h.version===_evalVersionNom;});
+    if(hi>-1) hist[hi]=Object.assign(hist[hi],d,{provId:provActualId,version:_evalVersionNom});
+    else hist.push(d);
+  } else {
+    hist.push(d);
+  }
+
   var btn=document.getElementById('btnGuardarEval');
   if(btn){btn.textContent='Guardando...';btn.setAttribute('disabled','disabled');}
+
   enviarASheets(d,function(ok){
     p.guardado=true;
-    if(btn){btn.textContent='💾 Guardar Evaluación / Reevaluación';btn.removeAttribute('disabled');}
-    // Limpiar modo edición
-    window._editandoVersion='';window._editandoQid='';window._editandoTs='';
-    tst(ok?'✅ '+p.nom+' guardado en QuintaDB':'✅ Guardado local. Revisa conexión a QuintaDB.');
+    if(btn){btn.textContent='💾 Guardar Evaluación';btn.removeAttribute('disabled');}
+    tst(ok?'✅ '+p.nom+' guardado en QuintaDB':'✅ Guardado local. Revisa conexión.');
+
+    // Si era nueva o reeval, cambiar a modo editar para la próxima vez
+    if(_evalModo!=='editar'){
+      _evalModo='editar';
+      _evalVersionNom=d.version;
+    }
+
     buildProvSelector();
     ['btnVerResultados','btnVReval'].forEach(function(id){
       var b=document.getElementById(id);
       if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}
     });
-    mostrarMetaFields(provActualId);
+    // Refrescar selector de versiones
+    buildVersionSelector(provActualId);
     if(paqueteActual)guardarPaqueteActual();
-    // Limpiar banner de reevaluación al guardar
-    if(window._reevalPid){
-      window._reevalPid=null;window._reevalNum=null;window._reevalNom=null;
-      _mostrarBannerReeval(null,null);
-      var portal=document.querySelector('.portal');
-      if(portal)portal.style.paddingTop='0';
-    }
   });
 }
+
 
 function guardarTodos(){
   var sinGuardar=provs.filter(function(p){return !p.guardado;});
@@ -4083,117 +4062,29 @@ function goStep(n){
 }
 
 function reEvalProv(pid){
-  // 1. Restaurar notas de última evaluación ANTES de buildEval
-  var ultimaEval=null;
-  for(var i=hist.length-1;i>=0;i--){
-    if(hist[i].provId===pid){ultimaEval=hist[i];break;}
-  }
-  // Si no hay notasSnap, reconstruir desde det[]
-  if(ultimaEval){
-    if(ultimaEval.notasSnap&&Object.keys(ultimaEval.notasSnap).length>0){
-      notasEval[pid]=JSON.parse(JSON.stringify(ultimaEval.notasSnap));
-    } else if(ultimaEval.det&&ultimaEval.det.length>0){
-      // Reconstruir desde detalle si notasSnap está vacío
-      var snap={};
-      ultimaEval.det.forEach(function(d){
-        var crit=crits.find(function(c){return c.label===d.label;});
-        if(crit)snap[crit.id]=parseFloat(d.nota)||0;
-      });
-      notasEval[pid]=snap;
-    }
-  }
-  // 2. Setear proveedor activo
   provActualId=pid;
-  // 3. Contar reevaluaciones previas para el banner
-  var p=getProv(pid);
-  var prevReevs=hist.filter(function(h){return h.provId===pid&&(h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
-  var reevalNum=prevReevs+1;
-  // Guardar estado de reevaluación globalmente
-  window._reevalPid=pid;
-  window._reevalNum=reevalNum;
-  window._reevalNom=p?p.nom:'';
-  // 4. Ir al Paso 3 — Criterios (donde puede cambiar criterios y escala)
-  goStep(2);
-  // 5. Mostrar banner de reevaluación en todos los pasos
-  _mostrarBannerReeval(pid, reevalNum);
-  window.scrollTo({top:0,behavior:'smooth'});
-  tst('↺ Reevaluación '+reevalNum+' — '+( p?p.nom:'proveedor')+': ajusta criterios si es necesario');
-}
+  // Modo reevaluación — sliders en cero
+  notasEval[pid]={};
+  var numReev=hist.filter(function(h){
+    return h.provId===pid&&(h.version||'').toLowerCase().indexOf('inici')===-1;
+  }).length+1;
+  _evalModo='reeval';
+  _evalVersionQid='';
+  _evalVersionNom='Reevaluacion '+numReev;
 
-// ── EVALUACIÓN ──
-function _mostrarBannerReeval(pid, num){
-  // Crear o actualizar banner sticky de reevaluación
-  var bannerId='reevalStickyBanner';
-  var existing=document.getElementById(bannerId);
-  if(existing)existing.parentNode.removeChild(existing);
-  if(!pid){window._reevalPid=null;window._reevalNum=null;return;}
-  var p=getProv(pid);
-  var banner=document.createElement('div');
-  banner.id=bannerId;
-  banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#D97706;color:white;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.3);';
-  banner.innerHTML='<div style="display:flex;align-items:center;gap:10px;">'
-    +'<span style="font-size:1.2rem;">↺</span>'
-    +'<div>'
-      +'<div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.85;">Modo Reevaluación '+num+'</div>'
-      +'<div style="font-size:1rem;font-weight:700;">'+(p?p.nom:'Proveedor')+(p&&p.ruc?' — RUC: '+p.ruc:'')+'</div>'
-    +'</div>'
-    +'</div>'
-    +'<div style="display:flex;gap:8px;align-items:center;">'
-      +'<span style="font-size:.82rem;opacity:.85;">Modifica criterios, escala o ve directo a Evaluación</span>'
-      +'<button onclick="irAEvaluacionReeval()" '
-        +'style="padding:6px 14px;border-radius:6px;background:white;color:#D97706;border:none;font-size:.84rem;font-weight:700;cursor:pointer;">→ Ir a Evaluación</button>'
-      +'<button onclick="_cancelarReeval()" style="padding:6px 12px;border-radius:6px;background:rgba(255,255,255,.2);color:white;border:1px solid rgba(255,255,255,.4);font-size:.82rem;cursor:pointer;">✕ Cancelar</button>'
-    +'</div>';
-  document.body.insertBefore(banner, document.body.firstChild);
-  // Agregar padding al portal para que no quede tapado
-  var portal=document.querySelector('.portal');
-  if(portal)portal.style.paddingTop='52px';
-}
-
-function irAEvaluacionReeval(){
-  if(!window._reevalPid)return;
-  var pid=window._reevalPid;
-  provActualId=pid;
-  // Restaurar notas de última evaluación
-  var ultimaEval=null;
-  for(var hi=hist.length-1;hi>=0;hi--){if(hist[hi].provId===pid){ultimaEval=hist[hi];break;}}
-  // Restaurar solo notas de criterios que siguen existiendo con mismo nombre
-  var notasRest={};
-  if(ultimaEval){
-    var snap={};
-    if(ultimaEval.notasSnap&&Object.keys(ultimaEval.notasSnap).length>0){
-      var cAntes=ultimaEval.critsSnap||[];
-      Object.keys(ultimaEval.notasSnap).forEach(function(oldId){
-        var ca=cAntes.find(function(c){return c.id===oldId;});
-        if(ca) snap[ca.label]=ultimaEval.notasSnap[oldId];
-      });
-    } else if(ultimaEval.det){
-      ultimaEval.det.forEach(function(d){snap[d.label]=parseFloat(d.nota)||0;});
-    }
-    crits.forEach(function(c){if(snap[c.label]!==undefined)notasRest[c.id]=snap[c.label];});
-  }
-  notasEval[pid]=notasRest;
   goStep(5);
   setTimeout(function(){
     var drop=document.getElementById('provSelectorDrop');
     if(drop)drop.value=pid;
     seleccionarProv(pid);
-    // Mostrar banner reeval en evaluación
+    _actualizarIndicativoVersion('reeval','Reevaluación '+numReev);
+    // Ocultar banner viejo si existe
     var banner=document.getElementById('reevalBanner');
-    var nomTxt=document.getElementById('reevalNomText');
-    var p=getProv(pid);
-    if(banner)banner.style.display='block';
-    if(nomTxt&&p)nomTxt.textContent=p.nom+(p.ruc?' — RUC: '+p.ruc:'');
+    if(banner)banner.style.display='none';
+    tst('↺ Reevaluación '+numReev+' — sliders en cero. Evalúa y guarda.');
   },100);
 }
 
-function _cancelarReeval(){
-  window._reevalPid=null;window._reevalNum=null;window._reevalNom=null;
-  _mostrarBannerReeval(null,null);
-  var portal=document.querySelector('.portal');
-  if(portal)portal.style.paddingTop='0';
-  tst('Reevaluación cancelada');
-}
 
 // ══ CARGAR DETALLE DE EVALUACIÓN DESDE QDB ══
 function cargarDetalleEvaluacion(provNom, version, ts, callback){
@@ -4261,174 +4152,153 @@ function _cargarDetalleLegacy(provNom, version, ts, callback){
 function buildVersionSelector(provId){
   var wrap=document.getElementById('versionSelectorWrap');
   var drop=document.getElementById('versionSelectorDrop');
-  var indic=document.getElementById('versionIndicativo');
-  var warn=document.getElementById('criterioDiffWarn');
   if(!wrap||!drop)return;
+
   var ph=hist.filter(function(h){return h.provId===provId;});
   ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+
   wrap.style.display='block';
-  if(indic)indic.style.display='none';
-  if(warn)warn.style.display='none';
   drop.innerHTML='';
-  // Si no hay historial, mostrar solo "Evaluación inicial"
+
   if(!ph.length){
-    var optIni=document.createElement('option');
-    optIni.value='__inicial__';
-    optIni.textContent='Evaluación inicial';
-    drop.appendChild(optIni);
-    // Mostrar indicativo
-    var titleEl=document.getElementById('evalStepTitle');
-    var lblFec=document.getElementById('labelFecEval');
-    var lblEva=document.getElementById('labelEvaEval');
-    var metaTitle=document.getElementById('evalMetaTitle');
-    if(indic){indic.textContent='📋 Evaluación inicial';indic.style.display='block';indic.style.background='#DCFCE7';indic.style.color='#059669';indic.style.borderColor='#86EFAC';}
-    if(titleEl)titleEl.textContent='Paso 6 — Nueva Evaluación inicial';
-    if(lblFec)lblFec.innerHTML='📅 Fecha de Evaluación inicial <span style="color:var(--no)">*</span>';
-    if(lblEva)lblEva.innerHTML='👤 Evaluador de Evaluación inicial <span style="color:var(--no)">*</span>';
-    if(metaTitle)metaTitle.textContent='Datos de: Evaluación inicial';
-    // Mostrar el panel de meta fields
-    var mf=document.getElementById('evalMetaFields');
-    if(mf)mf.style.display='block';
-    window._versionEditando='';window._tsEditando='';
+    // Sin evaluaciones — modo nueva
+    var opt=document.createElement('option');
+    opt.value='__nueva__';
+    opt.textContent='Sin evaluaciones — se creará Evaluación inicial';
+    drop.appendChild(opt);
+    _evalModo='nueva';
+    _evalVersionQid='';
+    _evalVersionNom='';
+    _actualizarIndicativoVersion('nueva','Evaluación inicial');
     buildEval();
     return;
   }
+
+  // Agregar una opción por cada versión
   ph.forEach(function(h,i){
     var opt=document.createElement('option');
     opt.value=String(i);
     var vLabel=h.version||'Evaluación inicial';
-    var fec=h.fec?fmtFecha(h.fec.split('T')[0]):'';
-    opt.textContent=vLabel+(fec?' — '+fec:'');
+    var fec=h.fec?(' — '+fmtFecha(h.fec.split('T')[0])):'';
+    opt.textContent=vLabel+fec;
     drop.appendChild(opt);
   });
-  var optNew=document.createElement('option');
-  optNew.value='__nueva__';
-  optNew.textContent='↺ + Nueva reevaluación';
-  drop.appendChild(optNew);
+
+  // Si modo editar, seleccionar la versión que se pidió editar
+  if(_evalModo==='editar'&&_evalVersionNom){
+    var idxEditar=ph.findIndex(function(h){return h.version===_evalVersionNom;});
+    if(idxEditar>-1){
+      drop.selectedIndex=idxEditar;
+      seleccionarVersion();
+      return;
+    }
+  }
+  // Por defecto: seleccionar la última
   drop.selectedIndex=ph.length-1;
   seleccionarVersion();
 }
 
+
 function seleccionarVersion(){
   var drop=document.getElementById('versionSelectorDrop');
-  var indic=document.getElementById('versionIndicativo');
-  var warn=document.getElementById('criterioDiffWarn');
-  var titleEl=document.getElementById('evalStepTitle');
-  var lblFec=document.getElementById('labelFecEval');
-  var lblEva=document.getElementById('labelEvaEval');
-  var metaTitle=document.getElementById('evalMetaTitle');
-  if(!provActualId||!drop)return;
+  if(!drop||!provActualId)return;
+
   var ph=hist.filter(function(h){return h.provId===provActualId;});
   ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+
   var selVal=drop.value;
-
   if(selVal==='__nueva__'){
-    var ultima=ph.length?ph[ph.length-1]:null;
-    if(ultima&&ultima.notasSnap&&Object.keys(ultima.notasSnap).length>0){
-      notasEval[provActualId]=JSON.parse(JSON.stringify(ultima.notasSnap));
-    } else { notasEval[provActualId]={}; }
-    var numReev=ph.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length+1;
-    var vLabel='Nueva Reevaluación '+numReev;
-    if(indic){indic.textContent='\u21ba '+vLabel;indic.style.display='block';indic.style.background='#FEF9C3';indic.style.color='#92400E';indic.style.borderColor='#D97706';}
-    if(titleEl)titleEl.textContent='Paso 6 — \u21ba '+vLabel;
-    if(lblFec)lblFec.innerHTML='Fecha de '+vLabel+' <span style="color:var(--no)">*</span>';
-    if(lblEva)lblEva.innerHTML='Evaluador de '+vLabel+' <span style="color:var(--no)">*</span>';
-    if(metaTitle)metaTitle.textContent='Datos de la '+vLabel;
-    if(warn)warn.style.display='none';
-    var fecEl=document.getElementById('evalFecha');
-    if(fecEl)fecEl.value=nowLocalDT();
-    window._versionEditando='';window._tsEditando='';
-    buildEval();return;
-  }
-
-  var hSel=ph[parseInt(selVal)||0];
-  if(!hSel)return;
-  var vLabel=hSel.version||'Evaluación inicial';
-  var isInicial=(vLabel||'').toLowerCase().indexOf('inici')>-1;
-  if(indic){
-    indic.textContent=(isInicial?'Eval. inicial: ':'Reevaluación: ')+vLabel;
-    indic.style.display='block';
-    indic.style.background=isInicial?'#DCFCE7':'#EFF6FF';
-    indic.style.color=isInicial?'#059669':'#0284c7';
-    indic.style.borderColor=isInicial?'#86EFAC':'#BAE6FD';
-  }
-  if(titleEl)titleEl.textContent='Paso 6 — Editando: '+vLabel;
-  if(lblFec)lblFec.innerHTML='Fecha de '+vLabel+' <span style="color:var(--no)">*</span>';
-  if(lblEva)lblEva.innerHTML='Evaluador de '+vLabel+' <span style="color:var(--no)">*</span>';
-  if(metaTitle)metaTitle.textContent='Editando: '+vLabel;
-
-  var critsActuales=crits.map(function(cc){return cc.label+'_'+cc.weight;}).sort().join('|');
-  var critsSnap=(hSel.critsSnap||[]).map(function(cc){return cc.label+'_'+cc.weight;}).sort().join('|');
-  var critsDifieren=critsSnap&&critsActuales!==critsSnap;
-
-  // Función para aplicar notas y construir eval
-  function aplicarNotasYBuild(notas){
-    notasEval[provActualId]=notas;
-    buildEval();
-  }
-
-  if(critsDifieren){
+    // Sin historial — evaluación inicial nueva
     notasEval[provActualId]={};
-    if(warn)warn.style.display='block';
+    _evalModo='nueva';
+    _evalVersionQid='';
+    _evalVersionNom='';
+    _actualizarIndicativoVersion('nueva','Evaluación inicial');
     buildEval();
-  } else {
-    if(warn)warn.style.display='none';
-    // Intentar cargar desde DETALLE de QDB, con fallback a notasSnap local
-    tst('⏳ Cargando calificaciones...');
-    // Normalizar version para busqueda (quitar tildes)
-    var _verBuscar=(hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
-    cargarDetalleEvaluacion(hSel.nom||'', _verBuscar, hSel.ts||'', function(notasQDB){
-      if(notasQDB&&Object.keys(notasQDB).length>0){
-        aplicarNotasYBuild(notasQDB);
-      } else {
-        // Fallback 1: usar notasSnap guardado localmente en hist
-        var snap={};
-        if(hSel.notasSnap&&Object.keys(hSel.notasSnap).length>0){
-          // notasSnap tiene IDs de crits — mapear por label
-          var cAntes=hSel.critsSnap||[];
-          Object.keys(hSel.notasSnap).forEach(function(oldId){
-            var ca=cAntes.find(function(c){return c.id===oldId;});
-            if(ca){
-              var cActual=crits.find(function(c){return c.label===ca.label;});
-              if(cActual) snap[cActual.id]=hSel.notasSnap[oldId];
-            }
-          });
-        } else if(hSel.det&&hSel.det.length>0){
-          hSel.det.forEach(function(d){
-            var c=crits.find(function(cc){return cc.label===d.label;});
-            if(c) snap[c.id]=parseFloat(d.nota)||0;
-          });
-        }
-        // Fallback 2: usar notasEval ya en memoria (cargado por _restaurarNotasDesdeHist)
-        if(Object.keys(snap).length===0){
-          var memNotas=notasEval[provActualId]||{};
-          if(Object.keys(memNotas).length>0) snap=memNotas;
-        }
-        // Fallback 3: si total conocido, distribuir proporcionalmente por peso
-        if(Object.keys(snap).length===0&&hSel.total>0&&crits.length>0){
-          crits.forEach(function(c){snap[c.id]=hSel.total;});
-        }
-        aplicarNotasYBuild(Object.keys(snap).length>0?snap:{});
-      }
-    });
+    return;
   }
 
+  var idx=parseInt(selVal)||0;
+  var hSel=ph[idx];
+  if(!hSel)return;
+
+  // Modo editar — cargar notas de esta versión
+  _evalModo='editar';
+  _evalVersionQid=hSel._qid||'';
+  _evalVersionNom=hSel.version||'Evaluación inicial';
+
+  _actualizarIndicativoVersion('editar', _evalVersionNom);
+
+  // Restaurar fecha y evaluador
   var fecEl=document.getElementById('evalFecha');
-  var evaEl=document.getElementById('evalResponsable');
   var selEva=document.getElementById('evalResponsableSelect');
+  var txtEva=document.getElementById('evalResponsable');
   if(fecEl&&hSel.fec){
-    var fecVal=normalizarFechaQDB(hSel.fec)||normalizarFechaQDB(hSel.ts)||nowLocalDT();
-    fecEl.value=fecVal;
+    var fv=normalizarFechaQDB(hSel.fec)||normalizarFechaQDB(hSel.ts)||nowLocalDT();
+    fecEl.value=fv;
   }
   if(hSel.eva&&selEva){
     var found=false;
-    for(var j=0;j<selEva.options.length;j++){if(selEva.options[j].value===hSel.eva){selEva.selectedIndex=j;found=true;break;}}
-    if(!found){selEva.value='';if(evaEl){evaEl.style.display='block';evaEl.value=hSel.eva;}}
-    else{if(evaEl)evaEl.style.display='none';}
+    for(var j=0;j<selEva.options.length;j++){
+      if(selEva.options[j].value===hSel.eva){selEva.selectedIndex=j;found=true;break;}
+    }
+    if(!found){selEva.value='';if(txtEva){txtEva.style.display='block';txtEva.value=hSel.eva;}}
+    else{if(txtEva)txtEva.style.display='none';}
   }
-  window._versionEditando=hSel.version||'';
-  window._tsEditando=hSel.ts||'';
+
+  // Cargar notas desde QDB DETALLE
+  tst('⏳ Cargando calificaciones...');
+  var verBuscar=(_evalVersionNom||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+  cargarDetalleEvaluacion(hSel.nom||'', verBuscar, hSel.ts||'', function(notasQDB){
+    if(notasQDB&&Object.keys(notasQDB).length>0){
+      notasEval[provActualId]=notasQDB;
+    } else {
+      // Fallback: notasSnap local
+      var snap={};
+      if(hSel.notasSnap&&Object.keys(hSel.notasSnap).length>0){
+        var cAntes=hSel.critsSnap||[];
+        Object.keys(hSel.notasSnap).forEach(function(oldId){
+          var ca=cAntes.find(function(c){return c.id===oldId;});
+          if(ca){var cAct=crits.find(function(c){return c.label===ca.label;});if(cAct)snap[cAct.id]=hSel.notasSnap[oldId];}
+        });
+      } else if(hSel.det&&hSel.det.length>0){
+        hSel.det.forEach(function(d){var c=crits.find(function(cc){return cc.label===d.label;});if(c)snap[c.id]=parseFloat(d.nota)||0;});
+      }
+      notasEval[provActualId]=snap;
+    }
+    buildEval();
+  });
 }
+
+function _actualizarIndicativoVersion(modo, versionNom){
+  var indic=document.getElementById('versionIndicativo');
+  var titleEl=document.getElementById('evalStepTitle');
+  var metaTitle=document.getElementById('evalMetaTitle');
+  var warn=document.getElementById('criterioDiffWarn');
+  if(warn)warn.style.display='none';
+
+  if(modo==='nueva'){
+    if(indic){indic.textContent='📋 Nueva: Evaluación inicial';indic.style.display='block';indic.style.background='#DCFCE7';indic.style.color='#059669';indic.style.borderColor='#86EFAC';}
+    if(titleEl)titleEl.textContent='Paso 6 — Nueva Evaluación inicial';
+    if(metaTitle)metaTitle.textContent='Datos de: Evaluación inicial';
+  } else if(modo==='editar'){
+    var isInicial=(versionNom||'').toLowerCase().indexOf('inici')>-1;
+    if(indic){
+      indic.textContent='✏️ Editando: '+versionNom;
+      indic.style.display='block';
+      indic.style.background=isInicial?'#EFF6FF':'#FEF9C3';
+      indic.style.color=isInicial?'#0284c7':'#92400E';
+      indic.style.borderColor=isInicial?'#BAE6FD':'#D97706';
+    }
+    if(titleEl)titleEl.textContent='Paso 6 — Editando: '+versionNom;
+    if(metaTitle)metaTitle.textContent='Editando: '+versionNom;
+  } else if(modo==='reeval'){
+    if(indic){indic.textContent='↺ '+versionNom;indic.style.display='block';indic.style.background='#FEF9C3';indic.style.color='#92400E';indic.style.borderColor='#D97706';}
+    if(titleEl)titleEl.textContent='Paso 6 — '+versionNom;
+    if(metaTitle)metaTitle.textContent='Datos de: '+versionNom;
+  }
+}
+
 
 function buildEval(){
   var cont=document.getElementById('evalCont');
@@ -5247,45 +5117,22 @@ function buildResults(){
     btnEditar.style.marginLeft='4px';
     btnEditar.title='Modificar la evaluación de este proveedor';
     btnEditar.textContent='✏️ Editar';
-    (function(pid,dVersion,dTs,dQid){btnEditar.addEventListener('click',function(){
+    (function(pid,dVersion,dQid){btnEditar.addEventListener('click',function(){
       provActualId=pid;
-      // Guardar version y _qid que se está editando (para UPDATE en lugar de INSERT)
-      window._editandoVersion=dVersion;
-      window._editandoQid=dQid||'';
-      window._editandoTs=dTs||'';
-      // Buscar la versión específica clickeada
-      var ph=hist.filter(function(h){return h.provId===pid;});
-      ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
-      var ultimaEval=ph.find(function(h){return h.version===dVersion&&(h.ts||'')===(dTs||'');});
-      if(!ultimaEval)for(var hi=hist.length-1;hi>=0;hi--){if(hist[hi].provId===pid){ultimaEval=hist[hi];break;}}
-      // Restaurar solo notas de criterios coincidentes por nombre
-      var notasRest2={};
-      if(ultimaEval){
-        var snap2={};
-        if(ultimaEval.notasSnap&&Object.keys(ultimaEval.notasSnap).length>0){
-          var cAntes2=ultimaEval.critsSnap||[];
-          Object.keys(ultimaEval.notasSnap).forEach(function(oldId){
-            var ca=cAntes2.find(function(c){return c.id===oldId;});
-            if(ca) snap2[ca.label]=ultimaEval.notasSnap[oldId];
-          });
-        } else if(ultimaEval.det){
-          ultimaEval.det.forEach(function(d){snap2[d.label]=parseFloat(d.nota)||0;});
-        }
-        crits.forEach(function(c){if(snap2[c.label]!==undefined)notasRest2[c.id]=snap2[c.label];});
-      }
-      notasEval[pid]=notasRest2;
+      // Configurar modo edición
+      _evalModo='editar';
+      _evalVersionNom=dVersion;
+      _evalVersionQid=dQid||'';
+      // Limpiar notas para que se carguen desde QDB
+      notasEval[pid]={};
       goStep(5);
       setTimeout(function(){
         var drop=document.getElementById('provSelectorDrop');
         if(drop)drop.value=pid;
         seleccionarProv(pid);
-        mostrarMetaFields(pid);
-        var stepTitle=document.getElementById('evalStepTitle');
-        var p=getProv(pid);
-        if(stepTitle&&p)stepTitle.textContent='✏️ Editando: '+p.nom+' — '+dVersion;
-        tst('✏️ Editando: '+(p?p.nom:'proveedor')+' — '+dVersion+'. Modifica y guarda.');
+        tst('✏️ Editando: '+dVersion+'. Modifica y guarda.');
       },100);
-    });})(d.provId, d.version, d.ts, d._qid||'');
+    });})(d.provId, d.version, d._qid||'');
 
     // ── Reevaluar ──
     var btnReeval=document.createElement('button');
@@ -5335,27 +5182,25 @@ function buildResults(){
     btnEliminar.style.cssText='margin-left:4px;color:var(--no);border-color:var(--no);';
     btnEliminar.title='Eliminar esta evaluación';
     btnEliminar.textContent='🗑 Eliminar';
-    (function(pid,version,total){
+    (function(pid,version,total,qid){
       btnEliminar.addEventListener('click',function(){
-        if(!confirm('¿Eliminar esta evaluación de '+pid+'?'))return;
-        // Buscar _qid para eliminar de QDB
-        var hElim=hist.find(function(h){
-          return h.provId===pid&&h.version===version&&Math.abs(h.total-total)<0.001;
-        });
-        hist=hist.filter(function(h){
-          return !(h.provId===pid&&h.version===version&&Math.abs(h.total-total)<0.001);
-        });
+        var p2=getProv(pid);
+        if(!confirm('¿Eliminar "'+version+'" de '+(p2?p2.nom:pid)+'?'))return;
+        // Eliminar del historial local — buscar por versión exacta
+        var hElim=hist.find(function(h){return h.provId===pid&&h.version===version;});
+        hist=hist.filter(function(h){return !(h.provId===pid&&h.version===version);});
         buildResults();
-        // Eliminar de QDB si tiene _qid — NO guardar paquete para no sobreescribir historial
-        if(hElim&&hElim._qid){
-          qdbFetch({accion:'eliminarResumen',qid:hElim._qid},function(res){
-            tst(res&&res.ok?'✅ Evaluación eliminada de QDB':'✅ Eliminada localmente (sin conexión)');
+        // Eliminar de QDB — usar _qid del registro o del hist
+        var qidFinal=qid||(hElim&&hElim._qid)||'';
+        if(qidFinal){
+          qdbFetch({accion:'eliminarResumen',qid:qidFinal},function(res){
+            tst(res&&res.ok?'✅ Evaluación eliminada de QDB':'✅ Eliminada localmente');
           },5000);
         } else {
           tst('✅ Evaluación eliminada');
         }
       });
-    })(d.provId, d.version, d.total);
+    })(d.provId, d.version, d.total, d._qid||'');
 
     tdBtns.appendChild(btnEditar);
     tdBtns.appendChild(btnStar);
