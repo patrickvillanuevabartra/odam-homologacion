@@ -4032,24 +4032,7 @@ function goStep(n){
       });
     }
     if(paqueteActual)guardarPaqueteActual();
-    // Restaurar notas de todos los proveedores antes de construir sliders
-    provs.forEach(function(p){
-      if(!notasEval[p.id]||Object.keys(notasEval[p.id]).length===0){
-        var ultimaEval=null;
-        for(var hi=hist.length-1;hi>=0;hi--){if(hist[hi].provId===p.id){ultimaEval=hist[hi];break;}}
-        if(!ultimaEval)return;
-        if(ultimaEval.notasSnap&&Object.keys(ultimaEval.notasSnap).length>0){
-          notasEval[p.id]=JSON.parse(JSON.stringify(ultimaEval.notasSnap));
-        } else if(ultimaEval.det&&ultimaEval.det.length>0){
-          var snap={};
-          ultimaEval.det.forEach(function(d){
-            var crit=crits.find(function(cc){return cc.label===d.label;});
-            if(crit)snap[crit.id]=parseFloat(d.nota)||0;
-          });
-          if(Object.keys(snap).length>0)notasEval[p.id]=snap;
-        }
-      }
-    });
+    // NO pre-cargar notas aquí — seleccionarVersion lo hace desde QDB directamente
     if(provActualId){
       buildVersionSelector(provActualId);
     } else {
@@ -4371,8 +4354,13 @@ function seleccionarVersion(){
   } else {
     if(warn)warn.style.display='none';
     // Intentar cargar desde DETALLE de QDB, con fallback a notasSnap local
-    tst('⏳ Cargando calificaciones...');
-    // Normalizar version para busqueda (quitar tildes)
+    // Mostrar spinner mientras carga
+    var _cont=document.getElementById('evalCont');
+    if(_cont)_cont.innerHTML='<div style="padding:32px;text-align:center;color:var(--muted);background:var(--surface);border-radius:10px;">'
+      +'<div style="font-size:2rem;margin-bottom:8px;">⏳</div>'
+      +'<div style="font-weight:600;font-size:1rem;">Cargando calificaciones...</div>'
+      +'<div style="font-size:.84rem;margin-top:4px;color:var(--subtle);">Consultando QuintaDB</div>'
+      +'</div>';
     var _verBuscar=(hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
     cargarDetalleEvaluacion(hSel.nom||'', _verBuscar, hSel.ts||'', function(notasQDB){
       if(notasQDB&&Object.keys(notasQDB).length>0){
