@@ -2826,14 +2826,11 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
           return h.provId===pMatch.id&&h.version===rVersion;
         });
         if(dupIdx>-1){
-          // Si el existente tiene notasSnap, preservarlo siempre
           var _snapPreservar=hist[dupIdx].notasSnap||{};
           var _critsSnapPreservar=hist[dupIdx].critsSnap||[];
           if(!hist[dupIdx]._qid&&r._qid){
-            hist.splice(dupIdx,1); // quitar el local sin _qid
-            // el nuevo push abajo usará _snapExistente que ya tiene el notasSnap
+            hist.splice(dupIdx,1);
           } else {
-            // Ya existe con _qid — actualizar _qid pero preservar notasSnap
             if(Object.keys(_snapPreservar).length>0){
               hist[dupIdx].notasSnap=_snapPreservar;
               hist[dupIdx].critsSnap=_critsSnapPreservar;
@@ -2843,7 +2840,6 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
           }
         }
         var rFecNorm=normalizarFechaQDB(r.timestamp)||normalizarFechaQDB(rFec)||'';
-        // Recuperar notasSnap del historial_json del paquete si existe
         var _snapExistente={};
         var _critsSnapExistente=[];
         if(paqueteActual&&paqueteActual.historial){
@@ -4204,7 +4200,6 @@ function _cancelarReeval(){
 function cargarDetalleEvaluacion(provNom, version, ts, callback){
   var correo=getUsuarioCorreo();
   var pkNom=paqueteActual?paqueteActual.nombre:'';
-  var pkId=paqueteActual?paqueteActual.id:'';
   qdbFetch({
     accion:'cargarDetalleFiltrado',
     proveedor:encodeURIComponent(provNom||''),
@@ -4221,12 +4216,15 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
     console.log('cargarDetalleFiltrado: regs='+(res.registros||[]).length+' notas='+JSON.stringify(notas));
     if(callback)callback(notas);
   },8000);
-  // FIX: función vacía para cerrar el bloque original
-  void(function(){
-    var correo2=correo;
+}
+function _cargarDetalleEvaluacion_legacy(provNom, version, ts, callback){
+  qdbFetch({accion:'cargarDetalle'},function(res){
+    if(!res||!res.ok){if(callback)callback({});return;}
+    var correo=getUsuarioCorreo();
     function normVer(v){return (v||'').toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').trim();}
     var verNorm=normVer(version);
-    var pkId2=pkId; var pkNom2=pkNom;
+    var pkId=paqueteActual?paqueteActual.id:'';
+    var pkNom=paqueteActual?paqueteActual.nombre:'';
     // Filtrar por propietario(correo) + paquete(nombre) + proveedor + version
     var regs=(res.registros||[]).filter(function(r){
       var propOk=!r.propietario||r.propietario===''||r.propietario===correo;
@@ -4378,7 +4376,6 @@ function seleccionarVersion(){
     if(warn)warn.style.display='none';
     // Intentar cargar desde DETALLE de QDB, con fallback a notasSnap local
     tst('⏳ Cargando calificaciones...');
-    console.log('hSel.notasSnap:', JSON.stringify(hSel.notasSnap), 'critsSnap:', JSON.stringify(hSel.critsSnap), 'crits actuales:', JSON.stringify(crits.map(function(c){return c.id+':'+c.label;})));
     cargarDetalleEvaluacion(hSel.nom||'', hSel.version||'', hSel.ts||'', function(notasQDB){
       if(notasQDB&&Object.keys(notasQDB).length>0){
         aplicarNotasYBuild(notasQDB);
