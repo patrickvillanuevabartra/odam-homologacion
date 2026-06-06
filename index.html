@@ -1311,6 +1311,12 @@ function seleccionarProv(id){
   buildVersionSelector(id);
   buildProvSelector();
   mostrarMetaFields(id);
+  // Si no hay historial para este proveedor, buildVersionSelector ya llama buildEval()
+  // Si hay historial, seleccionarVersion() hace fetch async y llama buildEval() en callback
+  // Para el caso raro en que ambos fallen, forzar buildEval() como respaldo:
+  if(!hist.some(function(h){return h.provId===id;})){
+    buildEval();
+  }
 }
 
 // -- GUARDAR EVALUACION ACTUAL --
@@ -2820,14 +2826,35 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
           return h.provId===pMatch.id&&h.version===rVersion;
         });
         if(dupIdx>-1){
-          // Si el existente no tiene _qid pero este sí, reemplazar
+          // Si el existente tiene notasSnap, preservarlo siempre
+          var _snapPreservar=hist[dupIdx].notasSnap||{};
+          var _critsSnapPreservar=hist[dupIdx].critsSnap||[];
           if(!hist[dupIdx]._qid&&r._qid){
             hist.splice(dupIdx,1); // quitar el local sin _qid
+            // el nuevo push abajo usará _snapExistente que ya tiene el notasSnap
           } else {
-            return; // ya existe con _qid, ignorar duplicado
+            // Ya existe con _qid — actualizar _qid pero preservar notasSnap
+            if(Object.keys(_snapPreservar).length>0){
+              hist[dupIdx].notasSnap=_snapPreservar;
+              hist[dupIdx].critsSnap=_critsSnapPreservar;
+            }
+            hist[dupIdx]._qid=r._qid||hist[dupIdx]._qid;
+            return;
           }
         }
         var rFecNorm=normalizarFechaQDB(r.timestamp)||normalizarFechaQDB(rFec)||'';
+        // Recuperar notasSnap del historial_json del paquete si existe
+        var _snapExistente={};
+        var _critsSnapExistente=[];
+        if(paqueteActual&&paqueteActual.historial){
+          var _hLocal=paqueteActual.historial.find(function(hl){
+            return hl.provId===pMatch.id&&hl.version===rVersion;
+          });
+          if(_hLocal&&_hLocal.notasSnap&&Object.keys(_hLocal.notasSnap).length>0){
+            _snapExistente=_hLocal.notasSnap;
+            _critsSnapExistente=_hLocal.critsSnap||[];
+          }
+        }
         hist.push({
           provId:pMatch.id,nom:rNom,ruc:rRuc,
           fec:rFecNorm||rFec,eva:r.evaluador||'',
@@ -2838,7 +2865,7 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
           catItem:ci,version:rVersion,
           ts:rFecNorm||r.timestamp||rFec||'',
           _qid:r._qid||'',
-          det:[],notasSnap:{}
+          det:[],notasSnap:_snapExistente,critsSnap:_critsSnapExistente
         });
         pMatch.guardado=true;
       });
@@ -4031,8 +4058,11 @@ function goStep(n){
         }
       }
     });
-    if(provActualId)buildVersionSelector(provActualId);
-    else buildEval();
+    if(provActualId){
+      buildVersionSelector(provActualId);
+    } else {
+      buildEval();
+    }
     buildProvSelector();
     var mf=document.getElementById('evalMetaFields');
     if(mf)mf.style.display='block';
@@ -4172,9 +4202,9 @@ function _cancelarReeval(){
 
 // ══ CARGAR DETALLE DE EVALUACIÓN DESDE QDB ══
 function cargarDetalleEvaluacion(provNom, version, ts, callback){
-  // Usar acción filtrada en servidor — evita traer 500 registros al cliente
   var correo=getUsuarioCorreo();
   var pkNom=paqueteActual?paqueteActual.nombre:'';
+  var pkId=paqueteActual?paqueteActual.id:'';
   qdbFetch({
     accion:'cargarDetalleFiltrado',
     proveedor:encodeURIComponent(provNom||''),
@@ -4189,6 +4219,43 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
       if(critAct) notas[critAct.id]=parseFloat(r.calificacion)||0;
     });
     console.log('cargarDetalleFiltrado: regs='+(res.registros||[]).length+' notas='+JSON.stringify(notas));
+    if(callback)callback(notas);
+  },8000);
+  // FIX: función vacía para cerrar el bloque original
+  void(function(){
+    var correo2=correo;
+    function normVer(v){return (v||'').toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').trim();}
+    var verNorm=normVer(version);
+    var pkId2=pkId; var pkNom2=pkNom;
+    // Filtrar por propietario(correo) + paquete(nombre) + proveedor + version
+    var regs=(res.registros||[]).filter(function(r){
+      var propOk=!r.propietario||r.propietario===''||r.propietario===correo;
+      var nomOk=(r.proveedor||'').trim().toLowerCase()===(provNom||'').trim().toLowerCase();
+      var verOk=normVer(r.version)===verNorm;
+      var pkOk=!r.paquete||r.paquete===''||r.paquete===pkNom||r.paquete===pkId;
+      return propOk&&nomOk&&verOk&&pkOk;
+    });
+    // Si hay múltiples detalles (registros viejos), agrupar por timestamp
+    // y quedarse con los del timestamp más reciente
+    if(regs.length>0){
+      // Obtener timestamps únicos y tomar el más reciente
+      var tsList=regs.map(function(r){return normalizarFechaQDB(r.timestamp)||r.timestamp||'';});
+      tsList.sort();
+      var tsMax=tsList[tsList.length-1];
+      // Si hay ts válido, filtrar por el más reciente; si no, usar todos
+      if(tsMax){
+        var regsLatest=regs.filter(function(r){
+          return (normalizarFechaQDB(r.timestamp)||r.timestamp||'')=== tsMax;
+        });
+        if(regsLatest.length>0) regs=regsLatest;
+      }
+    }
+    var notas={};
+    regs.forEach(function(r){
+      var critAct=crits.find(function(cc){return cc.label===(r.criterio||'');});
+      if(critAct){notas[critAct.id]=parseFloat(r.calificacion)||0;}
+    });
+    console.log('cargarDetalle: regs='+regs.length+' notas='+JSON.stringify(notas));
     if(callback)callback(notas);
   },8000);
 }
@@ -4311,11 +4378,12 @@ function seleccionarVersion(){
     if(warn)warn.style.display='none';
     // Intentar cargar desde DETALLE de QDB, con fallback a notasSnap local
     tst('⏳ Cargando calificaciones...');
+    console.log('hSel.notasSnap:', JSON.stringify(hSel.notasSnap), 'critsSnap:', JSON.stringify(hSel.critsSnap), 'crits actuales:', JSON.stringify(crits.map(function(c){return c.id+':'+c.label;})));
     cargarDetalleEvaluacion(hSel.nom||'', hSel.version||'', hSel.ts||'', function(notasQDB){
       if(notasQDB&&Object.keys(notasQDB).length>0){
         aplicarNotasYBuild(notasQDB);
       } else {
-        // Fallback: usar notasSnap guardado localmente en hist
+        // Fallback 1: usar notasSnap guardado localmente en hist
         var snap={};
         if(hSel.notasSnap&&Object.keys(hSel.notasSnap).length>0){
           // notasSnap tiene IDs de crits — mapear por label
@@ -4332,6 +4400,11 @@ function seleccionarVersion(){
             var c=crits.find(function(cc){return cc.label===d.label;});
             if(c) snap[c.id]=parseFloat(d.nota)||0;
           });
+        }
+        // Fallback 2: usar notasEval ya en memoria (cargado por _restaurarNotasDesdeHist)
+        if(Object.keys(snap).length===0){
+          var memNotas=notasEval[provActualId]||{};
+          if(Object.keys(memNotas).length>0) snap=memNotas;
         }
         aplicarNotasYBuild(Object.keys(snap).length>0?snap:{});
       }
@@ -4360,13 +4433,36 @@ function buildEval(){
   cont.innerHTML='';
   if(!provActualId){
     cont.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:1rem;background:var(--surface);border-radius:10px;">👆 Selecciona un proveedor del desplegable para comenzar a evaluar.</div>';
+    // Limpiar sfBlock
+    var _ts=document.getElementById('totScore');if(_ts){_ts.textContent='0.000';}
+    var _tc=document.getElementById('totCat');if(_tc)_tc.textContent='—';
+    var _ti=document.getElementById('totInterp');if(_ti)_ti.textContent='';
+    var _sb=document.getElementById('sfBar');if(_sb){_sb.style.width='0%';}
     return;
   }
   if(!notasEval[provActualId])notasEval[provActualId]={};
   if(!evFiles[provActualId])evFiles[provActualId]={};
+
+  // ── PRE-MOSTRAR total desde historial mientras cargan las notas individuales ──
+  var _histPrev=hist.filter(function(h){return h.provId===provActualId;});
+  if(_histPrev.length&&Object.keys(notasEval[provActualId]).length===0){
+    var _hLast=_histPrev[_histPrev.length-1];
+    if(_hLast&&_hLast.total>0){
+      var _ci=getScaleItem(getFinalCat(_hLast.total));
+      var _ts=document.getElementById('totScore');
+      if(_ts){_ts.textContent=_hLast.total.toFixed(3);_ts.style.color='white';}
+      var _tc=document.getElementById('totCat');if(_tc)_tc.textContent=_ci?_ci.label:'—';
+      var _ti=document.getElementById('totInterp');if(_ti)_ti.textContent=_ci?_ci.interp:'';
+      var _sb=document.getElementById('sfBar');
+      if(_sb){_sb.style.width=(_hLast.total*100)+'%';if(_ci)_sb.style.background=_ci.color;}
+      // Mensaje mientras carga
+      cont.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:.9rem;background:var(--surface);border-radius:10px;">⏳ Cargando calificaciones por criterio...</div>';
+    }
+  }
   var prevNotas=notasEval[provActualId];
   var p=getProv(provActualId);
   var info=document.getElementById('evalInfo');
+  cont.innerHTML=''; // limpiar mensaje de "cargando..." si estaba
   // Construir texto dinámico según la escala actual
   var minEsc=SCALE.length?SCALE[SCALE.length-1].min:0;
   var maxEsc=SCALE.length?SCALE[0].max:1;
