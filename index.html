@@ -1404,7 +1404,6 @@ function enviarASheets(d,callback){
     escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};})
   };
   if(d._resumenQid) payload._resumenQid=d._resumenQid;
-  console.log('ENVIANDO EVALUACION:', JSON.stringify({accion:'guardarEvaluacion',version:payload.version,qid:payload._resumenQid||'nuevo'}));
   qdbFetch({accion:'guardarEvaluacion', datos:JSON.stringify(payload)}, function(res){
     console.log('RESPUESTA guardarEvaluacion:', JSON.stringify(res));
     if(callback)callback(!!(res&&res.ok));
@@ -4369,15 +4368,14 @@ function seleccionarVersion(){
       +'<div style="font-weight:700;font-size:1rem;color:var(--text);">Cargando calificaciones...</div>'
       +'<div style="font-size:.84rem;margin-top:6px;">Consultando QuintaDB</div>'
       +'</div>';
-    var _pid=provActualId;
-    var _hSel=hSel;
-    var _verBuscar=(_hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
-    cargarDetalleEvaluacion(_hSel.nom||'', _verBuscar, _hSel.ts||'', function(notasQDB){
-      if(notasQDB&&Object.keys(notasQDB).length>0){
-        notasEval[_pid]=notasQDB;
-      } else {
+    // Capturar referencias en closure para el callback asíncrono
+    (function(_pid, _hSel){
+      var _verBuscar=(_hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+      cargarDetalleEvaluacion(_hSel.nom||'', _verBuscar, _hSel.ts||'', function(notasQDB){
         var snap={};
-        if(_hSel.notasSnap&&Object.keys(_hSel.notasSnap).length>0){
+        if(notasQDB&&Object.keys(notasQDB).length>0){
+          snap=notasQDB;
+        } else if(_hSel.notasSnap&&Object.keys(_hSel.notasSnap).length>0){
           var cAntes=_hSel.critsSnap||[];
           Object.keys(_hSel.notasSnap).forEach(function(oldId){
             var ca=cAntes.find(function(c){return c.id===oldId;});
@@ -4387,10 +4385,10 @@ function seleccionarVersion(){
           _hSel.det.forEach(function(d){var c=crits.find(function(cc){return cc.label===d.label;});if(c)snap[c.id]=parseFloat(d.nota)||0;});
         }
         notasEval[_pid]=snap;
-      }
-      provActualId=_pid;
-      buildEval();
-    });
+        provActualId=_pid;
+        buildEval();
+      });
+    })(provActualId, hSel);
   }
 
   var fecEl=document.getElementById('evalFecha');
