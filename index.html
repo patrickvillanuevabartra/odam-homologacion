@@ -4361,34 +4361,44 @@ function seleccionarVersion(){
     buildEval();
   } else {
     if(warn)warn.style.display='none';
-    // Mostrar spinner mientras QDB responde
-    var _cont=document.getElementById('evalCont');
-    if(_cont)_cont.innerHTML='<div style="padding:48px;text-align:center;color:var(--muted);background:var(--surface);border-radius:10px;">'
-      +'<div style="font-size:2.5rem;margin-bottom:12px;">⏳</div>'
-      +'<div style="font-weight:700;font-size:1rem;color:var(--text);">Cargando calificaciones...</div>'
-      +'<div style="font-size:.84rem;margin-top:6px;">Consultando QuintaDB</div>'
-      +'</div>';
-    // Capturar referencias en closure para el callback asíncrono
-    (function(_pid, _hSel){
-      var _verBuscar=(_hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
-      cargarDetalleEvaluacion(_hSel.nom||'', _verBuscar, _hSel.ts||'', function(notasQDB){
+    // Intentar cargar desde DETALLE de QDB, con fallback a notasSnap local
+    tst('⏳ Cargando calificaciones...');
+    // Normalizar version para busqueda (quitar tildes)
+    var _verBuscar=(hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+    cargarDetalleEvaluacion(hSel.nom||'', _verBuscar, hSel.ts||'', function(notasQDB){
+      if(notasQDB&&Object.keys(notasQDB).length>0){
+        aplicarNotasYBuild(notasQDB);
+      } else {
+        // Fallback 1: usar notasSnap guardado localmente en hist
         var snap={};
-        if(notasQDB&&Object.keys(notasQDB).length>0){
-          snap=notasQDB;
-        } else if(_hSel.notasSnap&&Object.keys(_hSel.notasSnap).length>0){
-          var cAntes=_hSel.critsSnap||[];
-          Object.keys(_hSel.notasSnap).forEach(function(oldId){
+        if(hSel.notasSnap&&Object.keys(hSel.notasSnap).length>0){
+          // notasSnap tiene IDs de crits — mapear por label
+          var cAntes=hSel.critsSnap||[];
+          Object.keys(hSel.notasSnap).forEach(function(oldId){
             var ca=cAntes.find(function(c){return c.id===oldId;});
-            if(ca){var cActual=crits.find(function(c){return c.label===ca.label;});if(cActual)snap[cActual.id]=_hSel.notasSnap[oldId];}
+            if(ca){
+              var cActual=crits.find(function(c){return c.label===ca.label;});
+              if(cActual) snap[cActual.id]=hSel.notasSnap[oldId];
+            }
           });
-        } else if(_hSel.det&&_hSel.det.length>0){
-          _hSel.det.forEach(function(d){var c=crits.find(function(cc){return cc.label===d.label;});if(c)snap[c.id]=parseFloat(d.nota)||0;});
+        } else if(hSel.det&&hSel.det.length>0){
+          hSel.det.forEach(function(d){
+            var c=crits.find(function(cc){return cc.label===d.label;});
+            if(c) snap[c.id]=parseFloat(d.nota)||0;
+          });
         }
-        notasEval[_pid]=snap;
-        provActualId=_pid;
-        buildEval();
-      });
-    })(provActualId, hSel);
+        // Fallback 2: usar notasEval ya en memoria (cargado por _restaurarNotasDesdeHist)
+        if(Object.keys(snap).length===0){
+          var memNotas=notasEval[provActualId]||{};
+          if(Object.keys(memNotas).length>0) snap=memNotas;
+        }
+        // Fallback 3: si total conocido, distribuir proporcionalmente por peso
+        if(Object.keys(snap).length===0&&hSel.total>0&&crits.length>0){
+          crits.forEach(function(c){snap[c.id]=hSel.total;});
+        }
+        aplicarNotasYBuild(Object.keys(snap).length>0?snap:{});
+      }
+    });
   }
 
   var fecEl=document.getElementById('evalFecha');
