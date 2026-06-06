@@ -4184,6 +4184,39 @@ function buildVersionSelector(provId){
     drop.appendChild(opt);
   });
 
+  // Si modo reeval: cargar notas de la última versión como base, pero guardar como nuevo registro
+  if(_evalModo==='reeval'){
+    var optReev=document.createElement('option');
+    optReev.value='__reeval__';
+    optReev.textContent='↺ '+_evalVersionNom+' (nueva)';
+    optReev.style.fontWeight='700';
+    optReev.style.color='#D97706';
+    drop.insertBefore(optReev, drop.firstChild);
+    drop.selectedIndex=0;
+    _actualizarIndicativoVersion('reeval', _evalVersionNom);
+    // Cargar notas de la última evaluación como punto de partida
+    var ultima=ph[ph.length-1];
+    var verBuscar=(ultima.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+    cargarDetalleEvaluacion(ultima.nom||'', verBuscar, ultima.ts||'', function(notasQDB){
+      if(notasQDB&&Object.keys(notasQDB).length>0){
+        notasEval[provActualId]=notasQDB;
+      } else if(ultima.notasSnap&&Object.keys(ultima.notasSnap).length>0){
+        var snap={};
+        var cAntes=ultima.critsSnap||[];
+        Object.keys(ultima.notasSnap).forEach(function(oldId){
+          var ca=cAntes.find(function(c){return c.id===oldId;});
+          if(ca){var cAct=crits.find(function(c){return c.label===ca.label;});if(cAct)snap[cAct.id]=ultima.notasSnap[oldId];}
+        });
+        notasEval[provActualId]=snap;
+      } else if(ultima.det&&ultima.det.length>0){
+        var snap2={};
+        ultima.det.forEach(function(d){var c=crits.find(function(cc){return cc.label===d.label;});if(c)snap2[c.id]=parseFloat(d.nota)||0;});
+        notasEval[provActualId]=snap2;
+      }
+      buildEval();
+    });
+    return;
+  }
   // Si modo editar, seleccionar la versión que se pidió editar
   if(_evalModo==='editar'&&_evalVersionNom){
     var idxEditar=ph.findIndex(function(h){return h.version===_evalVersionNom;});
@@ -4193,7 +4226,7 @@ function buildVersionSelector(provId){
       return;
     }
   }
-  // Por defecto: seleccionar la última
+  // Por defecto: seleccionar la última versión
   drop.selectedIndex=ph.length-1;
   seleccionarVersion();
 }
