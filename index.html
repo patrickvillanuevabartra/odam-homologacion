@@ -1409,6 +1409,8 @@ function enviarASheets(d,callback){
     propietario:payload.propietario, version:payload.version,
     total:payload.total
   }));
+  // Si es edición, pasar el _qid del RESUMEN para UPDATE
+  if(d._resumenQid) payload._resumenQid=d._resumenQid;
   qdbFetch({accion:'guardarEvaluacion', datos:JSON.stringify(payload)}, function(res){
     console.log('RESPUESTA guardarEvaluacion:', JSON.stringify(res));
     if(callback)callback(!!(res&&res.ok));
@@ -1443,14 +1445,23 @@ function guardarEvalActual(){
   var fecEl=document.getElementById('evalFecha');
   if(fecEl&&fecEl.value)p.fec=fecEl.value;
   var d=getProvData(provActualId);
-  // Es reevaluación solo si ya existe al menos una evaluación guardada en hist
-  var histProv=hist.filter(function(h){return h.provId===provActualId;});
-  var isReeval=histProv.length>0;
-  if(isReeval){
-    var prevReev=histProv.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
-    d.version='Reevaluacion '+(prevReev+1);
+  // Si estamos editando una versión existente, mantener su versión y hacer UPDATE
+  var _modoEdicion=window._editandoVersion&&window._editandoVersion!=='';
+  if(_modoEdicion){
+    d.version=window._editandoVersion;
+    d._resumenQid=window._editandoQid||'';
   } else {
-    d.version='Evaluacion inicial';
+    // Es reevaluación solo si ya existe al menos una evaluación guardada en hist
+    var histProv=hist.filter(function(h){return h.provId===provActualId;});
+    // Excluir la que se está editando del conteo
+    var histProvNueva=histProv.filter(function(h){return h.version!==window._editandoVersion;});
+    var isReeval=histProvNueva.length>0;
+    if(isReeval){
+      var prevReev=histProvNueva.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
+      d.version='Reevaluacion '+(prevReev+1);
+    } else {
+      d.version='Evaluacion inicial';
+    }
   }
   var _now=new Date();
   d.ts=_now.toISOString();
@@ -1470,6 +1481,8 @@ function guardarEvalActual(){
   enviarASheets(d,function(ok){
     p.guardado=true;
     if(btn){btn.textContent='💾 Guardar Evaluación / Reevaluación';btn.removeAttribute('disabled');}
+    // Limpiar modo edición
+    window._editandoVersion='';window._editandoQid='';window._editandoTs='';
     tst(ok?'✅ '+p.nom+' guardado en QuintaDB':'✅ Guardado local. Revisa conexión a QuintaDB.');
     buildProvSelector();
     ['btnVerResultados','btnVReval'].forEach(function(id){
@@ -4207,7 +4220,7 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
       console.log('DETALLE filtrado vacio, usando legacy...');
       _cargarDetalleLegacy(provNom,version,ts,callback);
     }
-  },8000);
+  },20000);
 }
 function _cargarDetalleLegacy(provNom, version, ts, callback){
   qdbFetch({accion:'cargarDetalle'},function(res){
@@ -5234,8 +5247,12 @@ function buildResults(){
     btnEditar.style.marginLeft='4px';
     btnEditar.title='Modificar la evaluación de este proveedor';
     btnEditar.textContent='✏️ Editar';
-    (function(pid,dVersion,dTs){btnEditar.addEventListener('click',function(){
+    (function(pid,dVersion,dTs,dQid){btnEditar.addEventListener('click',function(){
       provActualId=pid;
+      // Guardar version y _qid que se está editando (para UPDATE en lugar de INSERT)
+      window._editandoVersion=dVersion;
+      window._editandoQid=dQid||'';
+      window._editandoTs=dTs||'';
       // Buscar la versión específica clickeada
       var ph=hist.filter(function(h){return h.provId===pid;});
       ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
@@ -5257,17 +5274,18 @@ function buildResults(){
         crits.forEach(function(c){if(snap2[c.label]!==undefined)notasRest2[c.id]=snap2[c.label];});
       }
       notasEval[pid]=notasRest2;
-      goStep(3);
+      goStep(5);
       setTimeout(function(){
         var drop=document.getElementById('provSelectorDrop');
         if(drop)drop.value=pid;
+        seleccionarProv(pid);
         mostrarMetaFields(pid);
         var stepTitle=document.getElementById('evalStepTitle');
         var p=getProv(pid);
-        if(stepTitle&&p)stepTitle.textContent='Editando evaluación — '+p.nom;
-        tst('✏️ Editando: '+(p?p.nom:'proveedor')+'. Modifica y guarda.');
-      },50);
-    });})(d.provId);
+        if(stepTitle&&p)stepTitle.textContent='✏️ Editando: '+p.nom+' — '+dVersion;
+        tst('✏️ Editando: '+(p?p.nom:'proveedor')+' — '+dVersion+'. Modifica y guarda.');
+      },100);
+    });})(d.provId, d.version, d.ts, d._qid||'');
 
     // ── Reevaluar ──
     var btnReeval=document.createElement('button');
