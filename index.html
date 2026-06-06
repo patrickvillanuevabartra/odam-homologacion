@@ -1321,7 +1321,7 @@ function seleccionarProv(id){
 
 // -- GUARDAR EVALUACION ACTUAL --
 // ── GOOGLE SHEETS ──
-var GS_URL='https://script.google.com/macros/s/AKfycbwAnHoBDBZI6cgO8QnxrrXd081Jy5PSadufj5kYHtQMMBH_w2GBc5ZltRVu67DS7Lg1/exec';
+var GS_URL='https://script.google.com/macros/s/AKfycbwcrqr652QqWVsJ7QRFwlA-FSQKIPSs5-NvXh1UlexrMOzbIMaH76zpgYPvwiArNvD7/exec';
 
 // ── Wrapper fetch para reemplazar JSONP ──
 // Usa fetch() en lugar de <script> injection para evitar el error
@@ -2826,31 +2826,14 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
           return h.provId===pMatch.id&&h.version===rVersion;
         });
         if(dupIdx>-1){
-          var _snapPreservar=hist[dupIdx].notasSnap||{};
-          var _critsSnapPreservar=hist[dupIdx].critsSnap||[];
+          // Si el existente no tiene _qid pero este sí, reemplazar
           if(!hist[dupIdx]._qid&&r._qid){
-            hist.splice(dupIdx,1);
+            hist.splice(dupIdx,1); // quitar el local sin _qid
           } else {
-            if(Object.keys(_snapPreservar).length>0){
-              hist[dupIdx].notasSnap=_snapPreservar;
-              hist[dupIdx].critsSnap=_critsSnapPreservar;
-            }
-            hist[dupIdx]._qid=r._qid||hist[dupIdx]._qid;
-            return;
+            return; // ya existe con _qid, ignorar duplicado
           }
         }
         var rFecNorm=normalizarFechaQDB(r.timestamp)||normalizarFechaQDB(rFec)||'';
-        var _snapExistente={};
-        var _critsSnapExistente=[];
-        if(paqueteActual&&paqueteActual.historial){
-          var _hLocal=paqueteActual.historial.find(function(hl){
-            return hl.provId===pMatch.id&&hl.version===rVersion;
-          });
-          if(_hLocal&&_hLocal.notasSnap&&Object.keys(_hLocal.notasSnap).length>0){
-            _snapExistente=_hLocal.notasSnap;
-            _critsSnapExistente=_hLocal.critsSnap||[];
-          }
-        }
         hist.push({
           provId:pMatch.id,nom:rNom,ruc:rRuc,
           fec:rFecNorm||rFec,eva:r.evaluador||'',
@@ -2861,7 +2844,7 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
           catItem:ci,version:rVersion,
           ts:rFecNorm||r.timestamp||rFec||'',
           _qid:r._qid||'',
-          det:[],notasSnap:_snapExistente,critsSnap:_critsSnapExistente
+          det:[],notasSnap:{}
         });
         pMatch.guardado=true;
       });
@@ -4198,6 +4181,7 @@ function _cancelarReeval(){
 
 // ══ CARGAR DETALLE DE EVALUACIÓN DESDE QDB ══
 function cargarDetalleEvaluacion(provNom, version, ts, callback){
+  // Intentar primero con filtrado en servidor
   var correo=getUsuarioCorreo();
   var pkNom=paqueteActual?paqueteActual.nombre:'';
   qdbFetch({
@@ -4207,17 +4191,22 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
     propietario:encodeURIComponent(correo||''),
     paquete:encodeURIComponent(pkNom||'')
   },function(res){
-    if(!res||!res.ok){if(callback)callback({});return;}
-    var notas={};
-    (res.registros||[]).forEach(function(r){
-      var critAct=crits.find(function(cc){return cc.label===(r.criterio||'');});
-      if(critAct) notas[critAct.id]=parseFloat(r.calificacion)||0;
-    });
-    console.log('cargarDetalleFiltrado: regs='+(res.registros||[]).length+' notas='+JSON.stringify(notas));
-    if(callback)callback(notas);
+    if(res&&res.ok&&res.registros&&res.registros.length>0){
+      var notas={};
+      res.registros.forEach(function(r){
+        var critAct=crits.find(function(cc){return cc.label===(r.criterio||'');});
+        if(critAct) notas[critAct.id]=parseFloat(r.calificacion)||0;
+      });
+      console.log('DETALLE filtrado OK regs='+res.registros.length+' notas='+JSON.stringify(notas));
+      if(callback)callback(notas);
+    } else {
+      // Fallback: cargar todos y filtrar en cliente
+      console.log('DETALLE filtrado vacio, usando legacy...');
+      _cargarDetalleLegacy(provNom,version,ts,callback);
+    }
   },8000);
 }
-function _cargarDetalleEvaluacion_legacy(provNom, version, ts, callback){
+function _cargarDetalleLegacy(provNom, version, ts, callback){
   qdbFetch({accion:'cargarDetalle'},function(res){
     if(!res||!res.ok){if(callback)callback({});return;}
     var correo=getUsuarioCorreo();
@@ -4225,22 +4214,16 @@ function _cargarDetalleEvaluacion_legacy(provNom, version, ts, callback){
     var verNorm=normVer(version);
     var pkId=paqueteActual?paqueteActual.id:'';
     var pkNom=paqueteActual?paqueteActual.nombre:'';
-    // Filtrar por propietario(correo) + paquete(nombre) + proveedor + version
     var regs=(res.registros||[]).filter(function(r){
       var propOk=!r.propietario||r.propietario===''||r.propietario===correo;
       var nomOk=(r.proveedor||'').trim().toLowerCase()===(provNom||'').trim().toLowerCase();
-      var verOk=normVer(r.version)===verNorm;
       var pkOk=!r.paquete||r.paquete===''||r.paquete===pkNom||r.paquete===pkId;
-      return propOk&&nomOk&&verOk&&pkOk;
+      return propOk&&nomOk&&pkOk;
     });
-    // Si hay múltiples detalles (registros viejos), agrupar por timestamp
-    // y quedarse con los del timestamp más reciente
     if(regs.length>0){
-      // Obtener timestamps únicos y tomar el más reciente
       var tsList=regs.map(function(r){return normalizarFechaQDB(r.timestamp)||r.timestamp||'';});
       tsList.sort();
       var tsMax=tsList[tsList.length-1];
-      // Si hay ts válido, filtrar por el más reciente; si no, usar todos
       if(tsMax){
         var regsLatest=regs.filter(function(r){
           return (normalizarFechaQDB(r.timestamp)||r.timestamp||'')=== tsMax;
@@ -4253,7 +4236,7 @@ function _cargarDetalleEvaluacion_legacy(provNom, version, ts, callback){
       var critAct=crits.find(function(cc){return cc.label===(r.criterio||'');});
       if(critAct){notas[critAct.id]=parseFloat(r.calificacion)||0;}
     });
-    console.log('cargarDetalle: regs='+regs.length+' notas='+JSON.stringify(notas));
+    console.log('LEGACY cargarDetalle: regs='+regs.length+' notas='+JSON.stringify(notas));
     if(callback)callback(notas);
   },8000);
 }
@@ -4376,7 +4359,9 @@ function seleccionarVersion(){
     if(warn)warn.style.display='none';
     // Intentar cargar desde DETALLE de QDB, con fallback a notasSnap local
     tst('⏳ Cargando calificaciones...');
-    cargarDetalleEvaluacion(hSel.nom||'', hSel.version||'', hSel.ts||'', function(notasQDB){
+    // Normalizar version para busqueda (quitar tildes)
+    var _verBuscar=(hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+    cargarDetalleEvaluacion(hSel.nom||'', _verBuscar, hSel.ts||'', function(notasQDB){
       if(notasQDB&&Object.keys(notasQDB).length>0){
         aplicarNotasYBuild(notasQDB);
       } else {
@@ -4402,6 +4387,10 @@ function seleccionarVersion(){
         if(Object.keys(snap).length===0){
           var memNotas=notasEval[provActualId]||{};
           if(Object.keys(memNotas).length>0) snap=memNotas;
+        }
+        // Fallback 3: si total conocido, distribuir proporcionalmente por peso
+        if(Object.keys(snap).length===0&&hSel.total>0&&crits.length>0){
+          crits.forEach(function(c){snap[c.id]=hSel.total;});
         }
         aplicarNotasYBuild(Object.keys(snap).length>0?snap:{});
       }
