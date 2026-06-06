@@ -1403,12 +1403,7 @@ function enviarASheets(d,callback){
     };}),
     escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};})
   };
-  console.log('ENVIANDO EVALUACION:', JSON.stringify({
-    accion:'guardarEvaluacion',
-    nom:payload.nom, paquete:payload.paquete,
-    propietario:payload.propietario, version:payload.version,
-    total:payload.total
-  }));
+  if(d._resumenQid) payload._resumenQid=d._resumenQid;
   qdbFetch({accion:'guardarEvaluacion', datos:JSON.stringify(payload)}, function(res){
     console.log('RESPUESTA guardarEvaluacion:', JSON.stringify(res));
     if(callback)callback(!!(res&&res.ok));
@@ -1443,15 +1438,21 @@ function guardarEvalActual(){
   var fecEl=document.getElementById('evalFecha');
   if(fecEl&&fecEl.value)p.fec=fecEl.value;
   var d=getProvData(provActualId);
-  // Es reevaluación solo si ya existe al menos una evaluación guardada en hist
-  var histProv=hist.filter(function(h){return h.provId===provActualId;});
-  var isReeval=histProv.length>0;
-  if(isReeval){
-    var prevReev=histProv.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
-    d.version='Reevaluacion '+(prevReev+1);
+  if(window._modoEdicion&&window._editQid){
+    d.version=window._editVersion||'Evaluacion inicial';
+    d._resumenQid=window._editQid;
   } else {
-    d.version='Evaluacion inicial';
+    var histProv=hist.filter(function(h){return h.provId===provActualId;});
+    var isReeval=histProv.length>0;
+    if(isReeval){
+      var prevReev=histProv.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
+      d.version='Reevaluacion '+(prevReev+1);
+    } else {
+      d.version='Evaluacion inicial';
+    }
+    d._resumenQid='';
   }
+  window._modoEdicion=false;window._editQid='';window._editVersion='';
   var _now=new Date();
   d.ts=_now.toISOString();
   d.fecHora=_now.toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -5234,14 +5235,15 @@ function buildResults(){
     btnEditar.style.marginLeft='4px';
     btnEditar.title='Modificar la evaluación de este proveedor';
     btnEditar.textContent='✏️ Editar';
-    (function(pid,dVersion,dTs){btnEditar.addEventListener('click',function(){
+    (function(pid,dVersion,dTs,dQid){btnEditar.addEventListener('click',function(){
       provActualId=pid;
-      // Buscar la versión específica clickeada
+      window._modoEdicion=true;
+      window._editQid=dQid||'';
+      window._editVersion=dVersion||'';
       var ph=hist.filter(function(h){return h.provId===pid;});
       ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
       var ultimaEval=ph.find(function(h){return h.version===dVersion&&(h.ts||'')===(dTs||'');});
       if(!ultimaEval)for(var hi=hist.length-1;hi>=0;hi--){if(hist[hi].provId===pid){ultimaEval=hist[hi];break;}}
-      // Restaurar solo notas de criterios coincidentes por nombre
       var notasRest2={};
       if(ultimaEval){
         var snap2={};
@@ -5257,17 +5259,15 @@ function buildResults(){
         crits.forEach(function(c){if(snap2[c.label]!==undefined)notasRest2[c.id]=snap2[c.label];});
       }
       notasEval[pid]=notasRest2;
-      goStep(3);
+      goStep(5);
       setTimeout(function(){
         var drop=document.getElementById('provSelectorDrop');
         if(drop)drop.value=pid;
-        mostrarMetaFields(pid);
-        var stepTitle=document.getElementById('evalStepTitle');
+        seleccionarProv(pid);
         var p=getProv(pid);
-        if(stepTitle&&p)stepTitle.textContent='Editando evaluación — '+p.nom;
-        tst('✏️ Editando: '+(p?p.nom:'proveedor')+'. Modifica y guarda.');
-      },50);
-    });})(d.provId);
+        tst('✏️ Editando: '+(p?p.nom:'')+' — '+dVersion);
+      },100);
+    });})(d.provId, d.version, d.ts, d._qid||'');
 
     // ── Reevaluar ──
     var btnReeval=document.createElement('button');
@@ -5317,27 +5317,23 @@ function buildResults(){
     btnEliminar.style.cssText='margin-left:4px;color:var(--no);border-color:var(--no);';
     btnEliminar.title='Eliminar esta evaluación';
     btnEliminar.textContent='🗑 Eliminar';
-    (function(pid,version,total){
+    (function(pid,version,dQid){
       btnEliminar.addEventListener('click',function(){
-        if(!confirm('¿Eliminar esta evaluación de '+pid+'?'))return;
-        // Buscar _qid para eliminar de QDB
-        var hElim=hist.find(function(h){
-          return h.provId===pid&&h.version===version&&Math.abs(h.total-total)<0.001;
-        });
-        hist=hist.filter(function(h){
-          return !(h.provId===pid&&h.version===version&&Math.abs(h.total-total)<0.001);
-        });
+        var p2=getProv(pid);
+        if(!confirm('¿Eliminar "'+version+'" de '+(p2?p2.nom:pid)+'?'))return;
+        var hElim=hist.find(function(h){return h.provId===pid&&h.version===version;});
+        hist=hist.filter(function(h){return !(h.provId===pid&&h.version===version);});
         buildResults();
-        // Eliminar de QDB si tiene _qid — NO guardar paquete para no sobreescribir historial
-        if(hElim&&hElim._qid){
-          qdbFetch({accion:'eliminarResumen',qid:hElim._qid},function(res){
-            tst(res&&res.ok?'✅ Evaluación eliminada de QDB':'✅ Eliminada localmente (sin conexión)');
+        var qidFinal=dQid||(hElim&&hElim._qid)||'';
+        if(qidFinal){
+          qdbFetch({accion:'eliminarResumen',qid:qidFinal},function(res){
+            tst(res&&res.ok?'✅ Evaluación eliminada de QDB':'✅ Eliminada localmente');
           },5000);
         } else {
           tst('✅ Evaluación eliminada');
         }
       });
-    })(d.provId, d.version, d.total);
+    })(d.provId, d.version, d._qid||'');
 
     tdBtns.appendChild(btnEditar);
     tdBtns.appendChild(btnStar);
