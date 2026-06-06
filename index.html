@@ -1404,12 +1404,7 @@ function enviarASheets(d,callback){
     escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};})
   };
   if(d._resumenQid) payload._resumenQid=d._resumenQid;
-  console.log('ENVIANDO EVALUACION:', JSON.stringify({
-    accion:'guardarEvaluacion',
-    nom:payload.nom, paquete:payload.paquete,
-    propietario:payload.propietario, version:payload.version,
-    total:payload.total, qid:payload._resumenQid||'nuevo'
-  }));
+  console.log('ENVIANDO EVALUACION:', JSON.stringify({accion:'guardarEvaluacion',version:payload.version,qid:payload._resumenQid||'nuevo'}));
   qdbFetch({accion:'guardarEvaluacion', datos:JSON.stringify(payload)}, function(res){
     console.log('RESPUESTA guardarEvaluacion:', JSON.stringify(res));
     if(callback)callback(!!(res&&res.ok));
@@ -1444,12 +1439,10 @@ function guardarEvalActual(){
   var fecEl=document.getElementById('evalFecha');
   if(fecEl&&fecEl.value)p.fec=fecEl.value;
   var d=getProvData(provActualId);
-  // Modo edicion: actualizar version existente con su qid
   if(window._modoEdicion&&window._editQid){
     d.version=window._editVersion||'Evaluacion inicial';
     d._resumenQid=window._editQid;
   } else {
-    // Nueva o reevaluacion: crear registro nuevo
     var histProv=hist.filter(function(h){return h.provId===provActualId;});
     var isReeval=histProv.length>0;
     if(isReeval){
@@ -1460,7 +1453,6 @@ function guardarEvalActual(){
     }
     d._resumenQid='';
   }
-  // Limpiar modo edicion despues de usar
   window._modoEdicion=false;window._editQid='';window._editVersion='';
   var _now=new Date();
   d.ts=_now.toISOString();
@@ -4032,7 +4024,24 @@ function goStep(n){
       });
     }
     if(paqueteActual)guardarPaqueteActual();
-    // NO pre-cargar notas aquí — seleccionarVersion lo hace desde QDB directamente
+    // Restaurar notas de todos los proveedores antes de construir sliders
+    provs.forEach(function(p){
+      if(!notasEval[p.id]||Object.keys(notasEval[p.id]).length===0){
+        var ultimaEval=null;
+        for(var hi=hist.length-1;hi>=0;hi--){if(hist[hi].provId===p.id){ultimaEval=hist[hi];break;}}
+        if(!ultimaEval)return;
+        if(ultimaEval.notasSnap&&Object.keys(ultimaEval.notasSnap).length>0){
+          notasEval[p.id]=JSON.parse(JSON.stringify(ultimaEval.notasSnap));
+        } else if(ultimaEval.det&&ultimaEval.det.length>0){
+          var snap={};
+          ultimaEval.det.forEach(function(d){
+            var crit=crits.find(function(cc){return cc.label===d.label;});
+            if(crit)snap[crit.id]=parseFloat(d.nota)||0;
+          });
+          if(Object.keys(snap).length>0)notasEval[p.id]=snap;
+        }
+      }
+    });
     if(provActualId){
       buildVersionSelector(provActualId);
     } else {
@@ -4353,45 +4362,27 @@ function seleccionarVersion(){
     buildEval();
   } else {
     if(warn)warn.style.display='none';
-    // Intentar cargar desde DETALLE de QDB, con fallback a notasSnap local
-    // Mostrar spinner mientras carga
+    // Mostrar spinner mientras QDB responde
     var _cont=document.getElementById('evalCont');
-    if(_cont)_cont.innerHTML='<div style="padding:32px;text-align:center;color:var(--muted);background:var(--surface);border-radius:10px;">'
-      +'<div style="font-size:2rem;margin-bottom:8px;">⏳</div>'
-      +'<div style="font-weight:600;font-size:1rem;">Cargando calificaciones...</div>'
-      +'<div style="font-size:.84rem;margin-top:4px;color:var(--subtle);">Consultando QuintaDB</div>'
+    if(_cont)_cont.innerHTML='<div style="padding:48px;text-align:center;color:var(--muted);background:var(--surface);border-radius:10px;">'
+      +'<div style="font-size:2.5rem;margin-bottom:12px;">⏳</div>'
+      +'<div style="font-weight:700;font-size:1rem;color:var(--text);">Cargando calificaciones...</div>'
+      +'<div style="font-size:.84rem;margin-top:6px;">Consultando QuintaDB</div>'
       +'</div>';
     var _verBuscar=(hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
     cargarDetalleEvaluacion(hSel.nom||'', _verBuscar, hSel.ts||'', function(notasQDB){
       if(notasQDB&&Object.keys(notasQDB).length>0){
         aplicarNotasYBuild(notasQDB);
       } else {
-        // Fallback 1: usar notasSnap guardado localmente en hist
         var snap={};
         if(hSel.notasSnap&&Object.keys(hSel.notasSnap).length>0){
-          // notasSnap tiene IDs de crits — mapear por label
           var cAntes=hSel.critsSnap||[];
           Object.keys(hSel.notasSnap).forEach(function(oldId){
             var ca=cAntes.find(function(c){return c.id===oldId;});
-            if(ca){
-              var cActual=crits.find(function(c){return c.label===ca.label;});
-              if(cActual) snap[cActual.id]=hSel.notasSnap[oldId];
-            }
+            if(ca){var cActual=crits.find(function(c){return c.label===ca.label;});if(cActual)snap[cActual.id]=hSel.notasSnap[oldId];}
           });
         } else if(hSel.det&&hSel.det.length>0){
-          hSel.det.forEach(function(d){
-            var c=crits.find(function(cc){return cc.label===d.label;});
-            if(c) snap[c.id]=parseFloat(d.nota)||0;
-          });
-        }
-        // Fallback 2: usar notasEval ya en memoria (cargado por _restaurarNotasDesdeHist)
-        if(Object.keys(snap).length===0){
-          var memNotas=notasEval[provActualId]||{};
-          if(Object.keys(memNotas).length>0) snap=memNotas;
-        }
-        // Fallback 3: si total conocido, distribuir proporcionalmente por peso
-        if(Object.keys(snap).length===0&&hSel.total>0&&crits.length>0){
-          crits.forEach(function(c){snap[c.id]=hSel.total;});
+          hSel.det.forEach(function(d){var c=crits.find(function(cc){return cc.label===d.label;});if(c)snap[c.id]=parseFloat(d.nota)||0;});
         }
         aplicarNotasYBuild(Object.keys(snap).length>0?snap:{});
       }
@@ -5234,11 +5225,9 @@ function buildResults(){
     btnEditar.textContent='✏️ Editar';
     (function(pid,dVersion,dTs,dQid){btnEditar.addEventListener('click',function(){
       provActualId=pid;
-      // Marcar modo edicion para que guardarEvalActual haga UPDATE
       window._modoEdicion=true;
       window._editQid=dQid||'';
       window._editVersion=dVersion||'';
-      // Buscar la versión específica clickeada
       var ph=hist.filter(function(h){return h.provId===pid;});
       ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
       var ultimaEval=ph.find(function(h){return h.version===dVersion&&(h.ts||'')===(dTs||'');});
@@ -5264,7 +5253,7 @@ function buildResults(){
         if(drop)drop.value=pid;
         seleccionarProv(pid);
         var p=getProv(pid);
-        tst('✏️ Editando: '+(p?p.nom:'')+' — '+dVersion+'. Modifica y guarda.');
+        tst('✏️ Editando: '+(p?p.nom:'')+' — '+dVersion);
       },100);
     });})(d.provId, d.version, d.ts, d._qid||'');
 
