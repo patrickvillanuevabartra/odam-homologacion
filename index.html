@@ -4361,7 +4361,8 @@ function seleccionarVersion(){
     buildEval();
   } else {
     if(warn)warn.style.display='none';
-    // Intentar cargar desde DETALLE de QDB, con fallback a notasSnap local
+    // Mostrar spinner inmediatamente — NO construir sliders hasta recibir respuesta de QDB
+    buildEval(true);
     tst('⏳ Cargando calificaciones...');
     // Normalizar version para busqueda (quitar tildes)
     var _verBuscar=(hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
@@ -4418,7 +4419,7 @@ function seleccionarVersion(){
   window._tsEditando=hSel.ts||'';
 }
 
-function buildEval(){
+function buildEval(loading){
   var cont=document.getElementById('evalCont');
   cont.innerHTML='';
   if(!provActualId){
@@ -4433,26 +4434,30 @@ function buildEval(){
   if(!notasEval[provActualId])notasEval[provActualId]={};
   if(!evFiles[provActualId])evFiles[provActualId]={};
 
-  // ── PRE-MOSTRAR total desde historial mientras cargan las notas individuales ──
-  var _histPrev=hist.filter(function(h){return h.provId===provActualId;});
-  if(_histPrev.length&&Object.keys(notasEval[provActualId]).length===0){
-    var _hLast=_histPrev[_histPrev.length-1];
-    if(_hLast&&_hLast.total>0){
-      var _ci=getScaleItem(getFinalCat(_hLast.total));
-      var _ts=document.getElementById('totScore');
-      if(_ts){_ts.textContent=_hLast.total.toFixed(3);_ts.style.color='white';}
-      var _tc=document.getElementById('totCat');if(_tc)_tc.textContent=_ci?_ci.label:'—';
-      var _ti=document.getElementById('totInterp');if(_ti)_ti.textContent=_ci?_ci.interp:'';
-      var _sb=document.getElementById('sfBar');
-      if(_sb){_sb.style.width=(_hLast.total*100)+'%';if(_ci)_sb.style.background=_ci.color;}
-      // Mensaje mientras carga
-      cont.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:.9rem;background:var(--surface);border-radius:10px;">⏳ Cargando calificaciones por criterio...</div>';
+  // ── Si se pidió modo loading: mostrar solo spinner, NO construir sliders aún ──
+  if(loading){
+    cont.innerHTML='<div style="padding:32px 16px;text-align:center;color:var(--muted);font-size:.95rem;background:var(--surface);border-radius:10px;border:1.5px dashed var(--border);">⏳ Cargando calificaciones...</div>';
+    // Actualizar el score bar con el último historial conocido si existe
+    var _histPrev2=hist.filter(function(h){return h.provId===provActualId;});
+    if(_histPrev2.length){
+      var _hLast2=_histPrev2[_histPrev2.length-1];
+      if(_hLast2&&_hLast2.total>0){
+        var _ci2=getScaleItem(getFinalCat(_hLast2.total));
+        var _ts2=document.getElementById('totScore');
+        if(_ts2){_ts2.textContent=_hLast2.total.toFixed(3);_ts2.style.color='white';}
+        var _tc2=document.getElementById('totCat');if(_tc2)_tc2.textContent=_ci2?_ci2.label:'—';
+        var _ti2=document.getElementById('totInterp');if(_ti2)_ti2.textContent=_ci2?_ci2.interp:'';
+        var _sb2=document.getElementById('sfBar');
+        if(_sb2){_sb2.style.width=(_hLast2.total*100)+'%';if(_ci2)_sb2.style.background=_ci2.color;}
+      }
     }
+    return;
   }
+
   var prevNotas=notasEval[provActualId];
   var p=getProv(provActualId);
   var info=document.getElementById('evalInfo');
-  cont.innerHTML=''; // limpiar mensaje de "cargando..." si estaba
+  cont.innerHTML='';
   // Construir texto dinámico según la escala actual
   var minEsc=SCALE.length?SCALE[SCALE.length-1].min:0;
   var maxEsc=SCALE.length?SCALE[0].max:1;
