@@ -4222,6 +4222,13 @@ function irAEvaluacionReeval(){
     var p=getProv(pid);
     if(banner)banner.style.display='block';
     if(nomTxt&&p)nomTxt.textContent=p.nom+(p.ruc?' — RUC: '+p.ruc:'');
+    // ── Forzar fecha actual para nueva reevaluación ──
+    // seleccionarProv → seleccionarVersion pone la fecha del historial anterior;
+    // para una nueva reevaluación siempre debe iniciar con la fecha de hoy
+    setTimeout(function(){
+      var fecEl=document.getElementById('evalFecha');
+      if(fecEl) fecEl.value=nowLocalDT();
+    },300);
   },100);
 }
 
@@ -5127,7 +5134,11 @@ function sanitizarHist(){
   });
   // 3. Eliminar registros sin datos reales
   hist=hist.filter(function(h){return !h._sinDatos;});
-  // 4. Renumerar versiones por proveedor en orden de aparición
+  // 4. Ordenar por fecha antes de renumerar para garantizar orden cronológico
+  hist.sort(function(a,b){
+    return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');
+  });
+  // 5. Renumerar versiones por proveedor en orden cronológico
   var reevMap={};
   hist.forEach(function(h){
     if((h.version||'').toLowerCase().indexOf('inici')>-1){
