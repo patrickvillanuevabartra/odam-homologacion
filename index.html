@@ -4225,14 +4225,35 @@ function _cargarDetalleLegacy(provNom, version, ts, callback){
       return propOk&&nomOk&&pkOk;
     });
     if(regs.length>0){
-      var tsList=regs.map(function(r){return normalizarFechaQDB(r.timestamp)||r.timestamp||'';});
-      tsList.sort();
-      var tsMax=tsList[tsList.length-1];
-      if(tsMax){
-        var regsLatest=regs.filter(function(r){
-          return (normalizarFechaQDB(r.timestamp)||r.timestamp||'')=== tsMax;
+      // Filtrar primero por timestamp específico de la versión seleccionada
+      if(ts){
+        var tsNorm=normalizarFechaQDB(ts)||ts||'';
+        var regsTS=regs.filter(function(r){
+          return (normalizarFechaQDB(r.timestamp)||r.timestamp||'')===tsNorm;
         });
-        if(regsLatest.length>0) regs=regsLatest;
+        if(regsTS.length>0){
+          regs=regsTS;
+        } else {
+          // Si no hay match exacto, tomar el ts más cercano (<=) al ts buscado
+          var tsListAll=regs.map(function(r){return normalizarFechaQDB(r.timestamp)||r.timestamp||'';}).filter(Boolean);
+          tsListAll.sort();
+          var tsCandidatos=tsListAll.filter(function(t){return t<=tsNorm;});
+          var tsUsar=tsCandidatos.length?tsCandidatos[tsCandidatos.length-1]:tsListAll[0];
+          if(tsUsar){
+            regs=regs.filter(function(r){return (normalizarFechaQDB(r.timestamp)||r.timestamp||'')===tsUsar;});
+          }
+        }
+      } else {
+        // Sin ts: comportamiento original — tomar el registro más reciente
+        var tsList=regs.map(function(r){return normalizarFechaQDB(r.timestamp)||r.timestamp||'';});
+        tsList.sort();
+        var tsMax=tsList[tsList.length-1];
+        if(tsMax){
+          var regsLatest=regs.filter(function(r){
+            return (normalizarFechaQDB(r.timestamp)||r.timestamp||'')===tsMax;
+          });
+          if(regsLatest.length>0) regs=regsLatest;
+        }
       }
     }
     var notas={};
@@ -4361,6 +4382,9 @@ function seleccionarVersion(){
     buildEval();
   } else {
     if(warn)warn.style.display='none';
+    // Limpiar notas en memoria para esta versión — evita que el Fallback 2 reutilice
+    // datos de una versión distinta que se haya cargado antes en la misma sesión
+    notasEval[provActualId]={};
     // Mostrar spinner inmediatamente — NO construir sliders hasta recibir respuesta de QDB
     buildEval(true);
     tst('⏳ Cargando calificaciones...');
