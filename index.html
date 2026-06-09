@@ -4336,7 +4336,9 @@ function buildVersionSelector(provId){
   optBlank.textContent='— Seleccione versión —';
   drop.insertBefore(optBlank, drop.firstChild);
   drop.selectedIndex=0;
-  buildEval(true);
+  // No mostrar spinner — usuario aún no seleccionó versión
+  var cont=document.getElementById('evalCont');
+  if(cont) cont.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:.95rem;background:var(--surface);border-radius:10px;border:1.5px dashed var(--border);">👆 Selecciona una versión del desplegable para cargar la evaluación.</div>';
 }
 
 function seleccionarVersion(){
@@ -4601,7 +4603,7 @@ function buildEval(loading){
     // marcas proporcionales exactas
     var marcaVals=[];
     sortedScale.forEach(function(s){
-      marcaVals.push({pct:s.min*100,label:s.min.toFixed(2),cat:s.cat,color:s.color});
+      marcaVals.push({pct:s.min*100,label:s.min.toFixed(2),cat:s.cat,color:s.color||getScaleColor(s.cat)});
     });
     marcaVals.push({pct:100,label:'1.00',cat:'',color:'#94A3B8'});
     marcaVals.forEach(function(m){
@@ -5788,7 +5790,6 @@ function buildComparativa(){
           });
         });
       })(d,tr);
-      tdAcc.appendChild(btnDel);
       tbody.appendChild(tr);
     });
 
