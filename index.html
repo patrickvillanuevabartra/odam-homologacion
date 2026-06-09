@@ -2630,8 +2630,10 @@ function seleccionarPaquete(pk){
     SCALE=pk.escala.map(function(s){
       return{cat:s.cat,min:parseFloat(s.min)||0,max:parseFloat(s.max)||1,
         label:s.label||'Calificación '+s.cat,interp:s.interp||'',
-        color:getScaleColor(s.cat),bg:getScaleBg(s.cat)};
+        color:s.color&&s.color.trim()?s.color:getScaleColor(s.cat),
+        bg:s.bg&&s.bg.trim()?s.bg:getScaleBg(s.cat)};
     });
+    normalizarColoresSCALE();
     buildEscalaRows();
   }
 
@@ -2895,6 +2897,14 @@ function _actualizarAcciones(pk){
       if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}
     });
   }
+}
+
+function normalizarColoresSCALE(){
+  SCALE=SCALE.map(function(s){
+    return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,
+      color:s.color&&s.color.trim()?s.color:getScaleColor(s.cat),
+      bg:s.bg&&s.bg.trim()?s.bg:getScaleBg(s.cat)};
+  });
 }
 
 function getScaleColor(cat){
@@ -4019,8 +4029,10 @@ function goStep(n){
       SCALE=paqueteActual.escala.map(function(s){
         return{cat:s.cat,min:parseFloat(s.min)||0,max:parseFloat(s.max)||1,
           label:s.label||'Calificación '+s.cat,interp:s.interp||'',
-          color:getScaleColor(s.cat),bg:getScaleBg(s.cat)};
+          color:s.color&&s.color.trim()?s.color:getScaleColor(s.cat),
+          bg:s.bg&&s.bg.trim()?s.bg:getScaleBg(s.cat)};
       });
+      normalizarColoresSCALE();
     }
     if(paqueteActual)guardarPaqueteActual();
     // Restaurar notas de todos los proveedores antes de construir sliders
@@ -4593,10 +4605,11 @@ function buildEval(loading){
     });
     marcaVals.push({pct:100,label:'1.00',cat:'',color:'#94A3B8'});
     marcaVals.forEach(function(m){
+      var mColor=m.color||getScaleColor(m.cat)||'#94A3B8';
       var tick=document.createElement('div');
       tick.style.cssText='position:absolute;top:28px;left:'+m.pct+'%;transform:translateX(-50%);text-align:center;pointer-events:none;';
-      tick.innerHTML=(m.cat?'<div style="font-size:.78rem;font-weight:700;color:'+m.color+';">'+m.cat+'</div>':'')
-        +'<div style="font-size:.72rem;color:'+m.color+';">'+m.label+'</div>';
+      tick.innerHTML=(m.cat?'<div style="font-size:.78rem;font-weight:700;color:'+mColor+';">'+m.cat+'</div>':'')
+        +'<div style="font-size:.72rem;color:'+mColor+';">'+m.label+'</div>';
       sliderWrap.appendChild(tick);
     });
 
