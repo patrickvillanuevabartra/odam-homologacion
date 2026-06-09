@@ -1445,12 +1445,10 @@ function guardarEvalActual(){
   // o '__blank__','__nueva__','' para nueva evaluacion
   var _idx2=parseInt(_dval);
   var _esVersionExistente=(!isNaN(_idx2)&&_dval!==''&&_dval!=='__blank__'&&_dval!=='__nueva__'&&_dval!=='__inicial__');
-  alert('DEBUG2: dval='+_dval+' idx='+_idx2+' esExistente='+_esVersionExistente);
   if(_esVersionExistente){
     var _ph=hist.filter(function(h){return h.provId===provActualId;});
     _ph.sort(function(a,b){return String(a.ts||'').localeCompare(String(b.ts||''));});
     var _hsel=_ph[_idx2];
-    alert('DEBUG3: hsel='+(_hsel?_hsel.version+' qid='+_hsel._qid:'NULL'));
     if(_hsel&&_hsel._qid){
       d.version=_hsel.version||'Evaluacion inicial';
       d._resumenQid=_hsel._qid;
