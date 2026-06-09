@@ -1410,8 +1410,11 @@ function enviarASheets(d,callback){
   }, 30000);
 }
 
+var _guardandoEval=false;
 function guardarEvalActual(){
-  if(!provActualId){tst('Selecciona un proveedor primero.');return;}
+  if(_guardandoEval){return;}
+  _guardandoEval=true;
+  if(!provActualId){_guardandoEval=false;tst('Selecciona un proveedor primero.');return;}
   var p=getProv(provActualId);if(!p)return;
   // Validar campos obligatorios
   var fecCheck=document.getElementById('evalFecha');
@@ -1438,10 +1441,28 @@ function guardarEvalActual(){
   var fecEl=document.getElementById('evalFecha');
   if(fecEl&&fecEl.value)p.fec=fecEl.value;
   var d=getProvData(provActualId);
-  if(window._modoEdicion&&window._editQid){
-    d.version=window._editVersion||'Evaluacion inicial';
-    d._resumenQid=window._editQid;
+  // Detectar automáticamente: si el dropdown tiene una versión existente seleccionada = UPDATE
+  // Si tiene __nueva__ o __inicial__ = CREATE
+  var _vDrop=document.getElementById('versionSelectorDrop');
+  var _vVal=_vDrop?_vDrop.value:'';
+  var _esNueva=(_vVal==='__nueva__'||_vVal===''||_vVal==='__blank__'||_vVal==='__inicial__');
+  if(!_esNueva&&_vVal){
+    // Versión existente seleccionada — buscar en hist para obtener _qid y version
+    var ph2=hist.filter(function(h){return h.provId===provActualId;});
+    ph2.sort(function(a,b){return (a.ts||'').localeCompare(b.ts||'');});
+    var hSel2=ph2[parseInt(_vVal)||0];
+    if(hSel2&&hSel2._qid){
+      d.version=hSel2.version||window._editVersion||'Evaluacion inicial';
+      d._resumenQid=hSel2._qid;
+    } else {
+      // Sin _qid — crear nueva
+      var histProv=hist.filter(function(h){return h.provId===provActualId;});
+      var prevReev=histProv.filter(function(h){return (h.version||'').toLowerCase().indexOf('inici')===-1;}).length;
+      d.version=histProv.length>0?'Reevaluacion '+(prevReev+1):'Evaluacion inicial';
+      d._resumenQid='';
+    }
   } else {
+    // Nueva evaluación
     var histProv=hist.filter(function(h){return h.provId===provActualId;});
     var isReeval=histProv.length>0;
     if(isReeval){
@@ -1452,6 +1473,7 @@ function guardarEvalActual(){
     }
     d._resumenQid='';
   }
+  console.log('GUARDAR: dropdown='+_vVal+' esNueva='+_esNueva+' _resumenQid='+d._resumenQid+' version='+d.version);
   var _esEdicion=!!d._resumenQid;
   window._modoEdicion=false;window._editQid='';window._editVersion='';
   var _now=new Date();
@@ -1491,6 +1513,7 @@ function guardarEvalActual(){
   var btn=document.getElementById('btnGuardarEval');
   if(btn){btn.textContent='Guardando...';btn.setAttribute('disabled','disabled');}
   enviarASheets(d,function(ok){
+    _guardandoEval=false;
     p.guardado=true;
     if(btn){btn.textContent='💾 Guardar Evaluación / Reevaluación';btn.removeAttribute('disabled');}
     tst(ok?'✅ '+p.nom+' guardado en QuintaDB':'✅ Guardado local. Revisa conexión a QuintaDB.');
