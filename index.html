@@ -1410,10 +1410,7 @@ function enviarASheets(d,callback){
   }, 30000);
 }
 
-var _guardandoEval=false;
 function guardarEvalActual(){
-  if(_guardandoEval)return;
-  _guardandoEval=true;
   if(!provActualId){tst('Selecciona un proveedor primero.');return;}
   var p=getProv(provActualId);if(!p)return;
   // Validar campos obligatorios
@@ -1479,7 +1476,6 @@ function guardarEvalActual(){
   var btn=document.getElementById('btnGuardarEval');
   if(btn){btn.textContent='Guardando...';btn.setAttribute('disabled','disabled');}
   enviarASheets(d,function(ok){
-    _guardandoEval=false;
     p.guardado=true;
     if(btn){btn.textContent='💾 Guardar Evaluación / Reevaluación';btn.removeAttribute('disabled');}
     tst(ok?'✅ '+p.nom+' guardado en QuintaDB':'✅ Guardado local. Revisa conexión a QuintaDB.');
