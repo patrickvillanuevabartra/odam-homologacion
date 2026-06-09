@@ -4223,6 +4223,8 @@ function _cargarDetalleLegacy(provNom, version, ts, callback){
     var verNorm=normVer(version);
     var pkId=paqueteActual?paqueteActual.id:'';
     var pkNom=paqueteActual?paqueteActual.nombre:'';
+    console.log('LEGACY buscando: proveedor=['+provNom+'] paquete=['+pkNom+'/'+pkId+'] correo=['+correo+']');
+    if(res.registros&&res.registros.length>0) console.log('LEGACY primer reg:', JSON.stringify(res.registros[0]));
     var regs=(res.registros||[]).filter(function(r){
       var propOk=!r.propietario||r.propietario===''||r.propietario===correo;
       var nomOk=(r.proveedor||'').trim().toLowerCase()===(provNom||'').trim().toLowerCase();
