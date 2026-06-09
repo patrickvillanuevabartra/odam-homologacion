@@ -1465,7 +1465,19 @@ function guardarEvalActual(){
   d.scaleSnap=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,color:s.color,bg:s.bg};});
   d.plantilla=paqueteActual&&(paqueteActual._plantillaActual||paqueteActual.plantillaActual)||'';
   d.propietario=getUsuarioCorreo();
-  hist.push(d);
+  // Si es edición (tiene _resumenQid), actualizar registro existente en hist
+  // Si es nueva evaluación, agregar al array
+  if(d._resumenQid){
+    var idxHist=hist.findIndex(function(h){return h._qid===d._resumenQid||h.version===d.version&&h.provId===d.provId;});
+    if(idxHist>-1){
+      hist[idxHist]=Object.assign({},hist[idxHist],d,{_qid:d._resumenQid});
+    } else {
+      d._qid=d._resumenQid;
+      hist.push(d);
+    }
+  } else {
+    hist.push(d);
+  }
   var btn=document.getElementById('btnGuardarEval');
   if(btn){btn.textContent='Guardando...';btn.setAttribute('disabled','disabled');}
   enviarASheets(d,function(ok){
