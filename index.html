@@ -1441,6 +1441,7 @@ function guardarEvalActual(){
   // Leer dropdown al momento de guardar para decidir UPDATE vs CREATE
   var _dv=document.getElementById('versionSelectorDrop');
   var _dval=_dv?_dv.value:'';
+  alert('DEBUG: dropdown='+_dval+' hist_count='+hist.filter(function(h){return h.provId===provActualId;}).length+' qids='+hist.filter(function(h){return h.provId===provActualId;}).map(function(h){return h._qid||'SIN_QID';}).join(','));
   var _nueva=(!_dval||_dval==='__blank__'||_dval==='__nueva__'||_dval==='__inicial__');
   if(!_nueva){
     var _ph=hist.filter(function(h){return h.provId===provActualId;});
