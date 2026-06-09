@@ -560,56 +560,6 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   </div>
   <p class="stitle">Paso 7 — Resultados de Todos los Proveedores</p>
 
-  <!-- REGLAS DE ESTADOS -->
-  <details style="margin-bottom:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;">
-    <summary style="cursor:pointer;font-weight:700;font-size:.92rem;color:var(--text);user-select:none;">
-      📋 Reglas de estados de proveedores
-    </summary>
-    <div style="margin-top:12px;font-size:.88rem;line-height:1.8;color:var(--text);">
-      <p style="margin:0 0 10px 0;">El estado de cada proveedor se calcula automáticamente a partir de sus evaluaciones históricas, usando la categoría <strong>D</strong> como indicador de riesgo:</p>
-      <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
-        <thead>
-          <tr style="background:var(--subtle);">
-            <th style="padding:7px 12px;text-align:left;border-radius:6px 0 0 0;">Estado</th>
-            <th style="padding:7px 12px;text-align:left;">Condición</th>
-            <th style="padding:7px 12px;text-align:left;border-radius:0 6px 0 0;">Efecto</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="padding:6px 12px;border-bottom:1px solid var(--border);"><span style="background:#DCFCE7;color:#059669;border:1px solid #86EFAC;padding:2px 8px;border-radius:20px;font-size:.75rem;font-weight:700;">✅ Normal</span></td>
-            <td style="padding:6px 12px;border-bottom:1px solid var(--border);">Sin evaluaciones D recientes</td>
-            <td style="padding:6px 12px;border-bottom:1px solid var(--border);">Sin restricciones</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 12px;border-bottom:1px solid var(--border);"><span style="background:#FEF9C3;color:#92400E;border:1px solid #D97706;padding:2px 8px;border-radius:20px;font-size:.75rem;font-weight:700;">⚠️ Alerta</span></td>
-            <td style="padding:6px 12px;border-bottom:1px solid var(--border);">1 evaluación con resultado D</td>
-            <td style="padding:6px 12px;border-bottom:1px solid var(--border);">Puede seguir siendo evaluado. Badge de advertencia visible.</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 12px;border-bottom:1px solid var(--border);"><span style="background:#FEE2E2;color:#991B1B;border:1px solid #DC2626;padding:2px 8px;border-radius:20px;font-size:.75rem;font-weight:700;">🚫 Lista negra</span></td>
-            <td style="padding:6px 12px;border-bottom:1px solid var(--border);">2 evaluaciones D consecutivas</td>
-            <td style="padding:6px 12px;border-bottom:1px solid var(--border);">Bloqueado por el periodo configurado por el administrador (default: 6 meses).</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 12px;"><span style="background:#1E293B;color:white;padding:2px 8px;border-radius:20px;font-size:.75rem;font-weight:700;">❌ Vetado</span></td>
-            <td style="padding:6px 12px;">3 evaluaciones D consecutivas</td>
-            <td style="padding:6px 12px;">Bloqueado permanentemente. Solo el administrador puede reactivarlo.</td>
-          </tr>
-        </tbody>
-      </table>
-      <div style="margin-top:12px;padding:10px 14px;background:#EFF6FF;border-radius:8px;border-left:3px solid var(--blue);">
-        <strong>Reglas de cambio de estado:</strong>
-        <ul style="margin:6px 0 0 0;padding-left:18px;">
-          <li>Si un proveedor en <strong>Alerta</strong> obtiene A, B o C → vuelve a <strong>Normal</strong></li>
-          <li>Si un proveedor en <strong>Lista negra</strong> obtiene A, B o C → baja a <strong>Alerta</strong> (no salta directo a Normal)</li>
-          <li>Un proveedor <strong>Vetado</strong> no puede bajar automáticamente → solo el administrador puede reactivarlo (vuelve a Alerta)</li>
-          <li>El contador de D consecutivas se <strong>resetea parcialmente</strong> con cada buena evaluación</li>
-        </ul>
-      </div>
-    </div>
-  </details>
-
   <!-- BARRA DE BÚSQUEDA -->
   <div style="display:flex;gap:9px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
     <div style="flex:1;min-width:220px;position:relative;">
@@ -4222,9 +4172,7 @@ function irAEvaluacionReeval(){
     var p=getProv(pid);
     if(banner)banner.style.display='block';
     if(nomTxt&&p)nomTxt.textContent=p.nom+(p.ruc?' — RUC: '+p.ruc:'');
-    // ── Forzar fecha actual para nueva reevaluación ──
-    // seleccionarProv → seleccionarVersion pone la fecha del historial anterior;
-    // para una nueva reevaluación siempre debe iniciar con la fecha de hoy
+    // Forzar fecha actual — seleccionarProv pone la fecha del historial anterior
     setTimeout(function(){
       var fecEl=document.getElementById('evalFecha');
       if(fecEl) fecEl.value=nowLocalDT();
@@ -5134,11 +5082,7 @@ function sanitizarHist(){
   });
   // 3. Eliminar registros sin datos reales
   hist=hist.filter(function(h){return !h._sinDatos;});
-  // 4. Ordenar por fecha antes de renumerar para garantizar orden cronológico
-  hist.sort(function(a,b){
-    return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');
-  });
-  // 5. Renumerar versiones por proveedor en orden cronológico
+  // 4. Renumerar versiones por proveedor en orden de aparición
   var reevMap={};
   hist.forEach(function(h){
     if((h.version||'').toLowerCase().indexOf('inici')>-1){
@@ -5157,26 +5101,16 @@ function calcularEstadoProveedor(provId){
   if(!ph.length) return 'normal';
   ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
   var p=getProv(provId);
-  // Si el admin lo reactivó manualmente, vuelve a Alerta (no directo a Normal)
-  if(p&&p._reactivado) return 'alerta';
-
-  // Reconstruir estado evaluación por evaluación para capturar bajadas progresivas
-  var estado='normal';
-  for(var i=0;i<ph.length;i++){
-    var cat=ph[i].catFinal||getFinalCat(ph[i].total||0);
-    if(cat==='D'){
-      if(estado==='normal')    estado='alerta';
-      else if(estado==='alerta')   estado='lista_negra';
-      else if(estado==='lista_negra') estado='vetado';
-      // vetado no sube más — solo admin puede bajar
-    } else {
-      // A, B o C: baja un nivel (bajada progresiva)
-      if(estado==='alerta')    estado='normal';
-      else if(estado==='lista_negra') estado='alerta';
-      // vetado: solo el admin puede reactivar — no baja automáticamente
-    }
+  if(p&&p._reactivado) return 'normal';
+  var cons=0;
+  for(var i=ph.length-1;i>=0;i--){
+    if(ph[i].catFinal==='D') cons++;
+    else break;
   }
-  return estado;
+  if(cons===0) return 'normal';
+  if(cons===1) return 'alerta';
+  if(cons===2) return 'lista_negra';
+  return 'vetado';
 }
 
 function getBadgeEstado(estado){
@@ -5286,7 +5220,18 @@ function buildResults(){
     // Usar estado guardado en QDB si existe, sino calcular desde historial
     var provObj2=getProv(d.provId);
     var estProvQDB=provObj2&&provObj2.estado&&provObj2.estado!==''?provObj2.estado:null;
-    var estProv=estProvQDB||calcularEstadoProveedor(d.provId);
+    var estProv=estProvQDB;
+    if(!estProv){
+      var histProv=hist.filter(function(h){return h.provId===d.provId;});
+      histProv.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+      var consD=0;
+      for(var ei=histProv.length-1;ei>=0;ei--){
+        var catH=histProv[ei].catFinal||getFinalCat(histProv[ei].total||0);
+        if(catH==='D') consD++;
+        else break;
+      }
+      estProv=consD===0?'normal':consD===1?'alerta':consD===2?'lista_negra':'vetado';
+    }
 
     tr.innerHTML='<td style="font-weight:700;color:var(--muted)">'+(i+1)+'</td>'
       +'<td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;background:'+(isInicial?'#DCFCE7':'#EFF6FF')+';color:'+(isInicial?'#059669':'#0284c7')+';">'+esc(versionLabel)+'</span></td>'
