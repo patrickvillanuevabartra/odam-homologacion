@@ -4400,6 +4400,8 @@ function seleccionarVersion(){
     var fecEl=document.getElementById('evalFecha');
     if(fecEl)fecEl.value=nowLocalDT();
     window._versionEditando='';window._tsEditando='';
+    // Nueva reevaluación — limpiar modo edición para que NO haga UPDATE
+    window._modoEdicion=false;window._editQid='';window._editVersion='';
     buildEval();return;
   }
 
