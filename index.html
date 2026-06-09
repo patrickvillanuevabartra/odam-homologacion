@@ -1454,7 +1454,7 @@ function guardarEvalActual(){
   }
   window._modoEdicion=false;window._editQid='';window._editVersion='';
   var _now=new Date();
-  d.ts=nowLocalDT();  // hora local del navegador — evita conversión UTC (bug de 5h en Perú)
+  d.ts=nowLocalDT();  // hora local Lima — evita desfase UTC de toISOString
   d.fecHora=_now.toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   d.paquete=paqueteActual?paqueteActual.nombre:'Sin paquete';
   d.paqueteId=paqueteActual?paqueteActual.id:'';
@@ -2630,7 +2630,7 @@ function seleccionarPaquete(pk){
     SCALE=pk.escala.map(function(s){
       return{cat:s.cat,min:parseFloat(s.min)||0,max:parseFloat(s.max)||1,
         label:s.label||'Calificación '+s.cat,interp:s.interp||'',
-        color:s.color||getScaleColor(s.cat),bg:s.bg||getScaleBg(s.cat)};
+        color:getScaleColor(s.cat),bg:getScaleBg(s.cat)};
     });
     buildEscalaRows();
   }
@@ -4172,7 +4172,7 @@ function irAEvaluacionReeval(){
     var p=getProv(pid);
     if(banner)banner.style.display='block';
     if(nomTxt&&p)nomTxt.textContent=p.nom+(p.ruc?' — RUC: '+p.ruc:'');
-    // Forzar fecha actual — seleccionarProv pone la fecha del historial anterior
+    // Forzar fecha actual al entrar a nueva reevaluación
     setTimeout(function(){
       var fecEl=document.getElementById('evalFecha');
       if(fecEl) fecEl.value=nowLocalDT();
@@ -4223,8 +4223,6 @@ function _cargarDetalleLegacy(provNom, version, ts, callback){
     var verNorm=normVer(version);
     var pkId=paqueteActual?paqueteActual.id:'';
     var pkNom=paqueteActual?paqueteActual.nombre:'';
-    console.log('LEGACY buscando: proveedor=['+provNom+'] paquete=['+pkNom+'/'+pkId+'] correo=['+correo+']');
-    if(res.registros&&res.registros.length>0) console.log('LEGACY primer reg:', JSON.stringify(res.registros[0]));
     var regs=(res.registros||[]).filter(function(r){
       var propOk=!r.propietario||r.propietario===''||r.propietario===correo;
       var nomOk=(r.proveedor||'').trim().toLowerCase()===(provNom||'').trim().toLowerCase();
@@ -4321,13 +4319,11 @@ function buildVersionSelector(provId){
   optNew.value='__nueva__';
   optNew.textContent='↺ + Nueva reevaluación';
   drop.appendChild(optNew);
-  // Agregar opción inicial neutra — no carga ninguna versión por defecto
   var optBlank=document.createElement('option');
   optBlank.value='__blank__';
   optBlank.textContent='— Seleccione versión —';
   drop.insertBefore(optBlank, drop.firstChild);
   drop.selectedIndex=0;
-  // Limpiar el panel sin construir sliders
   buildEval(true);
 }
 
@@ -4566,7 +4562,6 @@ function buildEval(loading){
     track.style.cssText='position:absolute;top:12px;left:0;right:0;height:6px;border-radius:3px;background:#E2E8F0;overflow:hidden;pointer-events:none;';
     // franja de colores según rangos
     var sortedScale=SCALE.slice().sort(function(a,b){return a.min-b.min;});
-    // Garantizar colores aunque el paquete los tenga vacíos
     sortedScale=sortedScale.map(function(s){
       return {cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,
         color:s.color||getScaleColor(s.cat),bg:s.bg||getScaleBg(s.cat)};
@@ -5095,7 +5090,7 @@ function sanitizarHist(){
   });
   // 3. Eliminar registros sin datos reales
   hist=hist.filter(function(h){return !h._sinDatos;});
-  // 4. Ordenar cronológicamente antes de renumerar — garantiza Reevaluacion 1, 2, 3... en orden correcto
+  // 4. Ordenar cronológicamente antes de renumerar
   hist.sort(function(a,b){
     var ta=String(a.ts||a.fec||'');
     var tb=String(b.ts||b.fec||'');
@@ -5880,7 +5875,6 @@ function normalizarFechaQDB(f){
   var s = String(f).trim();
   // Ya está en formato ISO
   if(s.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)){
-    // Si viene con Z o +00:00 (UTC de QDB), convertir a hora local de Lima (UTC-5)
     if(s.match(/Z$|\+00:00$/)){
       var d=new Date(s);
       var local=new Date(d.getTime()-5*60*60*1000);
