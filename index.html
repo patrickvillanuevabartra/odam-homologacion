@@ -5095,7 +5095,13 @@ function sanitizarHist(){
   });
   // 3. Eliminar registros sin datos reales
   hist=hist.filter(function(h){return !h._sinDatos;});
-  // 4. Renumerar versiones por proveedor en orden de aparición
+  // 4. Ordenar cronológicamente antes de renumerar — garantiza Reevaluacion 1, 2, 3... en orden correcto
+  hist.sort(function(a,b){
+    var ta=String(a.ts||a.fec||'');
+    var tb=String(b.ts||b.fec||'');
+    return ta.localeCompare(tb);
+  });
+  // 5. Renumerar versiones por proveedor en orden cronológico
   var reevMap={};
   hist.forEach(function(h){
     if((h.version||'').toLowerCase().indexOf('inici')>-1){
@@ -5382,11 +5388,9 @@ function buildResults(){
       });
     })(d.provId, d.version, d._qid||'');
 
-    tdBtns.appendChild(btnEditar);
     tdBtns.appendChild(btnStar);
     tdBtns.appendChild(btnArch);
     tdBtns.appendChild(btnReeval);
-    tdBtns.appendChild(btnEliminar);
     tbodyEl.appendChild(tr);
   });
   comp.innerHTML='';
