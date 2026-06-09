@@ -4172,11 +4172,6 @@ function irAEvaluacionReeval(){
     var p=getProv(pid);
     if(banner)banner.style.display='block';
     if(nomTxt&&p)nomTxt.textContent=p.nom+(p.ruc?' — RUC: '+p.ruc:'');
-    // Forzar fecha actual — seleccionarProv pone la fecha del historial anterior
-    setTimeout(function(){
-      var fecEl=document.getElementById('evalFecha');
-      if(fecEl) fecEl.value=nowLocalDT();
-    },300);
   },100);
 }
 
