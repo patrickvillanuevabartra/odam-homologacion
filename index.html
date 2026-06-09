@@ -2630,7 +2630,7 @@ function seleccionarPaquete(pk){
     SCALE=pk.escala.map(function(s){
       return{cat:s.cat,min:parseFloat(s.min)||0,max:parseFloat(s.max)||1,
         label:s.label||'Calificación '+s.cat,interp:s.interp||'',
-        color:getScaleColor(s.cat),bg:getScaleBg(s.cat)};
+        color:s.color||getScaleColor(s.cat),bg:s.bg||getScaleBg(s.cat)};
     });
     buildEscalaRows();
   }
@@ -4566,6 +4566,11 @@ function buildEval(loading){
     track.style.cssText='position:absolute;top:12px;left:0;right:0;height:6px;border-radius:3px;background:#E2E8F0;overflow:hidden;pointer-events:none;';
     // franja de colores según rangos
     var sortedScale=SCALE.slice().sort(function(a,b){return a.min-b.min;});
+    // Garantizar colores aunque el paquete los tenga vacíos
+    sortedScale=sortedScale.map(function(s){
+      return {cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,
+        color:s.color||getScaleColor(s.cat),bg:s.bg||getScaleBg(s.cat)};
+    });
     var gradParts=[];
     sortedScale.forEach(function(s){
       gradParts.push(s.color+' '+(s.min*100).toFixed(1)+'%');
