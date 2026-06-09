@@ -4319,8 +4319,14 @@ function buildVersionSelector(provId){
   optNew.value='__nueva__';
   optNew.textContent='↺ + Nueva reevaluación';
   drop.appendChild(optNew);
-  drop.selectedIndex=ph.length-1;
-  seleccionarVersion();
+  // Agregar opción inicial neutra — no carga ninguna versión por defecto
+  var optBlank=document.createElement('option');
+  optBlank.value='__blank__';
+  optBlank.textContent='— Seleccione versión —';
+  drop.insertBefore(optBlank, drop.firstChild);
+  drop.selectedIndex=0;
+  // Limpiar el panel sin construir sliders
+  buildEval(true);
 }
 
 function seleccionarVersion(){
@@ -5862,7 +5868,19 @@ function normalizarFechaQDB(f){
   if(!f) return '';
   var s = String(f).trim();
   // Ya está en formato ISO
-  if(s.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)) return s.slice(0,16);
+  if(s.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)){
+    // Si viene con Z o +00:00 (UTC de QDB), convertir a hora local de Lima (UTC-5)
+    if(s.match(/Z$|\+00:00$/)){
+      var d=new Date(s);
+      var local=new Date(d.getTime()-5*60*60*1000);
+      return local.getFullYear()+'-'
+        +String(local.getMonth()+1).padStart(2,'0')+'-'
+        +String(local.getDate()).padStart(2,'0')+'T'
+        +String(local.getHours()).padStart(2,'0')+':'
+        +String(local.getMinutes()).padStart(2,'0');
+    }
+    return s.slice(0,16);
+  }
   if(s.match(/^\d{4}-\d{2}-\d{2}$/)) return s + 'T00:00';
   // Formato "DD/MM/YYYY, HH:MM a. m." o "DD/MM/YYYY, HH:MM p. m."
   var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4}),?\s*(\d{1,2}):(\d{2})\s*(a\.?\s*m\.?|p\.?\s*m\.?)?/i);
