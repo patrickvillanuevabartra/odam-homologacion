@@ -4494,18 +4494,19 @@ function seleccionarVersion(){
   }
   window._versionEditando=hSel.version||'';
   window._tsEditando=hSel.ts||'';
-  // Activar modo edición con el _qid de la versión seleccionada
-  if(hSel._qid){
+  // Buscar _qid en hist directamente por ts — más confiable que hSel._qid
+  var _histMatch=hist.find(function(h){
+    return h.provId===provActualId&&h.ts===hSel.ts&&h._qid;
+  });
+  var _qidReal=(_histMatch&&_histMatch._qid)||hSel._qid||'';
+  if(_qidReal){
     window._modoEdicion=true;
-    window._editQid=hSel._qid;
+    window._editQid=_qidReal;
     window._editVersion=hSel.version||'';
-    console.log('MODO EDICION activado: version='+hSel.version+' qid='+hSel._qid);
   } else {
-    // Sin _qid — no activar modo edición (registro local sin guardar en QDB aún)
     window._modoEdicion=false;
     window._editQid='';
     window._editVersion='';
-    console.log('SIN _qid para version='+hSel.version+' — no se puede editar en QDB');
   }
 }
 
