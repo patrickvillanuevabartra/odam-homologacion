@@ -1468,8 +1468,10 @@ function guardarEvalActual(){
   // Si es edición (tiene _resumenQid), actualizar registro existente en hist
   // Si es nueva evaluación, agregar al array
   if(d._resumenQid){
-    var idxHist=hist.findIndex(function(h){return h._qid===d._resumenQid||h.version===d.version&&h.provId===d.provId;});
+    // Buscar SOLO por _qid — es único e inmutable, evita confusión por renumeración
+    var idxHist=hist.findIndex(function(h){return h._qid===d._resumenQid;});
     if(idxHist>-1){
+      // Actualizar en lugar de agregar — preservar _qid
       hist[idxHist]=Object.assign({},hist[idxHist],d,{_qid:d._resumenQid});
     } else {
       d._qid=d._resumenQid;
