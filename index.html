@@ -4336,9 +4336,17 @@ function buildVersionSelector(provId){
   optBlank.textContent='— Seleccione versión —';
   drop.insertBefore(optBlank, drop.firstChild);
   drop.selectedIndex=0;
-  // No mostrar spinner — usuario aún no seleccionó versión
+  // Limpiar todo — usuario aún no seleccionó versión
   var cont=document.getElementById('evalCont');
   if(cont) cont.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:.95rem;background:var(--surface);border-radius:10px;border:1.5px dashed var(--border);">👆 Selecciona una versión del desplegable para cargar la evaluación.</div>';
+  var mf=document.getElementById('evalMetaFields');
+  if(mf) mf.style.display='none';
+  var titleEl=document.getElementById('evalStepTitle');
+  if(titleEl) titleEl.textContent='Paso 6 — Evaluación'+(paqueteActual?' — '+paqueteActual.nombre:'');
+  var indic=document.getElementById('versionIndicativo');
+  if(indic) indic.style.display='none';
+  // Limpiar modo edición
+  window._modoEdicion=false;window._editQid='';window._editVersion='';
 }
 
 function seleccionarVersion(){
@@ -4465,10 +4473,18 @@ function seleccionarVersion(){
   window._versionEditando=hSel.version||'';
   window._tsEditando=hSel.ts||'';
   // Activar modo edición con el _qid de la versión seleccionada
-  // Así al guardar hace UPDATE en lugar de crear nuevo registro
-  window._modoEdicion=true;
-  window._editQid=hSel._qid||'';
-  window._editVersion=hSel.version||'';
+  if(hSel._qid){
+    window._modoEdicion=true;
+    window._editQid=hSel._qid;
+    window._editVersion=hSel.version||'';
+    console.log('MODO EDICION activado: version='+hSel.version+' qid='+hSel._qid);
+  } else {
+    // Sin _qid — no activar modo edición (registro local sin guardar en QDB aún)
+    window._modoEdicion=false;
+    window._editQid='';
+    window._editVersion='';
+    console.log('SIN _qid para version='+hSel.version+' — no se puede editar en QDB');
+  }
 }
 
 function buildEval(loading){
