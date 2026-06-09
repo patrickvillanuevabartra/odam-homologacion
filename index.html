@@ -4464,6 +4464,11 @@ function seleccionarVersion(){
   }
   window._versionEditando=hSel.version||'';
   window._tsEditando=hSel.ts||'';
+  // Activar modo edición con el _qid de la versión seleccionada
+  // Así al guardar hace UPDATE en lugar de crear nuevo registro
+  window._modoEdicion=true;
+  window._editQid=hSel._qid||'';
+  window._editVersion=hSel.version||'';
 }
 
 function buildEval(loading){
@@ -5130,16 +5135,23 @@ function calcularEstadoProveedor(provId){
   if(!ph.length) return 'normal';
   ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
   var p=getProv(provId);
-  if(p&&p._reactivado) return 'normal';
-  var cons=0;
-  for(var i=ph.length-1;i>=0;i--){
-    if(ph[i].catFinal==='D') cons++;
-    else break;
+  if(p&&p._reactivado) return 'alerta';
+  // Reconstruir estado evaluación por evaluación — bajada progresiva
+  var estado='normal';
+  for(var i=0;i<ph.length;i++){
+    var cat=ph[i].catFinal||getFinalCat(ph[i].total||0);
+    if(cat==='D'){
+      if(estado==='normal')    estado='alerta';
+      else if(estado==='alerta')   estado='lista_negra';
+      else if(estado==='lista_negra') estado='vetado';
+    } else {
+      // A, B o C: baja un nivel
+      if(estado==='alerta')    estado='normal';
+      else if(estado==='lista_negra') estado='alerta';
+      // vetado: solo admin puede reactivar
+    }
   }
-  if(cons===0) return 'normal';
-  if(cons===1) return 'alerta';
-  if(cons===2) return 'lista_negra';
-  return 'vetado';
+  return estado;
 }
 
 function getBadgeEstado(estado){
@@ -5400,7 +5412,6 @@ function buildResults(){
 
     tdBtns.appendChild(btnStar);
     tdBtns.appendChild(btnArch);
-    tdBtns.appendChild(btnReeval);
     tbodyEl.appendChild(tr);
   });
   comp.innerHTML='';
