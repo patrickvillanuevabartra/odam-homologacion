@@ -616,7 +616,9 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div id="resComparativa" style="margin-bottom:24px;"></div>
 
   <!-- EVOLUCIÓN POR PROVEEDOR -->
-  <div id="histSection" style="display:none !important;"></div>
+  <div id="histSection" style="display:none;">
+    <div id="compWrap"></div>
+  </div>
 
   <!-- GUARDAR -->
   <div class="acts" style="margin-top:20px">
@@ -5315,9 +5317,12 @@ function buildDashboard(){
   var catCount={};
   SCALE.forEach(function(s){catCount[s.cat]=0;});
   datos.forEach(function(d){catCount[d.catFinal]=(catCount[d.catFinal]||0)+1;});
-  var promedio=total>0?(datos.reduce(function(s,d){return s+d.total;},0)/total):0;
-  var mejor=datos.reduce(function(a,b){return a.total>b.total?a:b;},{total:0,nom:''});
-  var peor=datos.reduce(function(a,b){return a.total<b.total?a:b;},{total:999,nom:''});
+  // Promedio historico: todas las evaluaciones
+  var histValidos=hist.filter(function(h){return h.total>0;});
+  var promedio=histValidos.length>0?(histValidos.reduce(function(s,h){return s+h.total;},0)/histValidos.length):0;
+  // Mejor y peor historicos
+  var mejor=histValidos.reduce(function(a,b){return a.total>b.total?a:b;},{total:0,nom:''});
+  var peor=histValidos.reduce(function(a,b){return a.total<b.total?a:b;},{total:999,nom:''});
 
   // Calcular mejoras en reevaluaciones
   var grupos={};
@@ -5358,7 +5363,7 @@ function buildDashboard(){
   var promedioItem=getScaleItem(getFinalCat(promedio));
   html+='<div style="background:'+(promedioItem?promedioItem.bg:'var(--surface)')+';border:1.5px solid '+(promedioItem?promedioItem.color:'var(--border)')+';border-radius:12px;padding:16px;text-align:center;">'
     +'<div style="font-size:2rem;font-weight:800;color:'+(promedioItem?promedioItem.color:'var(--primary)')+'">'+promedio.toFixed(3)+'</div>'
-    +'<div style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-top:2px;">Promedio paquete</div>'
+    +'<div style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-top:2px;">Promedio histórico</div>'
     +'</div>';
 
   // KPI: por categoría — dinámico desde SCALE
