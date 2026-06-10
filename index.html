@@ -2539,8 +2539,7 @@ function adminCargarProveedoresRestringidos(){
       var conEstado=proveedores.map(function(r){
         var nomLow=(r.nombre||'').trim().toLowerCase();
         var evsProv=histAll.filter(function(h){
-          return (h.proveedor||'').trim().toLowerCase()===nomLow&&
-                 (!r.propietario||!h.propietario||h.propietario===r.propietario);
+          return (h.proveedor||'').trim().toLowerCase()===nomLow;
         });
         evsProv.sort(function(a,b){return (a.timestamp||'').localeCompare(b.timestamp||'');});
         var consD=0;
