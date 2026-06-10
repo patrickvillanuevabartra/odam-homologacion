@@ -4346,9 +4346,19 @@ function buildVersionSelector(provId){
   optBlank.textContent='— Seleccione versión —';
   drop.insertBefore(optBlank, drop.firstChild);
   drop.selectedIndex=0;
-  // No mostrar spinner — usuario aún no seleccionó versión
   var cont=document.getElementById('evalCont');
   if(cont) cont.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:.95rem;background:var(--surface);border-radius:10px;border:1.5px dashed var(--border);">👆 Selecciona una versión del desplegable para cargar la evaluación.</div>';
+  var mf=document.getElementById('evalMetaFields');
+  if(mf) mf.style.display='none';
+  var indic=document.getElementById('versionIndicativo');
+  if(indic) indic.style.display='none';
+  var sfBlock=document.getElementById('sfBlock');
+  if(sfBlock){
+    var ts=document.getElementById('totScore');if(ts)ts.textContent='0.000';
+    var tc=document.getElementById('totCat');if(tc)tc.textContent='—';
+    var ti=document.getElementById('totInterp');if(ti)ti.textContent='';
+    var sb=document.getElementById('sfBar');if(sb)sb.style.width='0%';
+  }
 }
 
 function seleccionarVersion(){
@@ -4748,7 +4758,7 @@ function setNota(id,nota,updateInput){
 
   // display nota grande
   var cnd=document.getElementById('cnd-'+id);
-  if(cnd){cnd.textContent=nota.toFixed(2);cnd.style.color=s.color;}
+  if(cnd){cnd.textContent=nota.toFixed(3);cnd.style.color=s.color;}
 
   // chip categoría
   var ccc=document.getElementById('ccc-'+id);
@@ -5410,7 +5420,7 @@ function buildResults(){
 
     tdBtns.appendChild(btnStar);
     tdBtns.appendChild(btnArch);
-    tdBtns.appendChild(btnReeval);
+    tdBtns.appendChild(btnEliminar);
     tbodyEl.appendChild(tr);
   });
   comp.innerHTML='';
