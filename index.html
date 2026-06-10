@@ -601,10 +601,6 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <!-- FILTROS RÁPIDOS -->
   <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;" id="filtrosRapidosProv">
     <button class="fbtn-prov on" data-fprov="todos" onclick="setFiltroRapido(this,'todos')">Todos</button>
-    <button class="fbtn-prov" data-fprov="A" onclick="setFiltroRapido(this,'A')">✅ Recomendables (A)</button>
-    <button class="fbtn-prov" data-fprov="B" onclick="setFiltroRapido(this,'B')">🔵 Aceptables (B)</button>
-    <button class="fbtn-prov" data-fprov="C" onclick="setFiltroRapido(this,'C')">⚠️ En observación (C)</button>
-    <button class="fbtn-prov" data-fprov="D" onclick="setFiltroRapido(this,'D')">❌ No aprobados (D)</button>
     <button class="fbtn-prov" data-fprov="dest" onclick="setFiltroRapido(this,'dest')">⭐ Destacados</button>
     <button class="fbtn-prov" data-fprov="arch" onclick="setFiltroRapido(this,'arch')">📁 Archivados</button>
   </div>
@@ -5380,6 +5376,19 @@ function buildDashboard(){
 
   html+='</div>';
 
+  // Nota de reglas de estado
+  html+='<div style="margin:8px 0 4px;padding:8px 14px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px;font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+    +'<span style="font-weight:700;color:var(--text);">ℹ️ Reglas de estado:</span>'
+    +'<span style="background:#FEF9C3;color:#92400E;border:1px solid #D97706;padding:1px 8px;border-radius:10px;font-weight:600;">⚠️ Alerta</span>'
+    +'<span style="color:var(--muted);">≥ '+REGLAS_GLOBALES.alerta+' eval. consecutiva(s) en nivel mínimo</span>'
+    +'<span style="color:var(--border);">·</span>'
+    +'<span style="background:#FEE2E2;color:#991B1B;border:1px solid #DC2626;padding:1px 8px;border-radius:10px;font-weight:600;">🚫 Lista negra</span>'
+    +'<span style="color:var(--muted);">≥ '+REGLAS_GLOBALES.lista_negra+'</span>'
+    +'<span style="color:var(--border);">·</span>'
+    +'<span style="background:#1E293B;color:white;padding:1px 8px;border-radius:10px;font-weight:600;">❌ Vetado</span>'
+    +'<span style="color:var(--muted);">≥ '+REGLAS_GLOBALES.vetado+'</span>'
+    +'</div>';
+
   // Fila 2: mejor, peor, tendencias
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">';
 
@@ -5551,7 +5560,7 @@ function buildResults(){
   tableWrap.style.cssText='overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);';
   var tableEl=document.createElement('table');
   tableEl.className='dt'; tableEl.style.cssText='margin:0;min-width:700px;';
-  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Nivel</th><th>Variación</th><th>% Var.</th><th>Estado</th><th>Acciones</th></tr></thead>';
+  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Nivel</th><th>Variación</th><th>% Var.</th><th>Estado <span title="⚠️ Alerta: ≥'+REGLAS_GLOBALES.alerta+' eval. consecutiva(s) en nivel mínimo&#10;🚫 Lista negra: ≥'+REGLAS_GLOBALES.lista_negra+'&#10;❌ Vetado: ≥'+REGLAS_GLOBALES.vetado+'" style="cursor:help;font-weight:400;font-size:.8rem;background:rgba(255,255,255,.2);padding:1px 5px;border-radius:4px;">ℹ️</span></th><th>Acciones</th></tr></thead>';
   var tbodyEl=document.createElement('tbody');
   tableEl.appendChild(tbodyEl);
   if(!datosFiltrados.length){
@@ -6009,7 +6018,8 @@ function buildComparativa(){
     var head=document.createElement('div');
     head.style.cssText='padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;';
     head.innerHTML='<div style="font-weight:700;font-size:1rem;">'+esc(nom)+' — Evolución ('+vers.length+' evaluaciones)</div>'
-      +'<div style="font-weight:700;font-size:1rem;color:'+diffColor+'">Variación total: '+diffSign+Math.abs(totalDiff).toFixed(3)+'</div>';
+      +'<div style="text-align:right"><div style="font-weight:700;font-size:1rem;color:'+diffColor+'">Variación total: '+diffSign+Math.abs(totalDiff).toFixed(3)+'</div>'
+      +'<div style="font-size:.72rem;color:var(--muted);margin-top:2px;">Diferencia entre primera y última evaluación</div></div>';
     card.appendChild(head);
 
     // ── Gráfico SVG limpio sin solapamiento ──
@@ -6080,62 +6090,6 @@ function buildComparativa(){
     chartWrap.appendChild(scaleRow);
     card.appendChild(chartWrap);
 
-
-    // ── Tabla con botón eliminar ──
-    var tableDiv=document.createElement('div');tableDiv.style.cssText='overflow-x:auto;';
-    var tbl=document.createElement('table');tbl.className='dt';tbl.style.margin='0';
-    tbl.innerHTML='<thead><tr><th>Versión</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Plantilla</th><th>Criterios</th><th>Escala</th><th>Calificación</th><th>Categoría</th><th>Variación</th><th>% Variación</th><th>Acción</th></tr></thead>';
-    var tbody=document.createElement('tbody');
-
-    vers.forEach(function(d,vi){
-      var prev=vi>0?vers[vi-1]:null;
-      var diff=prev?parseFloat((d.total-prev.total).toFixed(3)):null;
-      var pctDiff=prev&&prev.total>0?parseFloat(((d.total-prev.total)/prev.total*100).toFixed(1)):null;
-      var diffStr=diff===null?'—':(diff>=0?'▲ +':'▼ ')+Math.abs(diff).toFixed(3);
-      var pctStr=pctDiff===null?'—':(pctDiff>=0?'+':'')+pctDiff+'%';
-      var diffCol=diff===null?'var(--muted)':diff>0?'#059669':diff<0?'#DC2626':'#64748B';
-      var ci=d.catItem||getScaleItem(getFinalCat(d.total));
-      var tr=document.createElement('tr');
-      var cC=d.critsSnap&&d.critsSnap.length?d.critsSnap.map(function(c){return c.label+' ('+c.weight+'%)'}).join(' · '):(crits.length?crits.map(function(c){return c.label+' ('+c.weight+'%)'}).join(' · '):'—');
-      var cS=d.scaleSnap&&d.scaleSnap.length?d.scaleSnap.map(function(s){return s.cat+':'+parseFloat(s.min).toFixed(2)+'-'+parseFloat(s.max).toFixed(2)}).join(' | '):SCALE.map(function(s){return s.cat+':'+s.min.toFixed(2)+'-'+s.max.toFixed(2)}).join(' | ');
-      var cPlt=d.plantilla||paqueteActual&&(paqueteActual._plantillaActual||paqueteActual.plantillaActual)||'—';
-      var hora=d.ts&&d.ts.indexOf('T')>-1?new Date(d.ts).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):(d.fecHora||'—');
-      tr.innerHTML='<td>'+esc(d.version||'Eval. inicial')+'</td>'
-        +'<td>'+fmtFecha(d.fec)+'</td>'
-        +'<td style="font-size:.84rem;color:var(--muted)">'+hora+'</td>'
-        +'<td style="font-size:.84rem;color:var(--muted)">'+esc(d.eva||'—')+'</td>'
-        +'<td style="font-size:.75rem;color:#0284c7">'+esc(cPlt)+'</td>'
-        +'<td style="font-size:.75rem;color:var(--muted)">'+esc(cC)+'</td>'
-        +'<td style="font-size:.75rem;color:var(--muted)">'+esc(cS)+'</td>'
-        +'<td style="font-weight:700;color:'+(ci?ci.color:'var(--text)')+'">'+d.total.toFixed(3)+'</td>'
-        +'<td><span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:'+(ci?ci.color:'var(--subtle)')+';color:white;font-weight:700;">'+(d.catFinal||'?')+'</span></td>'
-        +'<td style="font-weight:700;color:'+diffCol+'">'+diffStr+'</td>'
-        +'<td style="font-weight:700;color:'+diffCol+'">'+pctStr+'</td>'
-        +'<td></td>';
-
-      // Botón eliminar esta evaluación
-      var tdAcc=tr.querySelector('td:last-child');
-      var btnDel=document.createElement('button');
-      btnDel.textContent='🗑 Eliminar';
-      btnDel.style.cssText='padding:4px 10px;border-radius:6px;background:none;border:1px solid var(--border);color:var(--no);font-size:.78rem;cursor:pointer;font-family:inherit;white-space:nowrap;';
-      (function(eval_d, tr_el){
-        btnDel.addEventListener('click',function(){
-          miniConfirm('¿Eliminar esta evaluación de '+esc(eval_d.nom)+' ('+eval_d.version+' — '+fmtFecha(eval_d.fec)+')?',function(){
-            // Eliminar del array hist
-            var idx=hist.findIndex(function(h){return h.ts===eval_d.ts&&h.provId===eval_d.provId&&h.version===eval_d.version;});
-            if(idx>-1)hist.splice(idx,1);
-            // Actualizar paquete
-            if(paqueteActual)guardarPaqueteActual();
-            buildResults();
-            tst('✅ Evaluación eliminada');
-          });
-        });
-      })(d,tr);
-      tbody.appendChild(tr);
-    });
-
-    tbl.appendChild(tbody);tableDiv.appendChild(tbl);
-    card.appendChild(tableDiv);
     wrap.appendChild(card);
   });
 }
