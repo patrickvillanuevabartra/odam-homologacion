@@ -826,10 +826,15 @@ var SCALE = [
 ];
 
 // getScaleByNota: dado un valor 0-1, devuelve el nivel correspondiente
-// Regla: A >= 0.90 | B >= 0.75 | C >= 0.60 | D < 0.60
+// Regla: cada nivel cubre desde su min (exclusivo) hasta su max (inclusivo)
+// Excepción: el nivel más bajo (D) incluye también su min (0.00)
 function getScaleByNota(v){
-  for(var i=0;i<SCALE.length;i++){
-    if(v>=SCALE[i].min) return SCALE[i];
+  // Ordenar de mayor a menor por max
+  var sorted=SCALE.slice().sort(function(a,b){return b.max-a.max;});
+  for(var i=0;i<sorted.length;i++){
+    var isLast=(i===sorted.length-1);
+    if(isLast) return sorted[i]; // nivel mínimo: cubre todo lo restante
+    if(v<=sorted[i].max && v>sorted[i+1].max) return sorted[i];
   }
   return SCALE[SCALE.length-1];
 }
@@ -1454,7 +1459,7 @@ function enviarASheets(d,callback){
   var _umbralBajo2=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
   var consD2=0;
   for(var ei2=histProv2.length-1;ei2>=0;ei2--){
-    if((parseFloat(histProv2[ei2].total)||0)<_umbralBajo2) consD2++;
+    if((parseFloat(histProv2[ei2].total)||0)<=_umbralBajo2) consD2++;
     else break;
   }
   var estadoProv=consD2===0?'normal':consD2>=REGLAS_GLOBALES.vetado?'vetado':consD2>=REGLAS_GLOBALES.lista_negra?'lista_negra':consD2>=REGLAS_GLOBALES.alerta?'alerta':'normal';
@@ -1585,7 +1590,7 @@ function guardarEvalActual(){
     var _umbralFinal=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
     var _consFinal=0;
     for(var _fi=_histProvFinal.length-1;_fi>=0;_fi--){
-      if((parseFloat(_histProvFinal[_fi].total)||0)<_umbralFinal) _consFinal++;
+      if((parseFloat(_histProvFinal[_fi].total)||0)<=_umbralFinal) _consFinal++;
       else break;
     }
     var _estadoFinal=_consFinal===0?'normal':_consFinal>=REGLAS_GLOBALES.vetado?'vetado':_consFinal>=REGLAS_GLOBALES.lista_negra?'lista_negra':_consFinal>=REGLAS_GLOBALES.alerta?'alerta':'normal';
@@ -2554,11 +2559,16 @@ function adminCargarProveedoresRestringidos(){
         var evsProv=histAll.filter(function(h){
           return (h.proveedor||'').trim().toLowerCase()===nomLow;
         });
-        evsProv.sort(function(a,b){return (a.timestamp||'').localeCompare(b.timestamp||'');});
+        evsProv.sort(function(a,b){
+          // Convertir timestamp a fecha real para ordenar correctamente
+          var ta=normalizarFechaQDB(a.timestamp||'')||a.timestamp||'';
+          var tb=normalizarFechaQDB(b.timestamp||'')||b.timestamp||'';
+          return ta.localeCompare(tb);
+        });
         console.log('ADMIN proveedor='+nomLow+' evsProv='+evsProv.length+' totales='+evsProv.map(function(e){return e.calificacion_total+'('+e.version+')'}).join(','));
         var consD=0;
         for(var i=evsProv.length-1;i>=0;i--){
-          if((parseFloat(evsProv[i].calificacion_total)||0)<_umbralBajo) consD++;
+          if((parseFloat(evsProv[i].calificacion_total)||0)<=_umbralBajo) consD++;
           else break;
         }
         var estadoReal=consD===0?'normal':consD>=REGLAS_GLOBALES.vetado?'vetado':consD>=REGLAS_GLOBALES.lista_negra?'lista_negra':consD>=REGLAS_GLOBALES.alerta?'alerta':'normal';
@@ -3572,7 +3582,7 @@ function guardarProveedorEnQDB(p,cb){
     var _umbralBajoP=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
     var consDp=0;
     for(var eip=histP.length-1;eip>=0;eip--){
-      if((parseFloat(histP[eip].total)||0)<_umbralBajoP) consDp++;
+      if((parseFloat(histP[eip].total)||0)<=_umbralBajoP) consDp++;
       else break;
     }
     estadoCalc=consDp===0?'normal':consDp>=REGLAS_GLOBALES.vetado?'vetado':consDp>=REGLAS_GLOBALES.lista_negra?'lista_negra':consDp>=REGLAS_GLOBALES.alerta?'alerta':'normal';
@@ -5586,7 +5596,7 @@ function buildResults(){
     var evalsPrevias=datosFiltrados.slice(0,i+1).filter(function(x){return x.provId===d.provId;});
     var consD=0;
     for(var ei=evalsPrevias.length-1;ei>=0;ei--){
-      if((parseFloat(evalsPrevias[ei].total)||0)<_umbralBajo) consD++;
+      if((parseFloat(evalsPrevias[ei].total)||0)<=_umbralBajo) consD++;
       else break;
     }
     var estProv=consD===0?'normal':consD>=REGLAS_GLOBALES.vetado?'vetado':consD>=REGLAS_GLOBALES.lista_negra?'lista_negra':consD>=REGLAS_GLOBALES.alerta?'alerta':'normal';
