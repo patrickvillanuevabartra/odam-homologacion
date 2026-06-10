@@ -5290,16 +5290,12 @@ function buildResults(){
     var diffColor=diffVal===null?'var(--muted)':diffVal>0?'#059669':diffVal<0?'#DC2626':'#64748B';
     var diffStr=diffVal===null?'—':(diffVal>=0?'▲ +':'▼ ')+Math.abs(diffVal).toFixed(3);
     var pctStr=diffPct===null?'—':(diffPct>=0?'+':'')+diffPct+'%';
-    // Calcular estado HISTÓRICO: basado en D's consecutivas hasta ESTA evaluación
-    var histProv=hist.filter(function(h){return h.provId===d.provId;});
-    histProv.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
-    // Tomar solo evaluaciones hasta la fila actual (inclusive) ordenadas por versión
-    var vActual=d.version||'';
-    var idxActual=histProv.findIndex(function(h){return h.version===vActual;});
-    var histHasta=idxActual>-1?histProv.slice(0,idxActual+1):histProv;
+    // Calcular estado HISTÓRICO por fila: D's consecutivas hasta esta fila inclusive
+    // Usar datosFiltrados hasta el índice i (misma lógica que variación)
+    var evalsPrevias=datosFiltrados.slice(0,i+1).filter(function(x){return x.provId===d.provId;});
     var consD=0;
-    for(var ei=histHasta.length-1;ei>=0;ei--){
-      var catH=getFinalCat(parseFloat(histHasta[ei].total)||0);
+    for(var ei=evalsPrevias.length-1;ei>=0;ei--){
+      var catH=getFinalCat(parseFloat(evalsPrevias[ei].total)||0);
       if(catH==='D') consD++;
       else break;
     }
