@@ -2526,7 +2526,15 @@ function adminCargarProveedoresRestringidos(){
     // Cargar historial para recalcular estado real
     qdbFetch({accion:'cargarResumen'},function(resHist){
       var histAll=(resHist&&resHist.ok&&resHist.registros)||[];
-      var _umbralBajo=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
+      // Usar umbral fijo 0.60 si SCALE no está cargado correctamente
+      var _umbralBajo=SCALE&&SCALE.length?SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max:0.60;
+      console.log('ADMIN umbralBajo='+_umbralBajo+' SCALE='+JSON.stringify(SCALE.map(function(s){return s.cat+':'+s.min+'-'+s.max;})));
+      console.log('ADMIN histAll total='+histAll.length);
+      // Mostrar info de debug en pantalla temporalmente
+      var dbg=document.createElement('div');
+      dbg.style.cssText='font-size:.75rem;color:var(--muted);padding:4px 8px;background:#F8FAFC;border-radius:6px;margin-bottom:8px;';
+      dbg.textContent='Debug: umbral mínimo='+_umbralBajo.toFixed(2)+' | evaluaciones en QDB='+histAll.length+' | SCALE niveles='+SCALE.length;
+      wrap.appendChild(dbg);
       // Para cada proveedor, calcular estado desde historial real
       var conEstado=proveedores.map(function(r){
         var nomLow=(r.nombre||'').trim().toLowerCase();
