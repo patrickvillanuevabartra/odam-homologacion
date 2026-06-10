@@ -1578,10 +1578,23 @@ function guardarEvalActual(){
     });
     mostrarMetaFields(provActualId);
     if(paqueteActual)guardarPaqueteActual();
-    // Actualizar estado del proveedor en QDB después de guardar evaluación
-    if(p._qid){
-      guardarProveedorEnQDB(p, function(){});
+    // Actualizar estado del proveedor en QDB con el estado calculado desde hist completo
+    // Recalcular ahora que hist ya tiene la nueva evaluación
+    var _histProvFinal=hist.filter(function(h){return h.provId===provActualId;});
+    _histProvFinal.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+    var _umbralFinal=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
+    var _consFinal=0;
+    for(var _fi=_histProvFinal.length-1;_fi>=0;_fi--){
+      if((parseFloat(_histProvFinal[_fi].total)||0)<_umbralFinal) _consFinal++;
+      else break;
     }
+    var _estadoFinal=_consFinal===0?'normal':_consFinal>=REGLAS_GLOBALES.vetado?'vetado':_consFinal>=REGLAS_GLOBALES.lista_negra?'lista_negra':_consFinal>=REGLAS_GLOBALES.alerta?'alerta':'normal';
+    p.estado=_estadoFinal;
+    console.log('ESTADO FINAL para '+p.nom+': consec='+_consFinal+' estado='+_estadoFinal+' umbral='+_umbralFinal);
+    // Guardar en tabla PROVEEDORES de QDB siempre (con o sin _qid)
+    guardarProveedorEnQDB(p, function(okProv){
+      console.log('guardarProveedorEnQDB resultado:', okProv, '_qid:', p._qid);
+    });
     // Limpiar banner de reevaluación al guardar
     if(window._reevalPid){
       window._reevalPid=null;window._reevalNum=null;window._reevalNom=null;
@@ -3547,18 +3560,23 @@ function guardarTodosProveedores(){
 }
 
 function guardarProveedorEnQDB(p,cb){
-  // FIX: mapear campos internos (nom,dir,mat) a nombres que el proxy entiende
-  // Calcular estado desde historial
-  var histP=hist.filter(function(h){return h.provId===p.id;});
-  histP.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
-  var _umbralBajoP=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
-  var consDp=0;
-  for(var eip=histP.length-1;eip>=0;eip--){
-    if((parseFloat(histP[eip].total)||0)<_umbralBajoP) consDp++;
-    else break;
+  // Si p.estado ya viene calculado externamente, usarlo directamente
+  // Si no, calcular desde historial local
+  var estadoCalc;
+  if(p.estado&&p.estado!==undefined&&p.estado!==''){
+    estadoCalc=p.estado;
+  } else {
+    var histP=hist.filter(function(h){return h.provId===p.id;});
+    histP.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+    var _umbralBajoP=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
+    var consDp=0;
+    for(var eip=histP.length-1;eip>=0;eip--){
+      if((parseFloat(histP[eip].total)||0)<_umbralBajoP) consDp++;
+      else break;
+    }
+    estadoCalc=consDp===0?'normal':consDp>=REGLAS_GLOBALES.vetado?'vetado':consDp>=REGLAS_GLOBALES.lista_negra?'lista_negra':consDp>=REGLAS_GLOBALES.alerta?'alerta':'normal';
+    p.estado=estadoCalc;
   }
-  var estadoCalc=consDp===0?'normal':consDp>=REGLAS_GLOBALES.vetado?'vetado':consDp>=REGLAS_GLOBALES.lista_negra?'lista_negra':consDp>=REGLAS_GLOBALES.alerta?'alerta':'normal';
-  p.estado=estadoCalc;
   var datos={
     nombre:p.nom||'', ruc:p.ruc||'', direccion:p.dir||'',
     rubro_sector:p.mat||'', producto_servicio:p.producto||'',
