@@ -5224,10 +5224,12 @@ function buildResults(){
     }
   });
   var datosFiltrados=filtrarDatos(datos.sort(function(a,b){
-    // Ordenar por fecha+hora ascendente
-    var aT=(a.ts||a.fec||'');
-    var bT=(b.ts||b.fec||'');
-    return aT.localeCompare(bT);
+    // Ordenar por proveedor, luego por versión (inicial primero, luego reevaluaciones 1,2,3...)
+    var nomCmp=(a.nom||'').localeCompare(b.nom||'');
+    if(nomCmp!==0)return nomCmp;
+    var aI=(a.version||'').toLowerCase().indexOf('inici')>-1?-1:parseInt((a.version||'').replace(/[^0-9]/g,'')||'0');
+    var bI=(b.version||'').toLowerCase().indexOf('inici')>-1?-1:parseInt((b.version||'').replace(/[^0-9]/g,'')||'0');
+    return aI-bI;
   }));
 
   var tableWrap=document.createElement('div');
