@@ -248,6 +248,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <button class="sbtn" onclick="goStep(4)"><span class="snum">05</span>Proveedores</button>
   <button class="sbtn" onclick="goStep(5)"><span class="snum">06</span>Evaluación</button>
   <button class="sbtn" onclick="goStep(6)"><span class="snum">07</span>Resultados</button>
+  <button class="sbtn" id="btnStepAdmin" onclick="goStep(7)" style="display:none;background:#7C3AED;color:white;"><span class="snum">⚙</span>Admin</button>
 </div>
 </div><!-- /portal-sticky -->
 <div class="portal-inner">
@@ -625,6 +626,81 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div id="sheetsStatus" style="margin-top:10px;padding:10px 14px;border-radius:8px;font-size:.88rem;display:none;"></div>
 </div>
 
+<!-- ══════════ P8: PANEL ADMIN ══════════ -->
+<div class="panel" id="panel-7">
+  <p class="stitle" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>⚙️ Panel de Administración</span>
+    <span style="font-size:.78rem;color:var(--muted);">Solo visible para administradores</span>
+  </p>
+
+  <!-- Tabs admin -->
+  <div style="display:flex;gap:0;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;margin-bottom:20px;">
+    <button id="adminTab1" onclick="switchAdminTab(1)" style="flex:1;padding:11px 14px;background:var(--primary);color:white;border:none;font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;">👥 Usuarios</button>
+    <button id="adminTab2" onclick="switchAdminTab(2)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">📦 Todos los Paquetes</button>
+    <button id="adminTab3" onclick="switchAdminTab(3)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">🔓 Reactivar Proveedores</button>
+    <button id="adminTab4" onclick="switchAdminTab(4)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">⚙️ Reglas Globales</button>
+  </div>
+
+  <!-- Tab 1: Usuarios -->
+  <div id="adminTabPanel1">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--subtle);">Usuarios registrados en el sistema</div>
+      <button onclick="adminCargarUsuarios()" style="padding:7px 14px;border-radius:7px;background:var(--primary);color:white;border:none;font-size:.84rem;cursor:pointer;font-family:inherit;">🔄 Actualizar</button>
+    </div>
+    <div id="adminListaUsuarios"><div style="padding:24px;text-align:center;color:var(--muted);">Haz clic en Actualizar para cargar usuarios.</div></div>
+  </div>
+
+  <!-- Tab 2: Todos los paquetes -->
+  <div id="adminTabPanel2" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--subtle);">Todos los paquetes del sistema</div>
+      <button onclick="adminCargarTodosPaquetes()" style="padding:7px 14px;border-radius:7px;background:var(--primary);color:white;border:none;font-size:.84rem;cursor:pointer;font-family:inherit;">🔄 Actualizar</button>
+    </div>
+    <div id="adminListaPaquetes"><div style="padding:24px;text-align:center;color:var(--muted);">Haz clic en Actualizar para cargar todos los paquetes.</div></div>
+  </div>
+
+  <!-- Tab 3: Reactivar proveedores -->
+  <div id="adminTabPanel3" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--subtle);">Proveedores en alerta / lista negra / vetados</div>
+      <button onclick="adminCargarProveedoresRestringidos()" style="padding:7px 14px;border-radius:7px;background:var(--primary);color:white;border:none;font-size:.84rem;cursor:pointer;font-family:inherit;">🔄 Actualizar</button>
+    </div>
+    <div id="adminListaProvRestringidos"><div style="padding:24px;text-align:center;color:var(--muted);">Haz clic en Actualizar para cargar proveedores restringidos.</div></div>
+  </div>
+
+  <!-- Tab 4: Reglas globales -->
+  <div id="adminTabPanel4" style="display:none;">
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:20px;max-width:500px;">
+      <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--subtle);margin-bottom:16px;">Configurar umbrales de estado</div>
+      <div style="font-size:.88rem;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+        Define cuántas evaluaciones consecutivas en el nivel más bajo se necesitan para cambiar el estado del proveedor.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="background:#FEF9C3;color:#92400E;border:1px solid #D97706;padding:4px 12px;border-radius:20px;font-size:.82rem;font-weight:700;min-width:100px;text-align:center;">⚠️ Alerta</span>
+          <span style="font-size:.9rem;color:var(--muted);">a partir de</span>
+          <input id="reglaAlerta" type="number" min="1" max="10" value="1" style="width:60px;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:1rem;font-weight:700;text-align:center;font-family:inherit;">
+          <span style="font-size:.9rem;color:var(--muted);">evaluaciones mínimas consecutivas</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="background:#FEE2E2;color:#991B1B;border:1px solid #DC2626;padding:4px 12px;border-radius:20px;font-size:.82rem;font-weight:700;min-width:100px;text-align:center;">🚫 Lista negra</span>
+          <span style="font-size:.9rem;color:var(--muted);">a partir de</span>
+          <input id="reglaListaNegra" type="number" min="1" max="10" value="2" style="width:60px;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:1rem;font-weight:700;text-align:center;font-family:inherit;">
+          <span style="font-size:.9rem;color:var(--muted);">evaluaciones mínimas consecutivas</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="background:#1E293B;color:white;padding:4px 12px;border-radius:20px;font-size:.82rem;font-weight:700;min-width:100px;text-align:center;">❌ Vetado</span>
+          <span style="font-size:.9rem;color:var(--muted);">a partir de</span>
+          <input id="reglaVetado" type="number" min="1" max="10" value="3" style="width:60px;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:1rem;font-weight:700;text-align:center;font-family:inherit;">
+          <span style="font-size:.9rem;color:var(--muted);">evaluaciones mínimas consecutivas</span>
+        </div>
+      </div>
+      <button onclick="adminGuardarReglas()" style="margin-top:16px;padding:11px 24px;border-radius:8px;background:var(--primary);color:white;border:none;font-size:.96rem;font-weight:700;cursor:pointer;font-family:inherit;">💾 Guardar reglas</button>
+      <div id="reglaStatus" style="margin-top:10px;font-size:.86rem;"></div>
+    </div>
+  </div>
+</div>
+
 </div>
 </div>
 <!-- ── MODAL EVALUADORES ── -->
@@ -764,6 +840,12 @@ function getScaleItem(cat){return SCALE.find(function(s){return s.cat===cat;})||
 var crits=[], evFiles={}, hist=[], notasEval={}, seq=0;
 // proveedores: [{id, nom, ruc, dir, fec, mat, eva, guardado}]
 var provs=[], provSeq=0, provActualId=null;
+
+// ── ADMINISTRADOR ──
+var ADMIN_EMAIL = 'patrick.villanueva@urp.edu.pe'; // cambiar según institución
+var REGLAS_GLOBALES = {alerta:1, lista_negra:2, vetado:3}; // umbrales configurables
+
+function esAdmin(){return _usuarioActual&&_usuarioActual.correo===ADMIN_EMAIL;}
 
 // ── INIT ──
 var _hd=document.getElementById('hdrDate');
@@ -1375,7 +1457,7 @@ function enviarASheets(d,callback){
     if((parseFloat(histProv2[ei2].total)||0)<_umbralBajo2) consD2++;
     else break;
   }
-  var estadoProv=consD2===0?'normal':consD2===1?'alerta':consD2===2?'lista_negra':'vetado';
+  var estadoProv=consD2===0?'normal':consD2>=REGLAS_GLOBALES.vetado?'vetado':consD2>=REGLAS_GLOBALES.lista_negra?'lista_negra':consD2>=REGLAS_GLOBALES.alerta?'alerta':'normal';
   // Obtener _qid del proveedor
   var provObj=getProv(d.provId);
   var payload={
@@ -2353,6 +2435,143 @@ function aplicarUsuario(){
   var bEmail=document.getElementById('userBadgeEmail');
   if(bName)bName.textContent=_usuarioActual.nombre;
   if(bEmail)bEmail.textContent=_usuarioActual.correo;
+  // Mostrar botón admin si es administrador
+  var btnAdmin=document.getElementById('btnStepAdmin');
+  if(btnAdmin)btnAdmin.style.display=esAdmin()?'':'none';
+}
+
+// ══════════════════════════════════════
+// PANEL DE ADMINISTRACIÓN
+// ══════════════════════════════════════
+function switchAdminTab(n){
+  for(var i=1;i<=4;i++){
+    var panel=document.getElementById('adminTabPanel'+i);
+    var btn=document.getElementById('adminTab'+i);
+    if(panel)panel.style.display=(i===n)?'block':'none';
+    if(btn){
+      btn.style.background=i===n?'var(--primary)':'var(--surface)';
+      btn.style.color=i===n?'white':'var(--muted)';
+    }
+  }
+}
+
+function adminCargarUsuarios(){
+  var wrap=document.getElementById('adminListaUsuarios');
+  wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);">⏳ Cargando...</div>';
+  qdbFetch({accion:'cargarEvaluadores'},function(res){
+    if(!res||!res.ok){wrap.innerHTML='<div style="padding:16px;color:var(--muted);">⚠️ Sin conexión</div>';return;}
+    // Obtener usuarios únicos desde paquetes
+    qdbFetch({accion:'cargarPaquetes'},function(resPaq){
+      var usuarios={};
+      (resPaq&&resPaq.registros||[]).forEach(function(r){
+        var correo=(r.propietario||'').trim().toLowerCase();
+        if(!correo)return;
+        if(!usuarios[correo])usuarios[correo]={correo:correo,nombre:r.propietario_nombre||correo,paquetes:0};
+        usuarios[correo].paquetes++;
+      });
+      var lista=Object.values(usuarios);
+      if(!lista.length){wrap.innerHTML='<div style="padding:16px;color:var(--muted);">No hay usuarios registrados.</div>';return;}
+      wrap.innerHTML='';
+      var totalDiv=document.createElement('div');
+      totalDiv.style.cssText='font-size:.82rem;color:var(--muted);margin-bottom:10px;';
+      totalDiv.textContent=lista.length+' usuario(s) encontrado(s)';
+      wrap.appendChild(totalDiv);
+      lista.sort(function(a,b){return a.correo.localeCompare(b.correo);});
+      lista.forEach(function(u){
+        var row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:12px;padding:12px 16px;background:white;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;';
+        var isAdmin=u.correo===ADMIN_EMAIL;
+        row.innerHTML='<div style="width:38px;height:38px;border-radius:50%;background:'+(isAdmin?'#7C3AED':'var(--primary)')+';color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0;">'+(u.nombre||'?').charAt(0).toUpperCase()+'</div>'
+          +'<div style="flex:1;"><div style="font-weight:700;font-size:.95rem;">'+esc(u.nombre)+(isAdmin?' <span style="background:#7C3AED;color:white;padding:1px 8px;border-radius:10px;font-size:.72rem;margin-left:6px;">ADMIN</span>':'')+'</div>'
+          +'<div style="font-size:.82rem;color:var(--muted);">'+esc(u.correo)+'</div></div>'
+          +'<div style="font-size:.82rem;color:var(--muted);">📦 '+u.paquetes+' paquete(s)</div>';
+        wrap.appendChild(row);
+      });
+    },5000);
+  },5000);
+}
+
+function adminCargarTodosPaquetes(){
+  var wrap=document.getElementById('adminListaPaquetes');
+  wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);">⏳ Cargando todos los paquetes...</div>';
+  qdbFetch({accion:'cargarPaquetes'},function(res){
+    if(!res||!res.ok){wrap.innerHTML='<div style="padding:16px;color:var(--muted);">⚠️ Sin conexión</div>';return;}
+    var todos=(res.registros||[]);
+    if(!todos.length){wrap.innerHTML='<div style="padding:16px;color:var(--muted);">No hay paquetes en el sistema.</div>';return;}
+    wrap.innerHTML='';
+    var totalDiv=document.createElement('div');
+    totalDiv.style.cssText='font-size:.82rem;color:var(--muted);margin-bottom:10px;';
+    totalDiv.textContent=todos.length+' paquete(s) en total';
+    wrap.appendChild(totalDiv);
+    todos.forEach(function(r){
+      var row=document.createElement('div');
+      row.style.cssText='padding:12px 16px;background:white;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;';
+      row.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+        +'<div><div style="font-weight:700;">'+esc(r.nombre||'Sin nombre')+'</div>'
+        +'<div style="font-size:.82rem;color:var(--muted);margin-top:2px;">👤 '+esc(r.propietario||'—')+'</div></div>'
+        +'<div style="font-size:.78rem;color:var(--muted);text-align:right;">📋 '+((r.criterios_json&&JSON.parse(r.criterios_json||'[]').length)||0)+' criterios</div>'
+        +'</div>';
+      wrap.appendChild(row);
+    });
+  },8000);
+}
+
+function adminCargarProveedoresRestringidos(){
+  var wrap=document.getElementById('adminListaProvRestringidos');
+  wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);">⏳ Cargando...</div>';
+  qdbFetch({accion:'cargarProveedores'},function(res){
+    if(!res||!res.ok){wrap.innerHTML='<div style="padding:16px;color:var(--muted);">⚠️ Sin conexión</div>';return;}
+    var restringidos=(res.registros||[]).filter(function(r){
+      return r.estado&&r.estado!=='normal'&&r.estado!=='';
+    });
+    if(!restringidos.length){
+      wrap.innerHTML='<div style="padding:24px;text-align:center;background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;color:#166534;">✅ No hay proveedores restringidos actualmente.</div>';
+      return;
+    }
+    wrap.innerHTML='';
+    var totalDiv=document.createElement('div');
+    totalDiv.style.cssText='font-size:.82rem;color:var(--muted);margin-bottom:10px;';
+    totalDiv.textContent=restringidos.length+' proveedor(es) con estado restringido';
+    wrap.appendChild(totalDiv);
+    restringidos.forEach(function(r){
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:12px;padding:12px 16px;background:white;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;flex-wrap:wrap;';
+      var badgeColor=r.estado==='alerta'?'#FEF9C3|#92400E':r.estado==='lista_negra'?'#FEE2E2|#991B1B':'#1E293B|white';
+      var bc=badgeColor.split('|');
+      row.innerHTML='<div style="flex:1;min-width:0;">'
+        +'<div style="font-weight:700;">'+esc(r.nombre||'—')+'</div>'
+        +'<div style="font-size:.82rem;color:var(--muted);">RUC: '+esc(r.ruc||'—')+' · Propietario: '+esc(r.propietario||'—')+'</div>'
+        +'</div>'
+        +'<span style="background:'+bc[0]+';color:'+bc[1]+';padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;">'+getBadgeEstado(r.estado)+'</span>';
+      var btnReact=document.createElement('button');
+      btnReact.textContent='🔓 Reactivar';
+      btnReact.style.cssText='padding:7px 14px;border-radius:7px;background:#059669;color:white;border:none;font-size:.84rem;font-weight:600;cursor:pointer;font-family:inherit;';
+      (function(prov){
+        btnReact.onclick=function(){
+          if(!confirm('¿Reactivar a "'+prov.nombre+'"? Se restablecerá su estado a Normal.'))return;
+          qdbFetch({accion:'guardarProveedor',datos:JSON.stringify({nombre:prov.nombre,ruc:prov.ruc,estado:'normal',propietario:prov.propietario}),qid:prov._qid||''},function(res){
+            tst(res&&res.ok?'✅ Proveedor "'+prov.nombre+'" reactivado':'⚠️ Error al reactivar');
+            adminCargarProveedoresRestringidos();
+          },5000);
+        };
+      })(r);
+      row.appendChild(btnReact);
+      wrap.appendChild(row);
+    });
+  },8000);
+}
+
+function adminGuardarReglas(){
+  var a=parseInt(document.getElementById('reglaAlerta').value)||1;
+  var ln=parseInt(document.getElementById('reglaListaNegra').value)||2;
+  var v=parseInt(document.getElementById('reglaVetado').value)||3;
+  if(a>=ln||ln>=v){
+    document.getElementById('reglaStatus').innerHTML='<span style="color:var(--no);">⚠️ Los umbrales deben ser crecientes: Alerta < Lista negra < Vetado</span>';
+    return;
+  }
+  REGLAS_GLOBALES={alerta:a,lista_negra:ln,vetado:v};
+  document.getElementById('reglaStatus').innerHTML='<span style="color:var(--ok);">✅ Reglas actualizadas: Alerta='+a+', Lista negra='+ln+', Vetado='+v+'</span>';
+  tst('✅ Reglas globales actualizadas',3000);
 }
 
 function getUsuarioId()    {return _usuarioActual?_usuarioActual.id:'anonimo';}
@@ -3302,7 +3521,7 @@ function guardarProveedorEnQDB(p,cb){
     if((parseFloat(histP[eip].total)||0)<_umbralBajoP) consDp++;
     else break;
   }
-  var estadoCalc=consDp===0?'normal':consDp===1?'alerta':consDp===2?'lista_negra':'vetado';
+  var estadoCalc=consDp===0?'normal':consDp>=REGLAS_GLOBALES.vetado?'vetado':consDp>=REGLAS_GLOBALES.lista_negra?'lista_negra':consDp>=REGLAS_GLOBALES.alerta?'alerta':'normal';
   p.estado=estadoCalc;
   var datos={
     nombre:p.nom||'', ruc:p.ruc||'', direccion:p.dir||'',
@@ -3944,7 +4163,7 @@ function goStepBack(n){
       tst('Sin criterios — agrega los criterios de evaluación');
     }
   }
-  var pids=['panel-0','panel-6','panel-1','panel-2','panel-3','panel-4','panel-5'];
+  var pids=['panel-0','panel-6','panel-1','panel-2','panel-3','panel-4','panel-5','panel-7'];
   pids.forEach(function(pid,i){var el=document.getElementById(pid);if(el)el.classList.toggle('active',i===n);});
   document.querySelectorAll('.sbtn').forEach(function(b,i){
     b.classList.remove('active','done');
@@ -3955,7 +4174,7 @@ function goStepBack(n){
 }
 
 function goStep(n){
-  var pids=['panel-0','panel-6','panel-1','panel-2','panel-3','panel-4','panel-5'];
+  var pids=['panel-0','panel-6','panel-1','panel-2','panel-3','panel-4','panel-5','panel-7'];
   pids.forEach(function(pid,i){var el=document.getElementById(pid);if(el)el.classList.toggle('active',i===n);});
   document.querySelectorAll('.sbtn').forEach(function(b,i){
     b.classList.remove('active','done');
@@ -4105,6 +4324,18 @@ function goStep(n){
     // Asegurar que el historial esté sanitizado antes de mostrar
     sanitizarHist();
     buildResults();
+  }
+  if(n===7){
+    if(!esAdmin()){goStep(0);tst('⚠️ Acceso restringido');return;}
+    switchAdminTab(1);
+    adminCargarUsuarios();
+    // Cargar reglas actuales en inputs
+    var ra=document.getElementById('reglaAlerta');
+    var rln=document.getElementById('reglaListaNegra');
+    var rv=document.getElementById('reglaVetado');
+    if(ra)ra.value=REGLAS_GLOBALES.alerta;
+    if(rln)rln.value=REGLAS_GLOBALES.lista_negra;
+    if(rv)rv.value=REGLAS_GLOBALES.vetado;
   }
 
   window.scrollTo({top:0,behavior:'smooth'});
@@ -5303,7 +5534,7 @@ function buildResults(){
       if((parseFloat(evalsPrevias[ei].total)||0)<_umbralBajo) consD++;
       else break;
     }
-    var estProv=consD===0?'normal':consD===1?'alerta':consD===2?'lista_negra':'vetado';
+    var estProv=consD===0?'normal':consD>=REGLAS_GLOBALES.vetado?'vetado':consD>=REGLAS_GLOBALES.lista_negra?'lista_negra':consD>=REGLAS_GLOBALES.alerta?'alerta':'normal';
 
     tr.innerHTML='<td style="font-weight:700;color:var(--muted)">'+(i+1)+'</td>'
       +'<td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;background:'+(isInicial?'#DCFCE7':'#EFF6FF')+';color:'+(isInicial?'#059669':'#0284c7')+';">'+esc(versionLabel)+'</span></td>'
