@@ -2874,6 +2874,7 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
       });
       if(regs.length)tst('\u2705 '+regs.length+' evaluaciones cargadas desde QuintaDB');
     }
+    sanitizarHist();
     if(callback)callback();
   }, 3000);
 }
@@ -5196,6 +5197,12 @@ function buildResults(){
   var datos=[];
   provs.forEach(function(p){
     var ph=hist.filter(function(h){return h.provId===p.id;});
+    // Ordenar por versión: Evaluacion inicial primero, luego Reevaluacion 1, 2, 3...
+    ph.sort(function(a,b){
+      var aI=(a.version||'').toLowerCase().indexOf('inici')>-1?-1:parseInt((a.version||'').replace(/[^0-9]/g,'')||'0');
+      var bI=(b.version||'').toLowerCase().indexOf('inici')>-1?-1:parseInt((b.version||'').replace(/[^0-9]/g,'')||'0');
+      return aI-bI;
+    });
     if(ph.length){
       ph.forEach(function(h){
         var ci=getScaleItem(getFinalCat(h.total||0));
