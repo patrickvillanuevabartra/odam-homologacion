@@ -637,7 +637,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div style="display:flex;gap:0;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;margin-bottom:20px;">
     <button id="adminTab1" onclick="switchAdminTab(1)" style="flex:1;padding:11px 14px;background:var(--primary);color:white;border:none;font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;">👥 Usuarios</button>
     <button id="adminTab2" onclick="switchAdminTab(2)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">📦 Todos los Paquetes</button>
-    <button id="adminTab3" onclick="switchAdminTab(3)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">🔓 Reactivar Proveedores</button>
+    <button id="adminTab3" onclick="switchAdminTab(3)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">🔍 Proveedores Restringidos</button>
     <button id="adminTab4" onclick="switchAdminTab(4)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">⚙️ Reglas Globales</button>
   </div>
 
@@ -2597,19 +2597,7 @@ function adminCargarProveedoresRestringidos(){
           +'<div style="font-size:.78rem;color:var(--muted);margin-top:2px;">'+r._consD+' evaluación(es) consecutivas en nivel mínimo</div>'
           +'</div>'
           +getBadgeEstado(r.estado);
-      var btnReact=document.createElement('button');
-      btnReact.textContent='🔓 Reactivar';
-      btnReact.style.cssText='padding:7px 14px;border-radius:7px;background:#059669;color:white;border:none;font-size:.84rem;font-weight:600;cursor:pointer;font-family:inherit;';
-      (function(prov){
-        btnReact.onclick=function(){
-          if(!confirm('¿Reactivar a "'+prov.nombre+'"? Se restablecerá su estado a Normal.'))return;
-          qdbFetch({accion:'guardarProveedor',datos:JSON.stringify({nombre:prov.nombre,ruc:prov.ruc,estado:'normal',propietario:prov.propietario}),qid:prov._qid||''},function(res){
-            tst(res&&res.ok?'✅ Proveedor "'+prov.nombre+'" reactivado':'⚠️ Error al reactivar');
-            adminCargarProveedoresRestringidos();
-          },5000);
-        };
-      })(r);
-      row.appendChild(btnReact);
+
       wrap.appendChild(row);
     });
     },8000); // fin cargarResumen
@@ -5324,7 +5312,8 @@ function buildDashboard(){
     return{nom:h.nom,total:h.total,catFinal:getFinalCat(h.total),catItem:getScaleItem(getFinalCat(h.total))};
   });
   var total=datos.length;
-  var catCount={A:0,B:0,C:0,D:0};
+  var catCount={};
+  SCALE.forEach(function(s){catCount[s.cat]=0;});
   datos.forEach(function(d){catCount[d.catFinal]=(catCount[d.catFinal]||0)+1;});
   var promedio=total>0?(datos.reduce(function(s,d){return s+d.total;},0)/total):0;
   var mejor=datos.reduce(function(a,b){return a.total>b.total?a:b;},{total:0,nom:''});
@@ -5348,7 +5337,14 @@ function buildDashboard(){
     if(diff>0)mejoras++;else if(diff<0)bajas++;
   });
 
-  var catInfo={A:{color:'#059669',bg:'#DCFCE7',label:'Recomendables'},B:{color:'#0284c7',bg:'#DBEAFE',label:'Aceptables'},C:{color:'#D97706',bg:'#FEF9C3',label:'En observación'},D:{color:'#DC2626',bg:'#FEE2E2',label:'No aprobados'}};
+  // Construir catInfo dinámicamente desde SCALE (soporta cualquier nombre de categoría)
+  var catInfo={};
+  SCALE.forEach(function(s){catInfo[s.cat]={color:s.color,bg:s.bg,label:s.label,interp:s.interp};});
+  // Fallback para A/B/C/D en caso de que SCALE no esté cargado
+  if(!catInfo['A'])catInfo['A']={color:'#059669',bg:'#DCFCE7',label:'Recomendables'};
+  if(!catInfo['B'])catInfo['B']={color:'#0284c7',bg:'#DBEAFE',label:'Aceptables'};
+  if(!catInfo['C'])catInfo['C']={color:'#D97706',bg:'#FEF9C3',label:'En observación'};
+  if(!catInfo['D'])catInfo['D']={color:'#DC2626',bg:'#FEE2E2',label:'No aprobados'};
 
   var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">';
 
@@ -5365,10 +5361,11 @@ function buildDashboard(){
     +'<div style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-top:2px;">Promedio paquete</div>'
     +'</div>';
 
-  // KPI: por categoría A/B/C/D
-  ['A','B','C','D'].forEach(function(cat){
+  // KPI: por categoría — dinámico desde SCALE
+  SCALE.slice().sort(function(a,b){return b.max-a.max;}).forEach(function(s){
+    var cat=s.cat;
     var n=catCount[cat]||0;
-    var ci=catInfo[cat];
+    var ci=catInfo[cat]||{color:'#64748B',bg:'#F8FAFC',label:s.label};
     html+='<div style="background:'+(n>0?ci.bg:'white')+';border:1.5px solid '+(n>0?ci.color:'var(--border)')+';border-radius:12px;padding:14px;text-align:center;">'
       +'<div style="font-size:1.8rem;font-weight:800;color:'+(n>0?ci.color:'var(--subtle)')+'">'+n+'</div>'
       +'<div style="display:inline-block;background:'+(n>0?ci.color:'var(--subtle)')+';color:white;border-radius:5px;padding:1px 8px;font-size:.82rem;font-weight:700;margin-top:2px;">'+cat+'</div>'
