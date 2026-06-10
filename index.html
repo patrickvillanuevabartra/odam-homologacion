@@ -1495,6 +1495,10 @@ function guardarEvalActual(){
     });
     mostrarMetaFields(provActualId);
     if(paqueteActual)guardarPaqueteActual();
+    // Actualizar estado del proveedor en QDB después de guardar evaluación
+    if(p._qid){
+      guardarProveedorEnQDB(p, function(){});
+    }
     // Limpiar banner de reevaluación al guardar
     if(window._reevalPid){
       window._reevalPid=null;window._reevalNum=null;window._reevalNom=null;
@@ -3288,6 +3292,16 @@ function guardarTodosProveedores(){
 
 function guardarProveedorEnQDB(p,cb){
   // FIX: mapear campos internos (nom,dir,mat) a nombres que el proxy entiende
+  // Calcular estado desde historial
+  var histP=hist.filter(function(h){return h.provId===p.id;});
+  histP.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+  var consDp=0;
+  for(var eip=histP.length-1;eip>=0;eip--){
+    if(getFinalCat(parseFloat(histP[eip].total)||0)==='D') consDp++;
+    else break;
+  }
+  var estadoCalc=consDp===0?'normal':consDp===1?'alerta':consDp===2?'lista_negra':'vetado';
+  p.estado=estadoCalc;
   var datos={
     nombre:p.nom||'', ruc:p.ruc||'', direccion:p.dir||'',
     rubro_sector:p.mat||'', producto_servicio:p.producto||'',
@@ -3296,7 +3310,8 @@ function guardarProveedorEnQDB(p,cb){
     link_producto:p.linkProducto||'', link_empresa:p.linkEmpresa||'',
     link_otros:p.linkOtros||'', descripcion:p.descripcion||'',
     propietario:getUsuarioCorreo(), propietario_nombre:getUsuarioNombre(),
-    paquete:paqueteActual?paqueteActual.id:''
+    paquete:paqueteActual?paqueteActual.id:'',
+    estado:estadoCalc
   };
   qdbFetch({accion:'guardarProveedor', datos:JSON.stringify(datos), qid:p._qid||''}, function(res){
     if(res&&res.qid)p._qid=res.qid;
@@ -5275,21 +5290,16 @@ function buildResults(){
     var diffColor=diffVal===null?'var(--muted)':diffVal>0?'#059669':diffVal<0?'#DC2626':'#64748B';
     var diffStr=diffVal===null?'—':(diffVal>=0?'▲ +':'▼ ')+Math.abs(diffVal).toFixed(3);
     var pctStr=diffPct===null?'—':(diffPct>=0?'+':'')+diffPct+'%';
-    // Usar estado guardado en QDB si existe, sino calcular desde historial
-    var provObj2=getProv(d.provId);
-    var estProvQDB=provObj2&&provObj2.estado&&provObj2.estado!==''?provObj2.estado:null;
-    var estProv=estProvQDB;
-    if(!estProv){
-      var histProv=hist.filter(function(h){return h.provId===d.provId;});
-      histProv.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
-      var consD=0;
-      for(var ei=histProv.length-1;ei>=0;ei--){
-        var catH=histProv[ei].catFinal||getFinalCat(histProv[ei].total||0);
-        if(catH==='D') consD++;
-        else break;
-      }
-      estProv=consD===0?'normal':consD===1?'alerta':consD===2?'lista_negra':'vetado';
+    // Calcular estado SIEMPRE desde historial — ignorar valor guardado en QDB
+    var histProv=hist.filter(function(h){return h.provId===d.provId;});
+    histProv.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
+    var consD=0;
+    for(var ei=histProv.length-1;ei>=0;ei--){
+      var catH=getFinalCat(parseFloat(histProv[ei].total)||0);
+      if(catH==='D') consD++;
+      else break;
     }
+    var estProv=consD===0?'normal':consD===1?'alerta':consD===2?'lista_negra':'vetado';
 
     tr.innerHTML='<td style="font-weight:700;color:var(--muted)">'+(i+1)+'</td>'
       +'<td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;background:'+(isInicial?'#DCFCE7':'#EFF6FF')+';color:'+(isInicial?'#059669':'#0284c7')+';">'+esc(versionLabel)+'</span></td>'
