@@ -2555,6 +2555,7 @@ function adminCargarProveedoresRestringidos(){
           return (h.proveedor||'').trim().toLowerCase()===nomLow;
         });
         evsProv.sort(function(a,b){return (a.timestamp||'').localeCompare(b.timestamp||'');});
+        console.log('ADMIN proveedor='+nomLow+' evsProv='+evsProv.length+' totales='+evsProv.map(function(e){return e.calificacion_total+'('+e.version+')'}).join(','));
         var consD=0;
         for(var i=evsProv.length-1;i>=0;i--){
           if((parseFloat(evsProv[i].calificacion_total)||0)<_umbralBajo) consD++;
