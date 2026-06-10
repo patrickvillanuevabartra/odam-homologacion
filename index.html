@@ -4652,6 +4652,9 @@ function buildVersionSelector(provId){
   if(mf) mf.style.display='none';
   var indic=document.getElementById('versionIndicativo');
   if(indic) indic.style.display='none';
+  // Resetear título del paso
+  var titleEl=document.getElementById('evalStepTitle');
+  if(titleEl) titleEl.textContent='Paso 6 — Evaluación'+(paqueteActual?' — '+paqueteActual.nombre:'');
   var sfBlock=document.getElementById('sfBlock');
   if(sfBlock){
     var ts=document.getElementById('totScore');if(ts)ts.textContent='0.000';
