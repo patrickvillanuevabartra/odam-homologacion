@@ -2842,18 +2842,12 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
         var rVersion=r.version||'Evaluacion inicial';
         var rFec=r.fecha_evaluacion||r.timestamp||'';
         var ci=getScaleItem(getFinalCat(totalVal));
-        // Deduplicar: mismo proveedor + misma versión (sin importar el total)
-        // Priorizar el registro con _qid (viene de QDB) sobre el local sin _qid
+        // Deduplicar: buscar por _qid primero, luego por versión
         var dupIdx=hist.findIndex(function(h){
-          return h.provId===pMatch.id&&h.version===rVersion;
+          return (r._qid&&h._qid===r._qid)||(h.provId===pMatch.id&&h.version===rVersion);
         });
         if(dupIdx>-1){
-          // Si el existente no tiene _qid pero este sí, reemplazar
-          if(!hist[dupIdx]._qid&&r._qid){
-            hist.splice(dupIdx,1); // quitar el local sin _qid
-          } else {
-            return; // ya existe con _qid, ignorar duplicado
-          }
+          hist.splice(dupIdx,1); // siempre reemplazar con datos frescos de QDB
         }
         var rFecNorm=normalizarFechaQDB(r.timestamp)||normalizarFechaQDB(rFec)||'';
         hist.push({
