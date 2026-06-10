@@ -2519,30 +2519,53 @@ function adminCargarTodosPaquetes(){
 function adminCargarProveedoresRestringidos(){
   var wrap=document.getElementById('adminListaProvRestringidos');
   wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);">⏳ Cargando...</div>';
+  // Cargar proveedores Y resumen para recalcular estado en tiempo real
   qdbFetch({accion:'cargarProveedores'},function(res){
     if(!res||!res.ok){wrap.innerHTML='<div style="padding:16px;color:var(--muted);">⚠️ Sin conexión</div>';return;}
-    var restringidos=(res.registros||[]).filter(function(r){
-      return r.estado&&r.estado!=='normal'&&r.estado!=='';
-    });
-    if(!restringidos.length){
-      wrap.innerHTML='<div style="padding:24px;text-align:center;background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;color:#166534;">✅ No hay proveedores restringidos actualmente.</div>';
-      return;
-    }
-    wrap.innerHTML='';
-    var totalDiv=document.createElement('div');
-    totalDiv.style.cssText='font-size:.82rem;color:var(--muted);margin-bottom:10px;';
-    totalDiv.textContent=restringidos.length+' proveedor(es) con estado restringido';
-    wrap.appendChild(totalDiv);
-    restringidos.forEach(function(r){
-      var row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:12px;padding:12px 16px;background:white;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;flex-wrap:wrap;';
-      var badgeColor=r.estado==='alerta'?'#FEF9C3|#92400E':r.estado==='lista_negra'?'#FEE2E2|#991B1B':'#1E293B|white';
-      var bc=badgeColor.split('|');
-      row.innerHTML='<div style="flex:1;min-width:0;">'
-        +'<div style="font-weight:700;">'+esc(r.nombre||'—')+'</div>'
-        +'<div style="font-size:.82rem;color:var(--muted);">RUC: '+esc(r.ruc||'—')+' · Propietario: '+esc(r.propietario||'—')+'</div>'
-        +'</div>'
-        +'<span style="background:'+bc[0]+';color:'+bc[1]+';padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;">'+getBadgeEstado(r.estado)+'</span>';
+    var proveedores=res.registros||[];
+    // Cargar historial para recalcular estado real
+    qdbFetch({accion:'cargarResumen'},function(resHist){
+      var histAll=(resHist&&resHist.ok&&resHist.registros)||[];
+      var _umbralBajo=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
+      // Para cada proveedor, calcular estado desde historial real
+      var conEstado=proveedores.map(function(r){
+        var nomLow=(r.nombre||'').trim().toLowerCase();
+        var evsProv=histAll.filter(function(h){
+          return (h.proveedor||'').trim().toLowerCase()===nomLow&&
+                 (!r.propietario||!h.propietario||h.propietario===r.propietario);
+        });
+        evsProv.sort(function(a,b){return (a.timestamp||'').localeCompare(b.timestamp||'');});
+        var consD=0;
+        for(var i=evsProv.length-1;i>=0;i--){
+          if((parseFloat(evsProv[i].calificacion_total)||0)<_umbralBajo) consD++;
+          else break;
+        }
+        var estadoReal=consD===0?'normal':consD>=REGLAS_GLOBALES.vetado?'vetado':consD>=REGLAS_GLOBALES.lista_negra?'lista_negra':consD>=REGLAS_GLOBALES.alerta?'alerta':'normal';
+        // Si el estado cambió, actualizar en QDB silenciosamente
+        if(estadoReal!==r.estado&&r._qid){
+          qdbFetch({accion:'guardarProveedor',datos:JSON.stringify({nombre:r.nombre,ruc:r.ruc,estado:estadoReal,propietario:r.propietario}),qid:r._qid},function(){},5000);
+        }
+        return Object.assign({},r,{estado:estadoReal,_consD:consD});
+      });
+      var restringidos=conEstado.filter(function(r){return r.estado!=='normal';});
+      if(!restringidos.length){
+        wrap.innerHTML='<div style="padding:24px;text-align:center;background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;color:#166534;">✅ No hay proveedores restringidos actualmente.</div>';
+        return;
+      }
+      wrap.innerHTML='';
+      var totalDiv=document.createElement('div');
+      totalDiv.style.cssText='font-size:.82rem;color:var(--muted);margin-bottom:10px;';
+      totalDiv.textContent=restringidos.length+' proveedor(es) con estado restringido';
+      wrap.appendChild(totalDiv);
+      restringidos.forEach(function(r){
+        var row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:12px;padding:12px 16px;background:white;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;flex-wrap:wrap;';
+        row.innerHTML='<div style="flex:1;min-width:0;">'
+          +'<div style="font-weight:700;">'+esc(r.nombre||'—')+'</div>'
+          +'<div style="font-size:.82rem;color:var(--muted);">RUC: '+esc(r.ruc||'—')+' · Propietario: '+esc(r.propietario||'—')+'</div>'
+          +'<div style="font-size:.78rem;color:var(--muted);margin-top:2px;">'+r._consD+' evaluación(es) consecutivas en nivel mínimo</div>'
+          +'</div>'
+          +getBadgeEstado(r.estado);
       var btnReact=document.createElement('button');
       btnReact.textContent='🔓 Reactivar';
       btnReact.style.cssText='padding:7px 14px;border-radius:7px;background:#059669;color:white;border:none;font-size:.84rem;font-weight:600;cursor:pointer;font-family:inherit;';
@@ -2558,7 +2581,8 @@ function adminCargarProveedoresRestringidos(){
       row.appendChild(btnReact);
       wrap.appendChild(row);
     });
-  },8000);
+    },8000); // fin cargarResumen
+  },8000); // fin cargarProveedores
 }
 
 function adminGuardarReglas(){
@@ -3041,18 +3065,23 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
       var regs=res.registros.filter(function(r){
         // Filtrar por propietario
         var propOk=!r.propietario||r.propietario===''||r.propietario===correo;
+        if(!propOk) return false;
         // Filtrar por paquete (acepta nombre o id)
         var paqOk=!r.paquete||r.paquete===''||r.paquete===pkId||r.paquete===pkNom||r.paquete===nombrePaquete;
-        // Si hay proveedores cargados, cruzar por nombre/ruc también
+        // Si hay proveedores cargados, cruzar por nombre/ruc
         if(provNames.length>0){
           var nom=(r.proveedor||'').trim().toLowerCase();
           var ruc=(r.ruc||'').trim();
           var nomMatch=nom&&provNames.indexOf(nom)>-1;
           var rucMatch=ruc&&provRucs.length>0&&provRucs.indexOf(ruc)>-1;
-          return propOk&&paqOk&&(nomMatch||rucMatch);
+          var provMatch=nomMatch||rucMatch;
+          // Si el proveedor coincide, cargar aunque el paquete no coincida exactamente
+          // (puede estar guardado con id en lugar de nombre)
+          if(provMatch) return true;
+          return paqOk&&provMatch;
         }
         // Si no hay proveedores cargados, filtrar solo por propietario+paquete
-        return propOk&&paqOk&&(r.proveedor||'')!=='';
+        return paqOk&&(r.proveedor||'')!=='';
       });
       regs.forEach(function(r){
         var rNom=(r.proveedor||'').trim();
@@ -5246,18 +5275,18 @@ function buildDashboard(){
   if(!hist.length&&!provs.length){el.style.display='none';return;}
   el.style.display='block';
 
-  // Calcular KPIs — misma lógica que buildResults: hist como fuente de verdad
-  var datos=provs.map(function(p){
-    var ph=hist.filter(function(h){return h.provId===p.id;});
-    var ue=ph.length?ph[ph.length-1]:null;
-    var total=ue&&ue.total>0?ue.total:0;
-    if(!total)return null;
-    return {
-      nom:p.nom,total:total,
-      catFinal:getFinalCat(total),
-      catItem:getScaleItem(getFinalCat(total))
-    };
-  }).filter(function(d){return d&&d.total>0;});
+  // Calcular KPIs — usar hist como fuente de verdad (funciona aunque provs esté vacío)
+  // Agrupar por proveedor y tomar su última evaluación
+  var provNoms={};
+  hist.forEach(function(h){
+    if(!h.nom)return;
+    if(!provNoms[h.provId||h.nom]||h.ts>=(provNoms[h.provId||h.nom].ts||'')){
+      provNoms[h.provId||h.nom]=h;
+    }
+  });
+  var datos=Object.values(provNoms).filter(function(h){return h.total>0;}).map(function(h){
+    return{nom:h.nom,total:h.total,catFinal:getFinalCat(h.total),catItem:getScaleItem(getFinalCat(h.total))};
+  });
   var total=datos.length;
   var catCount={A:0,B:0,C:0,D:0};
   datos.forEach(function(d){catCount[d.catFinal]=(catCount[d.catFinal]||0)+1;});
