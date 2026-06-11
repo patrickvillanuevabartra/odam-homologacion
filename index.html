@@ -1454,13 +1454,7 @@ function enviarASheets(d,callback){
   // Calcular estado del proveedor basado en historial
   var histProv2=hist.filter(function(h){return h.provId===d.provId;});
   histProv2.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
-  var _umbralBajo2=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
-  var consD2=0;
-  for(var ei2=histProv2.length-1;ei2>=0;ei2--){
-    if((parseFloat(histProv2[ei2].total)||0)<=_umbralBajo2) consD2++;
-    else break;
-  }
-  var estadoProv=consD2===0?'normal':consD2>=REGLAS_GLOBALES.vetado?'vetado':consD2>=REGLAS_GLOBALES.lista_negra?'lista_negra':consD2>=REGLAS_GLOBALES.alerta?'alerta':'normal';
+  var estadoProv=calcularEstadoDesdeArray(histProv2);
   // Obtener _qid del proveedor
   var provObj=getProv(d.provId);
   var payload={
@@ -1585,15 +1579,9 @@ function guardarEvalActual(){
     // Recalcular ahora que hist ya tiene la nueva evaluación
     var _histProvFinal=hist.filter(function(h){return h.provId===provActualId;});
     _histProvFinal.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
-    var _umbralFinal=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
-    var _consFinal=0;
-    for(var _fi=_histProvFinal.length-1;_fi>=0;_fi--){
-      if((parseFloat(_histProvFinal[_fi].total)||0)<=_umbralFinal) _consFinal++;
-      else break;
-    }
-    var _estadoFinal=_consFinal===0?'normal':_consFinal>=REGLAS_GLOBALES.vetado?'vetado':_consFinal>=REGLAS_GLOBALES.lista_negra?'lista_negra':_consFinal>=REGLAS_GLOBALES.alerta?'alerta':'normal';
+    var _estadoFinal=calcularEstadoDesdeArray(_histProvFinal);
     p.estado=_estadoFinal;
-    console.log('ESTADO FINAL para '+p.nom+': consec='+_consFinal+' estado='+_estadoFinal+' umbral='+_umbralFinal);
+    console.log('ESTADO FINAL para '+p.nom+': estado='+_estadoFinal);
     // Guardar en tabla PROVEEDORES de QDB siempre (con o sin _qid)
     guardarProveedorEnQDB(p, function(okProv){
       console.log('guardarProveedorEnQDB resultado:', okProv, '_qid:', p._qid);
@@ -2564,12 +2552,8 @@ function adminCargarProveedoresRestringidos(){
           return ta.localeCompare(tb);
         });
         console.log('ADMIN proveedor='+nomLow+' evsProv='+evsProv.length+' totales='+evsProv.map(function(e){return e.calificacion_total+'('+e.version+')'}).join(','));
-        var consD=0;
-        for(var i=evsProv.length-1;i>=0;i--){
-          if((parseFloat(evsProv[i].calificacion_total)||0)<=_umbralBajo) consD++;
-          else break;
-        }
-        var estadoReal=consD===0?'normal':consD>=REGLAS_GLOBALES.vetado?'vetado':consD>=REGLAS_GLOBALES.lista_negra?'lista_negra':consD>=REGLAS_GLOBALES.alerta?'alerta':'normal';
+        var evsParaCalculo=evsProv.map(function(e){return{total:parseFloat(e.calificacion_total)||0};});
+        var estadoReal=calcularEstadoDesdeArray(evsParaCalculo);
         // Si el estado cambió, actualizar en QDB silenciosamente
         if(estadoReal!==r.estado&&r._qid){
           qdbFetch({accion:'guardarProveedor',datos:JSON.stringify({nombre:r.nombre,ruc:r.ruc,estado:estadoReal,propietario:r.propietario}),qid:r._qid},function(){},5000);
@@ -3565,13 +3549,7 @@ function guardarProveedorEnQDB(p,cb){
   } else {
     var histP=hist.filter(function(h){return h.provId===p.id;});
     histP.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
-    var _umbralBajoP=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
-    var consDp=0;
-    for(var eip=histP.length-1;eip>=0;eip--){
-      if((parseFloat(histP[eip].total)||0)<=_umbralBajoP) consDp++;
-      else break;
-    }
-    estadoCalc=consDp===0?'normal':consDp>=REGLAS_GLOBALES.vetado?'vetado':consDp>=REGLAS_GLOBALES.lista_negra?'lista_negra':consDp>=REGLAS_GLOBALES.alerta?'alerta':'normal';
+    estadoCalc=calcularEstadoDesdeArray(histP);
     p.estado=estadoCalc;
   }
   var datos={
@@ -5380,16 +5358,44 @@ function buildDashboard(){
   html+='</div>';
 
   // Nota de reglas de estado
-  html+='<div style="margin:8px 0 4px;padding:8px 14px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px;font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-    +'<span style="font-weight:700;color:var(--text);">ℹ️ Reglas de estado:</span>'
-    +'<span style="background:#FEF9C3;color:#92400E;border:1px solid #D97706;padding:1px 8px;border-radius:10px;font-weight:600;">⚠️ Alerta</span>'
-    +'<span style="color:var(--muted);">≥ '+REGLAS_GLOBALES.alerta+' eval. consecutiva(s) en nivel mínimo</span>'
-    +'<span style="color:var(--border);">·</span>'
-    +'<span style="background:#FEE2E2;color:#991B1B;border:1px solid #DC2626;padding:1px 8px;border-radius:10px;font-weight:600;">🚫 Lista negra</span>'
-    +'<span style="color:var(--muted);">≥ '+REGLAS_GLOBALES.lista_negra+'</span>'
-    +'<span style="color:var(--border);">·</span>'
-    +'<span style="background:#1E293B;color:white;padding:1px 8px;border-radius:10px;font-weight:600;">❌ Vetado</span>'
-    +'<span style="color:var(--muted);">≥ '+REGLAS_GLOBALES.vetado+'</span>'
+  html+='<div style="margin:8px 0 4px;padding:12px 16px;background:#F8FAFC;border:1px solid var(--border);border-radius:10px;font-size:.86rem;color:var(--muted);">'
+    +'<div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--subtle);margin-bottom:8px;">Reglas de estado automáticas</div>'
+    +'<div style="display:flex;gap:24px;flex-wrap:wrap;">'
+      +'<div>'
+        +'<div style="font-size:.72rem;font-weight:700;color:var(--subtle);text-transform:uppercase;margin-bottom:6px;">📉 Degradación (eval. en nivel mínimo)</div>'
+        +'<div style="display:flex;flex-direction:column;gap:5px;">'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="background:#FEF9C3;color:#92400E;border:1px solid #D97706;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;min-width:90px;text-align:center;">⚠️ Alerta</span>'
+            +'<span style="font-size:.84rem;color:var(--muted);">a partir de <strong style="color:var(--text);">'+REGLAS_GLOBALES.alerta+'</strong> consecutiva(s)</span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="background:#FEE2E2;color:#991B1B;border:1px solid #DC2626;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;min-width:90px;text-align:center;">🚫 Lista negra</span>'
+            +'<span style="font-size:.84rem;color:var(--muted);">a partir de <strong style="color:var(--text);">'+REGLAS_GLOBALES.lista_negra+'</strong> consecutiva(s)</span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="background:#1E293B;color:white;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;min-width:90px;text-align:center;">❌ Vetado</span>'
+            +'<span style="font-size:.84rem;color:var(--muted);">a partir de <strong style="color:var(--text);">'+REGLAS_GLOBALES.vetado+'</strong> consecutiva(s)</span>'
+          +'</div>'
+        +'</div>'
+      +'</div>'
+      +'<div>'
+        +'<div style="font-size:.72rem;font-weight:700;color:var(--subtle);text-transform:uppercase;margin-bottom:6px;">📈 Recuperación a ✅ Normal (eval. por encima del mínimo)</div>'
+        +'<div style="display:flex;flex-direction:column;gap:5px;">'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="background:#FEF9C3;color:#92400E;border:1px solid #D97706;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;min-width:90px;text-align:center;">⚠️ Alerta</span>'
+            +'<span style="font-size:.84rem;color:var(--muted);">a partir de <strong style="color:var(--text);">'+REGLAS_GLOBALES.alerta+'</strong> consecutiva(s) sobre el mínimo</span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="background:#FEE2E2;color:#991B1B;border:1px solid #DC2626;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;min-width:90px;text-align:center;">🚫 Lista negra</span>'
+            +'<span style="font-size:.84rem;color:var(--muted);">a partir de <strong style="color:var(--text);">'+REGLAS_GLOBALES.lista_negra+'</strong> consecutiva(s) sobre el mínimo</span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="background:#1E293B;color:white;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;min-width:90px;text-align:center;">❌ Vetado</span>'
+            +'<span style="font-size:.84rem;color:var(--muted);">a partir de <strong style="color:var(--text);">'+REGLAS_GLOBALES.vetado+'</strong> consecutiva(s) sobre el mínimo</span>'
+          +'</div>'
+        +'</div>'
+      +'</div>'
+    +'</div>'
     +'</div>';
 
   // Fila 2: mejor, peor, tendencias
@@ -5473,21 +5479,41 @@ function sanitizarHist(){
 
 
 // ══ ESTADOS DE PROVEEDOR ══
+// ══ FUNCIÓN CENTRAL DE ESTADO — lógica bidireccional ══
+// Degrada: a partir de N consecutivas EN nivel mínimo → Alerta/Lista negra/Vetado
+// Recupera: a partir de N consecutivas POR ENCIMA del nivel mínimo → Normal
+function calcularEstadoDesdeArray(evArray){
+  if(!evArray||!evArray.length) return 'normal';
+  var _umbral=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
+  function esBaja(e){return (parseFloat(e.total)||0)<=_umbral;}
+  // Recorrer cronológicamente simulando el estado paso a paso
+  var estado='normal';
+  var rango={normal:0,alerta:1,lista_negra:2,vetado:3};
+  var consBajas=0, consAltas=0;
+  for(var i=0;i<evArray.length;i++){
+    if(esBaja(evArray[i])){
+      consBajas++; consAltas=0;
+      // Degradación: a partir de N consecutivas en nivel mínimo
+      // Solo se aplica si el nuevo estado es PEOR que el actual (nunca mejora con una mala)
+      var nuevoEst=consBajas>=REGLAS_GLOBALES.vetado?'vetado':consBajas>=REGLAS_GLOBALES.lista_negra?'lista_negra':consBajas>=REGLAS_GLOBALES.alerta?'alerta':'normal';
+      if(rango[nuevoEst]>rango[estado]) estado=nuevoEst;
+    } else {
+      consAltas++; consBajas=0;
+      // Recuperación: a partir de N consecutivas por encima del mínimo,
+      // donde N depende del estado del que se viene (simetría)
+      if(estado==='vetado'      && consAltas>=REGLAS_GLOBALES.vetado)      estado='normal';
+      else if(estado==='lista_negra' && consAltas>=REGLAS_GLOBALES.lista_negra) estado='normal';
+      else if(estado==='alerta'      && consAltas>=REGLAS_GLOBALES.alerta)      estado='normal';
+    }
+  }
+  return estado;
+}
+
 function calcularEstadoProveedor(provId){
   var ph=hist.filter(function(h){return h.provId===provId;});
   if(!ph.length) return 'normal';
   ph.sort(function(a,b){return (a.ts||a.fec||'').localeCompare(b.ts||b.fec||'');});
-  var p=getProv(provId);
-  if(p&&p._reactivado) return 'normal';
-  var cons=0;
-  for(var i=ph.length-1;i>=0;i--){
-    if(ph[i].catFinal==='D') cons++;
-    else break;
-  }
-  if(cons===0) return 'normal';
-  if(cons===1) return 'alerta';
-  if(cons===2) return 'lista_negra';
-  return 'vetado';
+  return calcularEstadoDesdeArray(ph);
 }
 
 function getBadgeEstado(estado){
@@ -5563,7 +5589,7 @@ function buildResults(){
   tableWrap.style.cssText='overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);';
   var tableEl=document.createElement('table');
   tableEl.className='dt'; tableEl.style.cssText='margin:0;min-width:700px;';
-  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Nivel</th><th>Variación</th><th>% Var.</th><th>Estado <span title="⚠️ Alerta: ≥'+REGLAS_GLOBALES.alerta+' eval. consecutiva(s) en nivel mínimo&#10;🚫 Lista negra: ≥'+REGLAS_GLOBALES.lista_negra+'&#10;❌ Vetado: ≥'+REGLAS_GLOBALES.vetado+'" style="cursor:help;font-weight:400;font-size:.8rem;background:rgba(255,255,255,.2);padding:1px 5px;border-radius:4px;">ℹ️</span></th><th>Acciones</th></tr></thead>';
+  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Nivel</th><th>Variación</th><th>% Var.</th><th>Estado <span title="DEGRADACIÓN (eval. en nivel mínimo):&#10;⚠️ Alerta: a partir de '+REGLAS_GLOBALES.alerta+' consecutiva(s)&#10;🚫 Lista negra: a partir de '+REGLAS_GLOBALES.lista_negra+' consecutiva(s)&#10;❌ Vetado: a partir de '+REGLAS_GLOBALES.vetado+' consecutiva(s)&#10;&#10;RECUPERACIÓN a Normal (eval. sobre el mínimo):&#10;Desde Alerta: a partir de '+REGLAS_GLOBALES.alerta+' consecutiva(s)&#10;Desde Lista negra: a partir de '+REGLAS_GLOBALES.lista_negra+' consecutiva(s)&#10;Desde Vetado: a partir de '+REGLAS_GLOBALES.vetado+' consecutiva(s)" style="cursor:help;font-weight:400;font-size:.8rem;background:rgba(255,255,255,.2);padding:1px 5px;border-radius:4px;">ℹ️</span></th><th>Acciones</th></tr></thead>';
   var tbodyEl=document.createElement('tbody');
   tableEl.appendChild(tbodyEl);
   if(!datosFiltrados.length){
@@ -5605,15 +5631,8 @@ function buildResults(){
     // Calcular estado HISTÓRICO por fila: nivel más bajo consecutivo hasta esta fila
     // El nivel más bajo es el último de SCALE (menor min) — soporta escalas personalizadas
     // Estado basado en rango mínimo — objetivo, independiente del nombre del nivel
-    var _minRango=Math.min.apply(null,SCALE.map(function(s){return s.min;}));
-    var _umbralBajo=SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max;
     var evalsPrevias=datosFiltrados.slice(0,i+1).filter(function(x){return x.provId===d.provId;});
-    var consD=0;
-    for(var ei=evalsPrevias.length-1;ei>=0;ei--){
-      if((parseFloat(evalsPrevias[ei].total)||0)<=_umbralBajo) consD++;
-      else break;
-    }
-    var estProv=consD===0?'normal':consD>=REGLAS_GLOBALES.vetado?'vetado':consD>=REGLAS_GLOBALES.lista_negra?'lista_negra':consD>=REGLAS_GLOBALES.alerta?'alerta':'normal';
+    var estProv=calcularEstadoDesdeArray(evalsPrevias);
 
     tr.innerHTML='<td style="font-weight:700;color:var(--muted)">'+(i+1)+'</td>'
       +'<td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;background:'+(isInicial?'#DCFCE7':'#EFF6FF')+';color:'+(isInicial?'#059669':'#0284c7')+';">'+esc(versionLabel)+'</span></td>'
