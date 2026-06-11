@@ -2534,11 +2534,6 @@ function adminCargarProveedoresRestringidos(){
       var _umbralBajo=SCALE&&SCALE.length?SCALE.reduce(function(a,b){return a.min<b.min?a:b;}).max:0.60;
       console.log('ADMIN umbralBajo='+_umbralBajo+' SCALE='+JSON.stringify(SCALE.map(function(s){return s.cat+':'+s.min+'-'+s.max;})));
       console.log('ADMIN histAll total='+histAll.length);
-      // Mostrar info de debug en pantalla temporalmente
-      var dbg=document.createElement('div');
-      dbg.style.cssText='font-size:.75rem;color:var(--muted);padding:4px 8px;background:#F8FAFC;border-radius:6px;margin-bottom:8px;';
-      dbg.textContent='Debug: umbral mínimo='+_umbralBajo.toFixed(2)+' | evaluaciones en QDB='+histAll.length+' | SCALE niveles='+SCALE.length;
-      wrap.appendChild(dbg);
       // Para cada proveedor, calcular estado desde historial real
       var conEstado=proveedores.map(function(r){
         var nomLow=(r.nombre||'').trim().toLowerCase();
@@ -5297,11 +5292,15 @@ function buildDashboard(){
     return{nom:h.nom,total:h.total,catFinal:getFinalCat(h.total),catItem:getScaleItem(getFinalCat(h.total))};
   });
   var total=datos.length;
-  var catCount={};
-  SCALE.forEach(function(s){catCount[s.cat]=0;});
-  datos.forEach(function(d){catCount[d.catFinal]=(catCount[d.catFinal]||0)+1;});
   // Promedio historico: todas las evaluaciones
   var histValidos=hist.filter(function(h){return h.total>0;});
+  // Contadores por nivel: sobre TODAS las evaluaciones históricas (coherente con promedio histórico)
+  var catCount={};
+  SCALE.forEach(function(s){catCount[s.cat]=0;});
+  histValidos.forEach(function(h){
+    var c=getFinalCat(h.total);
+    catCount[c]=(catCount[c]||0)+1;
+  });
   var promedio=histValidos.length>0?(histValidos.reduce(function(s,h){return s+h.total;},0)/histValidos.length):0;
   // Mejor y peor historicos
   var mejor=histValidos.reduce(function(a,b){return a.total>b.total?a:b;},{total:0,nom:''});
