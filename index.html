@@ -2489,8 +2489,13 @@ function adminCargarUsuarios(){
       (resPaq&&resPaq.registros||[]).forEach(function(r){
         var correo=(r.propietario||'').trim().toLowerCase();
         if(!correo)return;
-        if(!usuarios[correo])usuarios[correo]={correo:correo,nombre:r.propietario_nombre||correo,paquetes:0};
-        usuarios[correo].paquetes++;
+        if(!usuarios[correo])usuarios[correo]={correo:correo,nombre:r.propietario_nombre||correo,paquetes:0,_noms:{}};
+        // Contar paquetes únicos por nombre (igual que el visor del Paso 1)
+        var nomKey=(r.nombre||'').trim().toLowerCase();
+        if(nomKey&&!usuarios[correo]._noms[nomKey]){
+          usuarios[correo]._noms[nomKey]=true;
+          usuarios[correo].paquetes++;
+        }
       });
       var lista=Object.values(usuarios);
       if(!lista.length){wrap.innerHTML='<div style="padding:16px;color:var(--muted);">No hay usuarios registrados.</div>';return;}
@@ -2520,6 +2525,14 @@ function adminCargarTodosPaquetes(){
   qdbFetch({accion:'cargarPaquetes'},function(res){
     if(!res||!res.ok){wrap.innerHTML='<div style="padding:16px;color:var(--muted);">⚠️ Sin conexión</div>';return;}
     var todos=(res.registros||[]);
+    // Deduplicar por nombre+propietario (igual que el visor del Paso 1)
+    var vistosAdm={};
+    todos=todos.filter(function(r){
+      var k=(r.nombre||'').trim().toLowerCase()+'|'+(r.propietario||'').trim().toLowerCase();
+      if(vistosAdm[k])return false;
+      vistosAdm[k]=true;
+      return true;
+    });
     if(!todos.length){wrap.innerHTML='<div style="padding:16px;color:var(--muted);">No hay paquetes en el sistema.</div>';return;}
     wrap.innerHTML='';
     // Agrupar por usuario (propietario)
