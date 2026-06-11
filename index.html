@@ -3025,7 +3025,7 @@ function seleccionarPaquete(pk){
     fuente.forEach(function(p){
       var np={
         id:'p_'+(++provSeq), _qid:p._qid||'',
-        nom:p.nom||p.nombre||'', ruc:p.ruc||'',
+        nom:p.nom||p.nombre||'', _nomOriginal:p.nom||p.nombre||'', ruc:p.ruc||'',
         dir:p.dir||p.direccion||'', mat:p.mat||p.rubro_sector||'',
         producto:p.producto||p.producto_servicio||'',
         productosIds:p.productosIds||[],
@@ -3150,7 +3150,11 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
       // Filtrar solo registros de este paquete
       // Filtrar ESTRICTAMENTE por proveedores de este paquete
       // Un registro pertenece si su proveedor está en la lista de provs
-      var provNames=provs.map(function(p){return (p.nom||'').trim().toLowerCase();});
+      var provNames=[];
+      provs.forEach(function(p){
+        var a=(p.nom||'').trim().toLowerCase();if(a)provNames.push(a);
+        var b=(p._nomOriginal||'').trim().toLowerCase();if(b&&b!==a)provNames.push(b);
+      });
       var provRucs=provs.map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
       
       // FIX: RESUMEN usa campos: proveedor, ruc, evaluador, version,
@@ -3184,6 +3188,7 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
         var rRuc=(r.ruc||'').trim();
         var pMatch=provs.find(function(p){
           return (p.nom&&rNom&&p.nom.trim().toLowerCase()===rNom.toLowerCase())||
+                 (p._nomOriginal&&rNom&&p._nomOriginal.trim().toLowerCase()===rNom.toLowerCase())||
                  (p.ruc&&rRuc&&p.ruc.trim()===rRuc);
         });
         if(!pMatch)return;
@@ -3660,8 +3665,57 @@ function guardarProveedorEnQDB(p,cb){
   };
   qdbFetch({accion:'guardarProveedor', datos:JSON.stringify(datos), qid:p._qid||''}, function(res){
     if(res&&res.qid)p._qid=res.qid;
+    // Si la razón social cambió respecto a la conocida en QDB,
+    // propagar el nuevo nombre a todas las evaluaciones históricas
+    if(res&&res.ok&&p._nomOriginal&&p.nom&&
+       p._nomOriginal.trim().toLowerCase()!==p.nom.trim().toLowerCase()){
+      _propagarRenombreProveedor(p, p._nomOriginal, p.nom);
+    }
     if(cb)cb(res&&res.ok);
   });
+}
+
+// ══ PROPAGAR CAMBIO DE RAZÓN SOCIAL AL HISTORIAL ══
+// Actualiza el nombre del proveedor en RESUMEN y DETALLE de QuintaDB
+// para que las evaluaciones previas sigan vinculadas tras el renombre.
+function _propagarRenombreProveedor(p, oldNom, newNom){
+  var oldLow=(oldNom||'').trim().toLowerCase();
+  if(!oldLow||!newNom||!newNom.trim())return;
+  tst('⏳ Actualizando razón social en el historial...');
+  // 1. Tabla RESUMEN (evaluaciones)
+  qdbFetch({accion:'cargarResumen'},function(res){
+    var regs=((res&&res.ok&&res.registros)||[]).filter(function(r){
+      return (r.proveedor||'').trim().toLowerCase()===oldLow && r._qid;
+    });
+    var pend=regs.length;
+    function finRes(){
+      // Actualizar también el historial local en memoria
+      hist.forEach(function(h){
+        if((h.nom||'').trim().toLowerCase()===oldLow) h.nom=newNom;
+      });
+      p._nomOriginal=newNom;
+      if(regs.length) tst('✅ Razón social actualizada en '+regs.length+' evaluación(es) del historial',5000);
+      // Refrescar Resultados si está visible
+      var panelRes=document.getElementById('panel-5');
+      if(panelRes&&panelRes.classList.contains('active')){sanitizarHist();buildResults();}
+    }
+    if(!pend){finRes();return;}
+    regs.forEach(function(r){
+      qdbFetch({accion:'guardarResumen',datos:JSON.stringify({proveedor:newNom,ruc:p.ruc||r.ruc||''}),qid:r._qid},function(){
+        pend--;
+        if(pend===0) finRes();
+      },10000);
+    });
+  },12000);
+  // 2. Tabla DETALLE (calificaciones por criterio)
+  qdbFetch({accion:'cargarDetalle'},function(resD){
+    var regsD=((resD&&resD.ok&&resD.registros)||[]).filter(function(r){
+      return (r.proveedor||'').trim().toLowerCase()===oldLow && r._qid;
+    });
+    regsD.forEach(function(r){
+      qdbFetch({accion:'guardarDetalle',datos:JSON.stringify({proveedor:newNom}),qid:r._qid},function(){},10000);
+    });
+  },15000);
 }
 
 function eliminarProveedorDeQDB(p,cb){
