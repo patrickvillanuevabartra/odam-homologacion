@@ -1035,6 +1035,7 @@ function appendProvRow(p, i){
   grid.appendChild(secBuscar);
   grid.appendChild(resultBuscar);
 
+
   // ── Sección 1: Datos generales ──
   var sec1=document.createElement('div');
   sec1.style.cssText='grid-column:1/-1;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);padding:4px 0 2px 0;border-bottom:1px solid var(--border);margin-bottom:4px;';
@@ -5544,7 +5545,7 @@ function buildDashboard(){
           +'</div>'
           +'<div style="display:flex;align-items:center;gap:8px;">'
             +'<span style="background:#1E293B;color:white;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;min-width:90px;text-align:center;">❌ Vetado</span>'
-            +'<span style="font-size:.84rem;color:var(--muted);">a partir de <strong style="color:var(--text);">'+REGLAS_GLOBALES.vetado+'</strong> consecutiva(s) sobre el mínimo</span>'
+            +'<span style="font-size:.84rem;color:#991B1B;font-weight:600;">definitivo — sin recuperación, el proveedor queda eliminado</span>'
           +'</div>'
         +'</div>'
       +'</div>'
@@ -5653,10 +5654,11 @@ function calcularEstadoDesdeArray(evArray){
     } else {
       consAltas++; consBajas=0;
       // Recuperación: a partir de N consecutivas por encima del mínimo,
-      // donde N depende del estado del que se viene (simetría)
-      if(estado==='vetado'      && consAltas>=REGLAS_GLOBALES.vetado)      estado='normal';
-      else if(estado==='lista_negra' && consAltas>=REGLAS_GLOBALES.lista_negra) estado='normal';
-      else if(estado==='alerta'      && consAltas>=REGLAS_GLOBALES.alerta)      estado='normal';
+      // donde N depende del estado del que se viene (simetría).
+      // EXCEPCIÓN: el estado VETADO es definitivo — no hay recuperación,
+      // el proveedor queda eliminado y no tiene sentido reevaluarlo.
+      if(estado==='lista_negra' && consAltas>=REGLAS_GLOBALES.lista_negra) estado='normal';
+      else if(estado==='alerta' && consAltas>=REGLAS_GLOBALES.alerta)      estado='normal';
     }
   }
   return estado;
@@ -5742,7 +5744,7 @@ function buildResults(){
   tableWrap.style.cssText='overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);';
   var tableEl=document.createElement('table');
   tableEl.className='dt'; tableEl.style.cssText='margin:0;min-width:700px;';
-  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Nivel</th><th>Variación</th><th>% Var.</th><th>Estado <span title="DEGRADACIÓN (eval. en nivel mínimo):&#10;⚠️ Alerta: a partir de '+REGLAS_GLOBALES.alerta+' consecutiva(s)&#10;🚫 Lista negra: a partir de '+REGLAS_GLOBALES.lista_negra+' consecutiva(s)&#10;❌ Vetado: a partir de '+REGLAS_GLOBALES.vetado+' consecutiva(s)&#10;&#10;RECUPERACIÓN a Normal (eval. sobre el mínimo):&#10;Desde Alerta: a partir de '+REGLAS_GLOBALES.alerta+' consecutiva(s)&#10;Desde Lista negra: a partir de '+REGLAS_GLOBALES.lista_negra+' consecutiva(s)&#10;Desde Vetado: a partir de '+REGLAS_GLOBALES.vetado+' consecutiva(s)" style="cursor:help;font-weight:400;font-size:.8rem;background:rgba(255,255,255,.2);padding:1px 5px;border-radius:4px;">ℹ️</span></th><th>Acciones</th></tr></thead>';
+  tableEl.innerHTML='<thead><tr><th>#</th><th>Versión</th><th>Proveedor</th><th>RUC</th><th>Fecha</th><th>Hora</th><th>Evaluador</th><th>Criterios utilizados</th><th>Tabla de calificación</th><th>Calificación</th><th>Nivel</th><th>Variación</th><th>% Var.</th><th>Estado <span title="DEGRADACIÓN (eval. en nivel mínimo):&#10;⚠️ Alerta: a partir de '+REGLAS_GLOBALES.alerta+' consecutiva(s)&#10;🚫 Lista negra: a partir de '+REGLAS_GLOBALES.lista_negra+' consecutiva(s)&#10;❌ Vetado: a partir de '+REGLAS_GLOBALES.vetado+' consecutiva(s)&#10;&#10;RECUPERACIÓN a Normal (eval. sobre el mínimo):&#10;Desde Alerta: a partir de '+REGLAS_GLOBALES.alerta+' consecutiva(s)&#10;Desde Lista negra: a partir de '+REGLAS_GLOBALES.lista_negra+' consecutiva(s)&#10;Vetado: DEFINITIVO — sin recuperación, proveedor eliminado" style="cursor:help;font-weight:400;font-size:.8rem;background:rgba(255,255,255,.2);padding:1px 5px;border-radius:4px;">ℹ️</span></th><th>Acciones</th></tr></thead>';
   var tbodyEl=document.createElement('tbody');
   tableEl.appendChild(tbodyEl);
   if(!datosFiltrados.length){
