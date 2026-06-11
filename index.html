@@ -2554,6 +2554,12 @@ function adminCargarProveedoresRestringidos(){
         console.log('ADMIN proveedor='+nomLow+' evsProv='+evsProv.length+' totales='+evsProv.map(function(e){return e.calificacion_total+'('+e.version+')'}).join(','));
         var evsParaCalculo=evsProv.map(function(e){return{total:parseFloat(e.calificacion_total)||0};});
         var estadoReal=calcularEstadoDesdeArray(evsParaCalculo);
+        // Contar consecutivas bajas al final (solo informativo)
+        var consD=0;
+        for(var ci2=evsParaCalculo.length-1;ci2>=0;ci2--){
+          if((evsParaCalculo[ci2].total||0)<=_umbralBajo) consD++;
+          else break;
+        }
         // Si el estado cambió, actualizar en QDB silenciosamente
         if(estadoReal!==r.estado&&r._qid){
           qdbFetch({accion:'guardarProveedor',datos:JSON.stringify({nombre:r.nombre,ruc:r.ruc,estado:estadoReal,propietario:r.propietario}),qid:r._qid},function(){},5000);
