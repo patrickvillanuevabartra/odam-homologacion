@@ -1139,7 +1139,9 @@ function appendProvRow(p, i){
   delBtn.textContent='✕ Eliminar';
   (function(pid){ delBtn.onclick=function(){
     var pp=getProv(pid);
-    if(!confirm('¿Eliminar a "'+(pp?pp.nom:'este proveedor')+'"?'+(pp&&pp._qid?' Se eliminará también de QuintaDB.':'')))return;
+    if(!confirm('¿Eliminar a "'+(pp?pp.nom:'este proveedor')+'"?\n\nSe eliminará también TODO su historial de evaluaciones'+(pp&&pp._qid?' (en QuintaDB y localmente).':' local.')))return;
+    var nomElim=pp?(pp.nom||''):'';
+    var nomOrigElim=pp?(pp._nomOriginal||''):'';
     // Eliminar de QDB si tiene _qid
     if(pp&&pp._qid){
       qdbFetch({accion:'eliminarProveedor',qid:pp._qid},function(res){
@@ -1148,11 +1150,27 @@ function appendProvRow(p, i){
     }
     provs=provs.filter(function(x){return x.id!==pid;});
     delete evFiles[pid]; delete notasEval[pid];
+    // Eliminar su historial en memoria (por id y por nombre)
+    var nomLowE=nomElim.trim().toLowerCase();
+    var nomOrigLowE=nomOrigElim.trim().toLowerCase();
+    hist=hist.filter(function(h){
+      if(h.provId===pid) return false;
+      var hn=(h.nom||'').trim().toLowerCase();
+      if(nomLowE&&hn===nomLowE) return false;
+      if(nomOrigLowE&&hn===nomOrigLowE) return false;
+      return true;
+    });
+    // Eliminar su historial en QuintaDB (RESUMEN + DETALLE)
+    if(nomElim) _eliminarHistorialProveedor(nomElim);
+    if(nomOrigElim&&nomOrigElim.toLowerCase()!==nomElim.toLowerCase()) _eliminarHistorialProveedor(nomOrigElim);
     var row=document.getElementById('provrow-'+pid);
     if(row)row.parentNode.removeChild(row);
     renumerarProveedores();
     checkProvs();
     guardarPaqueteActual();
+    // Refrescar Resultados si está visible (KPIs y evolución)
+    var panelResE=document.getElementById('panel-5');
+    if(panelResE&&panelResE.classList.contains('active')){sanitizarHist();buildResults();}
   }; })(p.id);
   // Botón guardar individual
   var btnSaveProv=document.createElement('button');
@@ -3674,6 +3692,33 @@ function guardarProveedorEnQDB(p,cb){
     }
     if(cb)cb(res&&res.ok);
   });
+}
+
+// ══ ELIMINAR HISTORIAL DE UN PROVEEDOR EN QDB ══
+// Borra todas sus evaluaciones de RESUMEN y DETALLE (el proxy elimina por qid genérico)
+function _eliminarHistorialProveedor(nomProv, cb){
+  var nomLow=(nomProv||'').trim().toLowerCase();
+  if(!nomLow){if(cb)cb(0);return;}
+  // 1. Tabla RESUMEN
+  qdbFetch({accion:'cargarResumen'},function(res){
+    var regs=((res&&res.ok&&res.registros)||[]).filter(function(r){
+      return (r.proveedor||'').trim().toLowerCase()===nomLow && r._qid;
+    });
+    regs.forEach(function(r){
+      qdbFetch({accion:'eliminarResumen',qid:r._qid},function(){},10000);
+    });
+    if(regs.length) tst('🗑 Eliminando '+regs.length+' evaluación(es) del historial...',4000);
+    // 2. Tabla DETALLE (eliminar() del proxy es genérico por qid)
+    qdbFetch({accion:'cargarDetalle'},function(resD){
+      var regsD=((resD&&resD.ok&&resD.registros)||[]).filter(function(r){
+        return (r.proveedor||'').trim().toLowerCase()===nomLow && r._qid;
+      });
+      regsD.forEach(function(r){
+        qdbFetch({accion:'eliminarResumen',qid:r._qid},function(){},10000);
+      });
+      if(cb)cb(regs.length);
+    },15000);
+  },12000);
 }
 
 // ══ PROPAGAR CAMBIO DE RAZÓN SOCIAL AL HISTORIAL ══
