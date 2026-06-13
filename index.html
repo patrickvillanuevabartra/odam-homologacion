@@ -3304,20 +3304,26 @@ function normalizarColoresSCALE(){
   });
 }
 
+// Posición del nivel ordenando de mayor a menor por max:
+// el nivel más alto = índice 0 (verde), el más bajo = último (rojo).
+// Independiente del nombre del nivel (A/B/C/D, 1/2/3/4, etc.) y del orden del array.
+function _rankNivel(cat){
+  var ordenado=SCALE.slice().sort(function(a,b){return b.max-a.max;});
+  return ordenado.findIndex(function(s){return s.cat===cat;});
+}
 function getScaleColor(cat){
   var fixed={A:'#059669',B:'#0284c7',C:'#D97706',D:'#DC2626'};
   if(fixed[cat])return fixed[cat];
-  // Color dinámico para categorías personalizadas basado en posición en SCALE
-  var idx=SCALE.findIndex(function(s){return s.cat===cat;});
   var palette=['#059669','#0284c7','#D97706','#DC2626','#7C3AED','#DB2777','#0891B2','#65A30D'];
-  return palette[idx]||'#64748B';
+  var r=_rankNivel(cat);
+  return (r>-1?palette[r]:undefined)||'#64748B';
 }
 function getScaleBg(cat){
   var fixed={A:'#DCFCE7',B:'#DBEAFE',C:'#FEF9C3',D:'#FEE2E2'};
   if(fixed[cat])return fixed[cat];
-  var idx=SCALE.findIndex(function(s){return s.cat===cat;});
   var palette=['#DCFCE7','#DBEAFE','#FEF9C3','#FEE2E2','#EDE9FE','#FCE7F3','#CFFAFE','#ECFCCB'];
-  return palette[idx]||'#F8FAFC';
+  var r=_rankNivel(cat);
+  return (r>-1?palette[r]:undefined)||'#F8FAFC';
 }
 
 // ── PRODUCTOS/SERVICIOS ──
@@ -6269,7 +6275,7 @@ function buildComparativa(){
     svg.style.display='block';svg.style.overflow='visible';
     vers.forEach(function(d,i){
       var x=gap*(i+1)+bW*i;
-      var ci=d.catItem||getScaleItem(getFinalCat(d.total));
+      var ci=getScaleItem(getFinalCat(d.total));
       var col=ci?ci.color:'#64748B';
       var bH=Math.max(Math.round(d.total*barAreaH),3);
       var y=padT+(barAreaH-bH);
