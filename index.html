@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Homologación de Proveedores — ODAM URP</title>
-<!-- fonts removidas para test local -->
-<!-- xlsx removido para test local -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
 :root{
   --primary:#002D54;--green:#059669;--green-light:#ECFDF5;
@@ -221,6 +223,120 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 .modal-close{background:rgba(255,255,255,.2);border:none;color:white;font-size:1.4rem;cursor:pointer;width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;}
 .modal-close:hover{background:rgba(255,255,255,.35);}
 .modal-body{padding:20px;max-height:80vh;overflow-y:auto;}
+
+/* ══ PASO 1 · SELECCIÓN DE PAQUETE ══ */
+.pk-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px;}
+.pk-h{font-size:1.55rem;font-weight:700;color:var(--primary);line-height:1.2;letter-spacing:-.01em;}
+.pk-lead{font-size:.95rem;color:var(--muted);margin-top:6px;max-width:62ch;line-height:1.55;}
+.pk-layout{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:22px;align-items:start;}
+.pk-col-list{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.pk-toolbar{display:flex;gap:8px;}
+.pk-search{flex:1;min-width:0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.92rem;color:var(--text);background:white;outline:none;}
+.pk-search:focus{border-color:var(--blue);}
+.pk-new{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:14px;}
+.pk-new[hidden]{display:none;}
+.pk-new-lbl{display:block;font-size:.84rem;font-weight:600;color:var(--text);margin-bottom:6px;}
+.pk-new-inp{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.95rem;color:var(--text);outline:none;background:white;}
+.pk-new-inp:focus{border-color:var(--blue);}
+.pk-new-inp.err{border-color:var(--no);}
+.pk-new-msg{font-size:.8rem;color:var(--muted);margin-top:6px;line-height:1.45;}
+.pk-new-msg.err{color:var(--no);font-weight:600;}
+.pk-new-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;}
+.pk-listhead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.82rem;color:var(--muted);padding:0 2px;}
+.pk-orden{display:flex;align-items:center;gap:6px;}
+.pk-orden select{font-family:inherit;font-size:.82rem;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 6px;background:white;}
+.pk-list{display:flex;flex-direction:column;gap:6px;max-height:62vh;overflow-y:auto;padding:2px;}
+.pk-state{padding:22px 16px;text-align:center;color:var(--muted);font-size:.9rem;border:1.5px dashed var(--border);border-radius:10px;line-height:1.5;}
+.pk-state .btn{margin-top:10px;}
+
+/* tarjeta de la lista */
+.pk-item{display:block;width:100%;text-align:left;font-family:inherit;background:white;border:1.5px solid var(--border);border-left:4px solid var(--border);border-radius:9px;padding:11px 13px;cursor:pointer;color:var(--text);transition:border-color .15s,background .15s;}
+.pk-item:hover{border-color:#B6C3D1;border-left-color:#B6C3D1;}
+.pk-item:focus-visible{outline:3px solid rgba(2,132,199,.35);outline-offset:1px;}
+.pk-item.on{background:#F3F7FB;border-color:var(--primary);border-left-color:var(--primary);}
+.pk-item-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+.pk-item-nom{font-weight:700;font-size:.97rem;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.pk-item-fec{font-size:.74rem;color:var(--subtle);white-space:nowrap;flex-shrink:0;}
+.pk-item-meta{font-size:.8rem;color:var(--muted);margin-top:3px;}
+.pk-segs{display:flex;gap:3px;margin-top:9px;}
+.pk-seg{flex:1;height:5px;border-radius:3px;background:var(--border);}
+.pk-seg.ok{background:var(--green);}
+.pk-seg.mid{background:#F59E0B;}
+.pk-item-pct{font-size:.74rem;color:var(--muted);margin-top:5px;}
+.pk-mark{background:#FEF3C7;color:inherit;border-radius:2px;}
+
+/* detalle */
+.pk-col-detail{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;min-height:420px;display:flex;flex-direction:column;position:sticky;top:12px;}
+#pkDetalle{flex:1;padding:22px 24px 6px;}
+.pk-empty{height:100%;min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--muted);gap:10px;padding:20px;}
+.pk-empty-t{font-size:1.05rem;font-weight:700;color:var(--text);}
+.pk-empty p{font-size:.9rem;max-width:36ch;line-height:1.5;}
+.pk-d-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.pk-d-nom{font-size:1.32rem;font-weight:700;color:var(--primary);line-height:1.25;word-break:break-word;}
+.pk-d-sub{font-size:.82rem;color:var(--muted);margin-top:4px;line-height:1.5;}
+.pk-d-tools{display:flex;gap:6px;flex-shrink:0;}
+.pk-tool{font-family:inherit;font-size:.8rem;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:white;color:var(--text);cursor:pointer;}
+.pk-tool:hover{background:var(--bg);}
+.pk-tool.del{color:var(--no);border-color:#FECACA;}
+.pk-tool.del:hover{background:#FEF2F2;}
+.pk-sync{display:flex;align-items:center;gap:8px;margin:14px 0 4px;font-size:.82rem;color:var(--muted);}
+.pk-dot{width:8px;height:8px;border-radius:50%;background:var(--subtle);flex-shrink:0;}
+.pk-sync.cargando .pk-dot{background:var(--blue);animation:pkPulse 1s ease-in-out infinite;}
+.pk-sync.ok .pk-dot{background:var(--green);}
+.pk-sync.error .pk-dot{background:var(--no);}
+.pk-sync.error{color:var(--no);}
+.pk-sync button{font-family:inherit;font-size:.8rem;background:none;border:none;color:var(--blue);font-weight:600;cursor:pointer;text-decoration:underline;padding:0;}
+@keyframes pkPulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.pk-sync.cargando .pk-dot{animation:none;}}
+
+/* ruta del paquete: secuencia real de pasos */
+.pk-ruta{list-style:none;margin:16px 0 0;padding:0;position:relative;}
+.pk-ruta::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--border);}
+.pk-paso{position:relative;display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:12px;padding:9px 0;}
+.pk-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;background:white;border:2px solid var(--border);color:var(--subtle);position:relative;z-index:1;}
+.pk-paso.ok .pk-num{background:var(--green);border-color:var(--green);color:white;}
+.pk-paso.mid .pk-num{border-color:#F59E0B;color:#B45309;background:#FFFBEB;}
+.pk-paso.next .pk-num{border-color:var(--primary);color:var(--primary);box-shadow:0 0 0 4px rgba(0,45,84,.10);}
+.pk-paso-nom{font-size:.95rem;font-weight:600;color:var(--text);}
+.pk-paso-est{font-size:.8rem;color:var(--muted);margin-top:1px;line-height:1.4;}
+.pk-paso.mid .pk-paso-est{color:#B45309;}
+.pk-paso-btn{font-family:inherit;font-size:.8rem;font-weight:600;padding:6px 12px;border-radius:7px;border:1.5px solid var(--border);background:white;color:var(--primary);cursor:pointer;white-space:nowrap;}
+.pk-paso-btn:hover{border-color:var(--primary);}
+.pk-paso.next .pk-paso-btn{background:var(--primary);border-color:var(--primary);color:white;}
+.pk-paso-btn:focus-visible,.pk-tool:focus-visible{outline:3px solid rgba(2,132,199,.35);outline-offset:1px;}
+.pk-detail-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;border-top:1.5px solid var(--border);background:white;border-radius:0 0 12px 12px;}
+.pk-detail-foot[hidden]{display:none;}
+.pk-next-txt{font-size:.85rem;color:var(--muted);}
+.pk-next-txt strong{color:var(--text);}
+
+@media(max-width:860px){
+  .pk-layout{grid-template-columns:1fr;}
+  .pk-col-detail{position:static;min-height:0;}
+  .pk-list{max-height:none;}
+  .pk-empty{min-height:160px;}
+}
+@media(max-width:520px){
+  .pk-paso{grid-template-columns:32px 1fr;}
+  .pk-paso-btn{grid-column:2;justify-self:start;}
+  .pk-ruta::before{display:none;}
+  .pk-d-top{flex-direction:column;}
+  #pkDetalle{padding:18px 16px 6px;}
+  .pk-detail-foot{padding:12px 16px;flex-direction:column;align-items:stretch;}
+}
+
+/* Cabecera en móvil: el título se ajusta y los pasos se desplazan en horizontal */
+@media(max-width:680px){
+  .portal-sticky{padding:12px 14px 0;}
+  .top-bar{flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+  .logo{width:38px;height:38px;font-size:24px;}
+  .portal-title{font-size:21px;}
+  .portal-sub{font-size:13px;}
+  #paqueteBadge{max-width:100%;order:3;}
+  .steps{flex-direction:row;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .sbtn{flex:0 0 auto;min-width:96px;border-right:1.5px solid var(--border);border-bottom:none;padding:8px 6px;font-size:.7rem;}
+  .snum{font-size:1.05rem;}
+  .pk-h{font-size:1.3rem;}
+}
 </style>
 </head>
 <body>
@@ -255,28 +371,55 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 
 <!-- ══════════ P0: PAQUETES ══════════ -->
 <div class="panel active" id="panel-0">
-  <div class="acts" style="margin-bottom:16px;">
-    <button class="btn btn-p" id="btnNext0PaqueteTopNav" onclick="sincronizarPaqueteYAvanzar(1)" disabled style="opacity:.4;">Continuar → Productos →</button>
-  </div>
-  <p class="stitle">Paso 1 — Seleccionar Paquete de Evaluación</p>
-
-  <!-- Crear nuevo paquete -->
-  <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:18px;margin-bottom:20px;">
-    <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);margin-bottom:10px;">Crear nuevo paquete</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <input id="nuevoPaqueteNombre" type="text" placeholder="Ej: Proveedores de Limpieza 2026" maxlength="80"
-        style="flex:1;min-width:240px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.96rem;font-family:inherit;color:var(--text);">
-      <button onclick="crearPaquete()" style="padding:10px 20px;border-radius:8px;background:var(--primary);color:white;border:none;font-size:.96rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">+ Crear paquete</button>
+  <div class="pk-head">
+    <div class="pk-head-txt">
+      <h2 class="pk-h">Elige el paquete de evaluación</h2>
+      <p class="pk-lead">Un paquete reúne los productos, criterios, escala y proveedores de un proceso de homologación. Selecciona uno para retomar donde lo dejaste o crea uno nuevo.</p>
     </div>
-    <div style="font-size:.8rem;color:var(--muted);margin-top:8px;">Agrupa criterios, escala y proveedores. Puedes reusar el mismo paquete para añadir más proveedores después.</div>
   </div>
 
-  <!-- Paquetes existentes -->
-  <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);margin-bottom:12px;">Paquetes guardados en QuintaDB</div>
-  <div id="listaPaquetes" style="margin-bottom:16px;"><div style="text-align:center;padding:24px;color:var(--muted);font-size:.9rem;border:1.5px dashed var(--border);border-radius:10px;">Cargando paquetes desde QuintaDB...</div></div>
+  <div class="pk-layout">
+    <!-- Columna izquierda: lista -->
+    <aside class="pk-col-list" aria-label="Paquetes">
+      <div class="pk-toolbar">
+        <input id="pkBuscar" class="pk-search" type="search" placeholder="Buscar por nombre" autocomplete="off" oninput="renderListaPaquetes()">
+        <button class="btn btn-p btn-sm" id="btnNuevoPaquete" onclick="toggleNuevoPaquete(true)">+ Nuevo paquete</button>
+      </div>
 
-  <div class="acts">
-    <button class="btn btn-p" id="btnNext0Paquete" onclick="sincronizarPaqueteYAvanzar(1)" disabled>Continuar → Productos →</button>
+      <div id="pkNuevoForm" class="pk-new" hidden>
+        <label class="pk-new-lbl" for="nuevoPaqueteNombre">Nombre del nuevo paquete</label>
+        <input id="nuevoPaqueteNombre" class="pk-new-inp" type="text" placeholder="Ej.: Proveedores de limpieza 2026" maxlength="80"
+          onkeydown="if(event.key==='Enter'){crearPaquete();}else if(event.key==='Escape'){toggleNuevoPaquete(false);}" oninput="validarNombrePaquete()">
+        <div id="pkNuevoMsg" class="pk-new-msg">Empieza con la escala de calificación estándar A–D; podrás cambiarla en el paso 4.</div>
+        <div class="pk-new-acts">
+          <button class="btn btn-o btn-sm" onclick="toggleNuevoPaquete(false)">Cancelar</button>
+          <button class="btn btn-p btn-sm" id="btnCrearPaquete" onclick="crearPaquete()">Crear paquete</button>
+        </div>
+      </div>
+
+      <div class="pk-listhead">
+        <span id="pkConteo">Paquetes</span>
+        <label class="pk-orden">Ordenar
+          <select id="pkOrden" onchange="renderListaPaquetes()">
+            <option value="reciente">Más recientes</option>
+            <option value="nombre">Nombre (A–Z)</option>
+            <option value="avance">Menos avanzados</option>
+          </select>
+        </label>
+      </div>
+      <div id="listaPaquetes" class="pk-list" role="listbox" aria-label="Lista de paquetes">
+        <div class="pk-state">Cargando paquetes desde QuintaDB…</div>
+      </div>
+    </aside>
+
+    <!-- Columna derecha: detalle del paquete -->
+    <section class="pk-col-detail" aria-live="polite">
+      <div id="pkDetalle"></div>
+      <div class="pk-detail-foot" id="pkDetalleFoot" hidden>
+        <span id="pkSiguienteTxt" class="pk-next-txt"></span>
+        <button class="btn btn-p" id="btnNext0Paquete" onclick="continuarPaquete()" disabled>Continuar</button>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -448,7 +591,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <p class="stitle">Paso 5 — Proveedores a Evaluar</p>
 
   <p style="font-size:.96rem;color:var(--muted);margin-bottom:16px;padding:12px 16px;background:var(--surface);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;line-height:1.6;">
-    Agrega todos los proveedores que deseas evaluar. Luego en el paso 4 seleccionas uno por uno y le asignas las calificaciones.
+    Agrega todos los proveedores que deseas evaluar. Luego, en el paso 6, seleccionas uno por uno y le asignas las calificaciones.
   </p>
 
   <div id="provList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
@@ -803,6 +946,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 <div id="miniModalOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:99999;" onclick="miniModalCancel()">
   <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:12px;padding:28px;width:380px;max-width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.25);" onclick="event.stopPropagation()">
     <div id="miniModalMsg" style="font-size:1rem;font-weight:600;color:#1E293B;margin-bottom:20px;line-height:1.5;"></div>
+    <input id="miniModalInput" type="text" maxlength="80" onkeydown="if(event.key==='Enter')miniModalOkClick();" style="display:none;width:100%;margin:-8px 0 18px;padding:9px 12px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:.95rem;font-family:inherit;color:#1E293B;outline:none;">
     <div style="display:flex;gap:9px;justify-content:flex-end;">
       <button onclick="miniModalCancel()" style="padding:9px 20px;border-radius:7px;background:#F1F5F9;border:1px solid #E2E8F0;font-size:.9rem;cursor:pointer;font-family:inherit;">Cancelar</button>
       <button onclick="miniModalOkClick()" id="miniModalOk" style="padding:9px 20px;border-radius:7px;background:#DC2626;color:white;border:none;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;">Confirmar</button>
@@ -822,6 +966,9 @@ var SCALE = [
   {cat:'C', min:0.60, max:0.75, color:'#D97706', bg:'#FEF9C3', label:'Calificación C', interp:'Baja performance — proveedor aceptable en observación'},
   {cat:'D', min:0.00, max:0.60, color:'#DC2626', bg:'#FEE2E2', label:'Calificación D', interp:'Mala performance — proveedor no aprobado'}
 ];
+
+// Escala estándar: base para paquetes nuevos (no hereda la del paquete abierto)
+var SCALE_DEFAULT = JSON.parse(JSON.stringify(SCALE));
 
 // getScaleByNota: dado un valor 0-1, devuelve el nivel correspondiente
 // Regla: cada nivel cubre desde su min (exclusivo) hasta su max (inclusivo)
@@ -1430,35 +1577,41 @@ var GS_URL='https://script.google.com/macros/s/AKfycbwcrqr652QqWVsJ7QRFwlA-FSQKI
 // ── Wrapper fetch para reemplazar JSONP ──
 // Usa fetch() en lugar de <script> injection para evitar el error
 // "Unsafe attempt to load URL" cuando se abre como file:///
+// Llamada al proxy de Apps Script.
+// - Invoca el callback UNA sola vez (antes podía llamarse dos veces: al vencer el tiempo y al llegar la respuesta).
+// - Tiempo mínimo de espera 20 s: Apps Script tarda varios segundos en "despertar" (arranque en frío).
+// - Las escrituras con datos grandes van por POST (doPost): por GET la URL supera el límite y Google la rechaza.
+var QDB_GET_MAX = 6000;
 function qdbFetch(params, callback, timeoutMs){
-  timeoutMs = timeoutMs || 12000;
-  var url = GS_URL + '?' + Object.keys(params).map(function(k){
+  timeoutMs = Math.max(timeoutMs || 25000, 20000);
+  var done = false;
+  function fin(res){ if(done) return; done = true; clearTimeout(timer); if(callback) callback(res); }
+  var timer = setTimeout(function(){ fin(null); }, timeoutMs);
+  function parse(text){
+    var json = String(text||'').trim();
+    if(json.charAt(0) !== '{' && json.charAt(0) !== '[') {
+      json = json.replace(/^[^(]+\(/, '').replace(/\)\s*;?\s*$/, '');
+    }
+    try { return JSON.parse(json); } catch(e){ return null; }
+  }
+  var qs = Object.keys(params).map(function(k){
     return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
-  }).join('&') + '&t=' + Date.now();
-  var timer = setTimeout(function(){
-    if(callback) callback(null);
-  }, timeoutMs);
+  }).join('&');
+  var esEscritura = /^(guardar|eliminar)/.test(params.accion||'');
+  var url = GS_URL + '?' + qs + '&t=' + Date.now();
   try {
-    fetch(url)
-      .then(function(r){ return r.text(); })
-      .then(function(text){
-        clearTimeout(timer);
-        var json = text.trim();
-        if(json.charAt(0) !== '{' && json.charAt(0) !== '[') {
-          json = json.replace(/^[^(]+\(/, '').replace(/\)\s*;?\s*$/, '');
-        }
-        try { if(callback) callback(JSON.parse(json)); }
-        catch(e){ if(callback) callback(null); }
-      })
-      .catch(function(err){
-        clearTimeout(timer);
-        // sin conexión — silencioso
-        if(callback) callback({ok:false, offline:true});
-      });
+    var req;
+    if(esEscritura && url.length > QDB_GET_MAX){
+      // text/plain evita el preflight CORS; doPost lee e.postData.contents
+      req = fetch(GS_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(params)});
+    } else {
+      req = fetch(url);
+    }
+    req.then(function(r){ return r.text(); })
+       .then(function(text){ fin(parse(text)); })
+       .catch(function(){ fin({ok:false, offline:true}); });
   } catch(e) {
-    clearTimeout(timer);
-    // fetch no disponible — silencioso
-    if(callback) callback(null);
+    fin(null);
   }
 }
 
@@ -1612,29 +1765,6 @@ function guardarEvalActual(){
       var portal=document.querySelector('.portal');
       if(portal)portal.style.paddingTop='0';
     }
-  });
-}
-
-function guardarTodos(){
-  var sinGuardar=provs.filter(function(p){return !p.guardado;});
-  if(!sinGuardar.length){tst('Todos ya están guardados.');return;}
-  var btn=document.getElementById('btnGuardarProv');
-  if(btn){btn.textContent='⏳ Guardando...';btn.setAttribute('disabled','disabled');}
-  setSheetStatus('loading','⏳ Guardando '+sinGuardar.length+' proveedor(es) en QuintaDB...');
-  var pendientes=sinGuardar.length;
-  sinGuardar.forEach(function(p){
-    var d=getProvData(p.id);
-    d.version='Evaluación inicial';
-    hist.push(d);
-    enviarASheets(d,function(ok){
-      p.guardado=true;
-      pendientes--;
-      if(pendientes===0){
-        var btn2=document.getElementById('btnGuardarProv');
-        if(btn2){btn2.textContent='💾 Guardar todos en QuintaDB';btn2.removeAttribute('disabled');}
-        setSheetStatus('ok','✅ '+sinGuardar.length+' proveedor(es) guardados correctamente en QuintaDB. &nbsp;<a href="https://docs.google.com/spreadsheets/d/1Hw_lLuELE3Hn7XIS_DTjLa4AMFjRwX92m45ex4F-Zzg/edit" target="_blank" style="color:#166534;font-weight:700;">Ver hoja →</a>');
-      }
-    });
   });
 }
 
@@ -2250,23 +2380,27 @@ function miniModalOkClick(){
     var f=_miniCb;
     _miniCb=null;
     f();
-  } else {
-    alert('ERROR: _miniCb es null cuando se hace clic en Confirmar');
   }
 }
 
 function miniConfirm(msg,cb){
   _miniCb=cb;
   document.getElementById('miniModalMsg').textContent=msg;
-  document.getElementById('miniModalOk').textContent='Confirmar';
+  document.getElementById('miniModalInput').style.display='none';
+  var ok=document.getElementById('miniModalOk');
+  ok.textContent='Eliminar';ok.style.background='#DC2626';
   document.getElementById('miniModalOverlay').style.display='flex';
 }
 
 function miniPrompt(msg,defVal,cb){
   _miniCb=function(){cb(document.getElementById('miniModalInput').value.trim());};
   document.getElementById('miniModalMsg').textContent=msg;
-  document.getElementById('miniModalOk').textContent='Guardar';
+  var inp=document.getElementById('miniModalInput');
+  inp.style.display='block';inp.value=defVal||'';
+  var ok=document.getElementById('miniModalOk');
+  ok.textContent='Guardar';ok.style.background='#002D54';
   document.getElementById('miniModalOverlay').style.display='flex';
+  setTimeout(function(){inp.focus();inp.select();},30);
 }
 
 function miniModalCancel(){
@@ -2290,6 +2424,7 @@ function iniciarSesion(){
     var s=sessionStorage.getItem(SESSION_KEY);
     if(s){
       _usuarioActual=JSON.parse(s);
+      document.getElementById('loginOverlay').style.display='none';
       aplicarUsuario();
       cargarPaquetesDesdeSheets();
       cargarEvaluadoresDesdeSheets();
@@ -2442,8 +2577,9 @@ function doLogout(){
     _paquetesCache=[];_evaluadoresCache=[];_plantillasCache=[];
     document.getElementById('provList').innerHTML='';
     document.getElementById('critList').innerHTML='';
-    document.getElementById('listaPaquetes').innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);">Cargando...</div>';
-    var pa=document.getElementById('paqueteAcciones');if(pa)pa.style.display='none';
+    _pkCarga='cargando';_pkSync={id:null,estado:'idle',hora:''};
+    var pkb=document.getElementById('pkBuscar');if(pkb)pkb.value='';
+    renderListaPaquetes();
     // Revocar sesión Google si estaba activa
     if(typeof google!=='undefined'&&google.accounts)
       try{google.accounts.id.disableAutoSelect();}catch(e){}
@@ -2726,12 +2862,6 @@ function adminGuardarReglas(){
   tst('✅ Reglas globales actualizadas',3000);
 }
 
-function getUsuarioId()    {return _usuarioActual?_usuarioActual.id:'anonimo';}
-function getUsuarioCorreo(){return _usuarioActual?_usuarioActual.correo:'';}
-function getUsuarioNombre(){return _usuarioActual?_usuarioActual.nombre:'';}
-
-
-
 // ══════════════════════════════════════
 // SISTEMA DE PAQUETES DE EVALUACIÓN
 // ══════════════════════════════════════
@@ -2740,211 +2870,314 @@ var _paquetesCache = [];
 
 function safeJsonParse(v,d){try{var s=String(v||'');return s&&s!=='false'?JSON.parse(s):d;}catch(e){return d;}}
 
-function cargarPaquetesDesdeSheets(){
-  var el=document.getElementById('listaPaquetes');
-  if(el)el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);">⏳ Cargando desde QuintaDB...</div>';
-  qdbFetch({accion:'cargarPaquetes'}, function(res){
-    var raw=(res&&res.ok)?(res.registros||res.paquetes||[]):[];
-    if(!res||!res.ok){tst('⚠️ Tiempo agotado — sin conexión');renderListaPaquetes();return;}
-    var uid=getUsuarioCorreo();
-    _paquetesCache=raw.map(function(r){
-      var esCampoQDB=r.criterios_json!==undefined||r.escala_json!==undefined;
-      if(esCampoQDB){
-        return {
-          id:r.id||r._qid, _qid:r._qid,
-          nombre:r.nombre||'', propietario:r.propietario||'',
-          propietarioNombre:r.propietario_nombre||'',
-          criterios:safeJsonParse(r.criterios_json,[]),
-          escala:safeJsonParse(r.escala_json,[]),
-          proveedores:safeJsonParse(r.proveedores_json,[]),
-          historial:(function(){
-            var h=safeJsonParse(r.historial_json,{});
-            return Array.isArray(h)?h:(h.registros||[]);
-          })(),
-          plantillaActual:(function(){
-            var h=safeJsonParse(r.historial_json,{});
-            return Array.isArray(h)?'':(h.plantillaActual||'');
-          })(),
-          escalaActual:(function(){
-            var h=safeJsonParse(r.historial_json,{});
-            return Array.isArray(h)?'':(h.escalaActual||'');
-          })(),
-          productos:safeJsonParse(r.productos_json,[]),
-          fechaCreacion:r.fecha_creacion||'',
-          ultimaActualizacion:r.ultima_actualizacion||'',
-          _provCount:safeJsonParse(r.proveedores_json,[]).length
-        };
-      }
-      return r;
-    }).filter(function(pk){
-      var pkProp=(pk.propietario||'').toLowerCase().trim();
-      var uidLow=(uid||'').toLowerCase().trim();
-      return pk.nombre&&(!pkProp||pkProp===''||pkProp===uidLow);
-    });
-    // Contar proveedores por paquete desde QDB
-    qdbFetch({accion:'cargarProveedores'},function(resProv){
-      if(resProv&&resProv.ok){
-        var correo=getUsuarioCorreo();
-        // Contar por paquete.id (sin filtrar por propietario)
-        var rawCount={};
-        (resProv.registros||[]).forEach(function(r){
-          var val=(r.paquete||'').trim();
-          if(val) rawCount[val]=(rawCount[val]||0)+1;
-        });
-        _paquetesCache.forEach(function(pk){
-          pk._provCount=Math.max(rawCount[pk.id]||0, rawCount[pk.nombre]||0);
-        });
-      }
-      renderListaPaquetes();
-      if(_paquetesCache.length)tst('✅ '+_paquetesCache.length+' paquetes cargados');
-      else tst('Sin paquetes — crea el primero');
-    },5000);
-  }, 3000);
+// ── Estado de la pantalla de paquetes ──
+var _pkCarga='cargando';               // 'cargando' | 'ok' | 'error'  (lista de paquetes)
+var _pkSync={id:null,estado:'idle',hora:''}; // sincronización del paquete activo: 'cargando' | 'ok' | 'error'
+
+function _pkNorm(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+}
+function _pkPlural(n,uno,varios){return n+' '+(n===1?uno:varios);}
+
+function _mapPaqueteQDB(r){
+  var esCampoQDB=r.criterios_json!==undefined||r.escala_json!==undefined;
+  if(!esCampoQDB)return r;
+  var h=safeJsonParse(r.historial_json,{});
+  var provJson=safeJsonParse(r.proveedores_json,[]);
+  return {
+    id:r.id||r._qid, _qid:r._qid,
+    nombre:r.nombre||'', propietario:r.propietario||'',
+    propietarioNombre:r.propietario_nombre||'',
+    criterios:safeJsonParse(r.criterios_json,[]),
+    escala:safeJsonParse(r.escala_json,[]),
+    proveedores:provJson,
+    historial:Array.isArray(h)?h:(h.registros||[]),
+    plantillaActual:Array.isArray(h)?'':(h.plantillaActual||''),
+    escalaActual:Array.isArray(h)?'':(h.escalaActual||''),
+    productos:safeJsonParse(r.productos_json,[]),
+    fechaCreacion:r.fecha_creacion||'',
+    ultimaActualizacion:r.ultima_actualizacion||'',
+    _provCount:provJson.length
+  };
 }
 
+function cargarPaquetesDesdeSheets(){
+  _pkCarga='cargando';
+  renderListaPaquetes();
+  qdbFetch({accion:'cargarPaquetes'}, function(res){
+    if(!res||!res.ok){
+      _pkCarga='error';
+      renderListaPaquetes();
+      tst('⚠️ No se pudo conectar con QuintaDB');
+      return;
+    }
+    var uidLow=(getUsuarioCorreo()||'').toLowerCase().trim();
+    var lista=(res.registros||res.paquetes||[]).map(_mapPaqueteQDB).filter(function(pk){
+      var pkProp=(pk.propietario||'').toLowerCase().trim();
+      return pk.nombre&&(!pkProp||pkProp===uidLow);
+    });
+    // Conservar el objeto del paquete activo (tiene cambios locales que la lista no conoce)
+    if(paqueteActual){
+      var i=lista.findIndex(function(p){return p.id===paqueteActual.id;});
+      if(i>-1){paqueteActual._qid=paqueteActual._qid||lista[i]._qid;lista[i]=paqueteActual;}
+    }
+    _paquetesCache=lista;
+    _pkCarga='ok';
+    renderListaPaquetes();
+    // Conteo real de proveedores por paquete (tabla PROVEEDORES)
+    qdbFetch({accion:'cargarProveedores'},function(resProv){
+      if(resProv&&resProv.ok){
+        var porPaquete={};
+        (resProv.registros||[]).forEach(function(r){
+          var val=(r.paquete||'').trim();
+          if(val)porPaquete[val]=(porPaquete[val]||0)+1;
+        });
+        _paquetesCache.forEach(function(pk){
+          if(paqueteActual&&pk.id===paqueteActual.id&&_pkSync.estado==='ok')return; // el activo ya tiene su conteo real
+          pk._provCount=Math.max(porPaquete[pk.id]||0,porPaquete[pk.nombre]||0,(pk.proveedores||[]).length);
+        });
+        renderListaPaquetes();
+      }
+      // Proveedores evaluados por paquete (tabla RESUMEN), para que la lista muestre el avance real
+      qdbFetch({accion:'cargarResumen'},function(resRes){
+        if(!resRes||!resRes.ok)return;
+        var corr=(getUsuarioCorreo()||'').toLowerCase();
+        var porPk={};
+        (resRes.registros||[]).forEach(function(r){
+          if(r.propietario&&r.propietario.toLowerCase()!==corr)return;
+          var k=_pkNorm(r.paquete),prov=_pkNorm(r.proveedor||r.ruc);
+          if(!k||!prov)return;
+          (porPk[k]=porPk[k]||{})[prov]=1;
+        });
+        _paquetesCache.forEach(function(pk){
+          var m=Object.assign({},porPk[_pkNorm(pk.nombre)]||{},porPk[_pkNorm(pk.id)]||{});
+          pk._evalCount=Object.keys(m).length;
+        });
+        renderListaPaquetes();
+      });
+    });
+    if(!_paquetesCache.length)toggleNuevoPaquete(true);
+  });
+}
+
+// ── Avance de un paquete: qué está listo y cuál es el siguiente paso ──
+function pkResumen(pk){
+  var activo=paqueteActual&&paqueteActual.id===pk.id;
+  var cargando=activo&&_pkSync.estado==='cargando';
+
+  var nProd=activo&&productos.length?productos.length:(pk.productos||[]).length;
+  var crs=activo&&crits.length?crits:(pk.criterios||[]);
+  var suma=Math.round(crs.reduce(function(s,c){return s+(parseFloat(c.weight)||0);},0));
+  var esc=activo&&SCALE.length?SCALE:(pk.escala||[]);
+  var nProv,nEval;
+  if(activo&&_pkSync.estado!=='cargando'&&_pkSync.estado!=='idle'){
+    nProv=provs.filter(function(p){return p.nom&&p.nom.trim();}).length;
+    var ev={};hist.forEach(function(h){if(h.provId&&getProv(h.provId))ev[h.provId]=1;});
+    nEval=Object.keys(ev).length;
+  } else {
+    nProv=pk._provCount||(pk.proveedores||[]).length;
+    var evn={};(pk.historial||[]).forEach(function(h){var k=_pkNorm(h.nom||h.ruc);if(k)evn[k]=1;});
+    var nE=Math.max(Object.keys(evn).length,pk._evalCount||0);
+    nEval=nProv?Math.min(nE,nProv):nE;
+  }
+
+  var pasos=[
+    {paso:1,nom:'Productos y servicios',
+      estado:nProd?'ok':'pend',
+      txt:nProd?_pkPlural(nProd,'producto o servicio registrado','productos o servicios registrados'):'Aún no hay productos ni servicios'},
+    {paso:2,nom:'Criterios de evaluación',
+      estado:!crs.length?'pend':(suma===100?'ok':'mid'),
+      txt:!crs.length?'Aún no hay criterios':_pkPlural(crs.length,'criterio','criterios')+(suma===100?'; los pesos suman 100 %':'; los pesos suman '+suma+' % y deben sumar 100 %')},
+    {paso:3,nom:'Escala de calificación',
+      estado:esc.length>=2?'ok':'pend',
+      txt:esc.length>=2?_pkPlural(esc.length,'nivel','niveles')+' ('+esc.map(function(s){return s.cat;}).join(', ')+')':'Falta definir la escala'},
+    {paso:4,nom:'Proveedores',
+      estado:cargando?'pend':(nProv?'ok':'pend'),
+      txt:cargando?'Consultando QuintaDB…':(nProv?_pkPlural(nProv,'proveedor registrado','proveedores registrados'):'Aún no hay proveedores')},
+    {paso:5,nom:'Evaluación',
+      estado:cargando?'pend':(!nProv||!nEval?'pend':(nEval>=nProv?'ok':'mid')),
+      txt:cargando?'Consultando QuintaDB…':(!nProv?'Se habilita cuando registres proveedores':(nEval?nEval+' de '+_pkPlural(nProv,'proveedor evaluado','proveedores evaluados'):'Ningún proveedor evaluado todavía'))},
+    {paso:6,nom:'Resultados',
+      estado:cargando?'pend':(nEval?'ok':'pend'),
+      txt:cargando?'Consultando QuintaDB…':(nEval?'Comparativa, historial y exportación a Excel':'Se habilitan con la primera evaluación')}
+  ];
+  var hechos=pasos.slice(0,5).filter(function(p){return p.estado==='ok';}).length;
+  var sig=pasos.slice(0,5).find(function(p){return p.estado!=='ok';});
+  return {pasos:pasos,hechos:hechos,siguiente:sig?sig.paso:6,nProv:nProv,nEval:nEval};
+}
+
+function _pkFechaCorta(pk){
+  var iso=normalizarFechaQDB(pk.ultimaActualizacion)||normalizarFechaQDB(pk.fechaCreacion)||'';
+  if(!iso)return '';
+  var p=iso.slice(0,10).split('-');
+  return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:'';
+}
+function _pkFechaKey(pk){return normalizarFechaQDB(pk.ultimaActualizacion)||normalizarFechaQDB(pk.fechaCreacion)||'';}
 
 function renderListaPaquetes(){
   var wrap=document.getElementById('listaPaquetes');
   if(!wrap)return;
 
-  // Deduplicar
+  // Deduplicar (mismo nombre y propietario)
   var vistos={};
   _paquetesCache=_paquetesCache.filter(function(pk){
-    var key=(pk.nombre||'').toLowerCase()+'|'+(pk.propietario||'').toLowerCase();
+    var key=_pkNorm(pk.nombre)+'|'+(pk.propietario||'').toLowerCase();
     if(vistos[key])return false;
-    vistos[key]=true;
-    return true;
+    vistos[key]=true;return true;
   });
 
+  var conteo=document.getElementById('pkConteo');
   if(!_paquetesCache.length){
-    wrap.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:.9rem;border:1.5px dashed var(--border);border-radius:10px;">No hay paquetes guardados. Crea tu primer paquete arriba.</div>';
+    if(conteo)conteo.textContent='Paquetes';
+    if(_pkCarga==='cargando'){
+      wrap.innerHTML='<div class="pk-state">Cargando paquetes desde QuintaDB…<br><small>La primera conexión del día puede tardar unos segundos.</small></div>';
+    } else if(_pkCarga==='error'){
+      wrap.innerHTML='<div class="pk-state">No se pudo conectar con QuintaDB.<br>Revisa tu conexión e inténtalo de nuevo.<br><button class="btn btn-o btn-sm" onclick="cargarPaquetesDesdeSheets()">Reintentar</button></div>';
+    } else {
+      wrap.innerHTML='<div class="pk-state">Todavía no tienes paquetes.<br>Crea el primero con el botón <strong>+ Nuevo paquete</strong>.</div>';
+    }
+    renderDetallePaquete();
     return;
   }
 
-  wrap.innerHTML='';
-
-  _paquetesCache.forEach(function(pk){
-    var isActive=paqueteActual&&paqueteActual.id===pk.id;
-    var card=document.createElement('div');
-    card.style.cssText='background:white;border:1.5px solid '+(isActive?'var(--primary)':'var(--border)')+';border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;transition:all .18s;';
-
-    // Info
-    var info=document.createElement('div');
-    info.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;';
-
-    var left=document.createElement('div');
-    left.style.cssText='flex:1;min-width:0;';
-
-    var nomRow=document.createElement('div');
-    nomRow.style.cssText='display:flex;align-items:center;gap:8px;';
-
-    var nom=document.createElement('div');
-    nom.style.cssText='font-weight:700;font-size:1rem;color:'+(isActive?'var(--primary)':'var(--text)')+';';
-    nom.textContent=pk.nombre||'';
-
-    var btnEdit=document.createElement('button');
-    btnEdit.textContent='✏️';
-    btnEdit.title='Editar nombre del paquete';
-    btnEdit.style.cssText='background:none;border:none;cursor:pointer;font-size:.9rem;padding:2px 4px;opacity:.5;';
-    btnEdit.onclick=function(e){
-      e.stopPropagation();
-      var nuevoNom=prompt('Nuevo nombre del paquete:',pk.nombre||'');
-      if(!nuevoNom||!nuevoNom.trim())return;
-      nuevoNom=nuevoNom.trim();
-      pk.nombre=nuevoNom;
-      // Actualizar en cache
-      var idx=_paquetesCache.findIndex(function(p){return p.id===pk.id;});
-      if(idx>-1)_paquetesCache[idx].nombre=nuevoNom;
-      // Guardar en QuintaDB
-      qdbFetch({accion:'guardarPaquete',datos:JSON.stringify(pk),qid:pk._qid||''},function(res){
-        tst(res&&res.ok?'✅ Nombre actualizado en QuintaDB':'⚠️ Actualizado localmente');
-      },8000);
-      renderListaPaquetes();
-    };
-
-    nomRow.appendChild(nom);
-    nomRow.appendChild(btnEdit);
-
-    var meta=document.createElement('div');
-    meta.style.cssText='font-size:.82rem;color:var(--muted);margin-top:3px;';
-    var prodCount = (paqueteActual&&paqueteActual.id===pk.id) ? productos.length : (pk.productos||[]).length;
-    // Proveedores: activo=count real de QDB, inactivo=count guardado en JSON
-    var provCount = (pk.proveedores||[]).length;
-    meta.textContent='📦 '+prodCount+' productos · 📋 '+(pk.criterios||[]).length+' criterios · 🏅 calificación · 👥 '+provCount+' proveedores';
-
-    left.appendChild(nomRow);
-    left.appendChild(meta);
-
-    // Botones derecha
-    var right=document.createElement('div');
-    right.style.cssText='display:flex;gap:6px;align-items:center;flex-shrink:0;';
-
-    if(isActive){
-      var badge=document.createElement('span');
-      badge.style.cssText='background:#DCFCE7;color:#059669;padding:4px 10px;border-radius:20px;font-size:.78rem;font-weight:700;';
-      badge.textContent='✓ Activo';
-      right.appendChild(badge);
-    }
-
-    // BOTÓN ELIMINAR — mismo código exacto del test que funciona
-    var btnDel=document.createElement('button');
-    btnDel.textContent='🗑';
-    btnDel.title='Eliminar';
-    btnDel.style.cssText='padding:5px 10px;border-radius:6px;background:none;border:1px solid #dc2626;color:#dc2626;font-size:.8rem;cursor:pointer;';
-    btnDel.setAttribute('data-pkid', pk.id);
-    btnDel.setAttribute('data-pknom', pk.nombre||'');
-    btnDel.setAttribute('data-pkqid', pk._qid||'');
-    btnDel.onclick=function(e){
-      e.stopPropagation();
-      var pkId=this.getAttribute('data-pkid');
-      var pkNom=this.getAttribute('data-pknom');
-      var qid=this.getAttribute('data-pkqid');
-      if(!confirm('¿Eliminar "'+pkNom+'"?'))return;
-      _paquetesCache=_paquetesCache.filter(function(p){return p.id!==pkId;});
-      if(paqueteActual&&paqueteActual.id===pkId){
-        paqueteActual=null;
-        ['btnNext0Paquete','btnNext0PaqueteTopNav'].forEach(function(bid){
-          var b=document.getElementById(bid);
-          if(b){b.setAttribute('disabled','disabled');b.style.opacity='.4';}
-        });
-      }
-      renderListaPaquetes();
-      tst('✅ Paquete eliminado');
-      if(qid) qdbFetch({accion:'eliminarPaquete',qid:qid},function(){},3000);
-    };
-    right.appendChild(btnDel);
-
-    info.appendChild(left);
-    info.appendChild(right);
-    card.appendChild(info);
-
-    // Botones de acción
-    var acDiv=document.createElement('div');
-    acDiv.id='acciones-'+pk.id;
-    acDiv.style.cssText='display:'+(isActive?'flex':'none')+';gap:8px;flex-wrap:wrap;padding:12px 0 0 0;margin-top:12px;border-top:1px solid var(--border);';
-    ['⚙️ Criterios|2','🏅 Escala|3','👥 Proveedores|4','📝 Evaluar|5','📊 Resultados|6'].forEach(function(item){
-      var parts=item.split('|');
-      var b=document.createElement('button');
-      b.textContent=parts[0];
-      b.style.cssText='padding:8px 14px;border-radius:8px;background:white;border:1.5px solid var(--border);font-size:.86rem;cursor:pointer;font-family:inherit;';
-      (function(paso){b.onclick=function(e){e.stopPropagation();abrirPaqueteEn(paso);};})(parseInt(parts[1]));
-      acDiv.appendChild(b);
-    });
-    card.appendChild(acDiv);
-
-    card.addEventListener('click',function(e){
-      if(e.target.tagName==='BUTTON')return;
-      seleccionarPaquete(pk);
-    });
-
-    wrap.appendChild(card);
+  var q=_pkNorm((document.getElementById('pkBuscar')||{}).value||'');
+  var orden=(document.getElementById('pkOrden')||{}).value||'reciente';
+  var lista=_paquetesCache.map(function(pk){return {pk:pk,r:pkResumen(pk)};})
+    .filter(function(x){return !q||_pkNorm(x.pk.nombre).indexOf(q)>-1;});
+  lista.sort(function(a,b){
+    if(orden==='nombre')return _pkNorm(a.pk.nombre).localeCompare(_pkNorm(b.pk.nombre));
+    if(orden==='avance')return a.r.hechos-b.r.hechos||_pkNorm(a.pk.nombre).localeCompare(_pkNorm(b.pk.nombre));
+    return _pkFechaKey(b.pk).localeCompare(_pkFechaKey(a.pk));
   });
+
+  if(conteo){
+    var tot=_paquetesCache.length;
+    conteo.textContent=q?(lista.length+' de '+_pkPlural(tot,'paquete','paquetes')):_pkPlural(tot,'paquete','paquetes');
+  }
+
+  wrap.innerHTML='';
+  if(!lista.length){
+    wrap.innerHTML='<div class="pk-state">Ningún paquete coincide con “'+esc(q)+'”.</div>';
+  }
+  lista.forEach(function(x){
+    var pk=x.pk,r=x.r;
+    var on=paqueteActual&&paqueteActual.id===pk.id;
+    var b=document.createElement('button');
+    b.type='button';
+    b.className='pk-item'+(on?' on':'');
+    b.setAttribute('role','option');
+    b.setAttribute('aria-selected',on?'true':'false');
+    var segs=r.pasos.slice(0,5).map(function(p){
+      return '<span class="pk-seg '+(p.estado==='ok'?'ok':p.estado==='mid'?'mid':'')+'" title="'+esc(p.nom+': '+p.txt)+'"></span>';
+    }).join('');
+    var fec=_pkFechaCorta(pk);
+    var meta=_pkPlural(r.nProv,'proveedor','proveedores')+(r.nProv?', '+r.nEval+' evaluado'+(r.nEval===1?'':'s'):'');
+    b.innerHTML='<div class="pk-item-top"><span class="pk-item-nom">'+esc(pk.nombre)+'</span>'
+      +(fec?'<span class="pk-item-fec">'+fec+'</span>':'')+'</div>'
+      +'<div class="pk-item-meta">'+meta+'</div>'
+      +'<div class="pk-segs" aria-hidden="true">'+segs+'</div>'
+      +'<div class="pk-item-pct">'+(r.hechos===5?'Configuración completa':r.hechos+' de 5 pasos listos')+'</div>';
+    b.onclick=function(){seleccionarPaquete(pk);};
+    wrap.appendChild(b);
+  });
+  renderDetallePaquete();
 }
 
+var _PK_PASO_LBL={1:'Productos',2:'Criterios',3:'Escala',4:'Proveedores',5:'Evaluación',6:'Resultados'};
+
+function renderDetallePaquete(){
+  var el=document.getElementById('pkDetalle');
+  var foot=document.getElementById('pkDetalleFoot');
+  var btn=document.getElementById('btnNext0Paquete');
+  if(!el)return;
+  var pk=paqueteActual;
+  if(!pk){
+    var hay=_paquetesCache.length>0;
+    el.innerHTML='<div class="pk-empty"><div class="pk-empty-t">'+(hay?'Selecciona un paquete':'Crea tu primer paquete')+'</div>'
+      +'<p>'+(hay?'Elige un paquete de la lista para ver su avance y continuar con el paso que tenga pendiente.'
+                :'Ponle un nombre que identifique el proceso, por ejemplo el rubro y el año. Luego agregarás productos, criterios, escala y proveedores.')+'</p></div>';
+    if(foot)foot.hidden=true;
+    if(btn)btn.setAttribute('disabled','disabled');
+    return;
+  }
+  var r=pkResumen(pk);
+  var cargando=_pkSync.id===pk.id&&_pkSync.estado==='cargando';
+  var syncHtml;
+  if(_pkSync.id!==pk.id||_pkSync.estado==='idle'){syncHtml='';}
+  else if(cargando){syncHtml='<div class="pk-sync cargando"><span class="pk-dot"></span>Cargando proveedores y evaluaciones desde QuintaDB…</div>';}
+  else if(_pkSync.estado==='error'){syncHtml='<div class="pk-sync error"><span class="pk-dot"></span>No se pudieron cargar los proveedores. <button onclick="seleccionarPaquete(paqueteActual,true)">Reintentar</button></div>';}
+  else {syncHtml='<div class="pk-sync ok"><span class="pk-dot"></span>Datos sincronizados con QuintaDB'+(_pkSync.hora?' a las '+_pkSync.hora:'')+'</div>';}
+
+  var sub=[];
+  if(pk.propietarioNombre)sub.push('Responsable: '+esc(pk.propietarioNombre));
+  var fc=_pkFechaCorta(pk);if(fc)sub.push('Última actualización: '+fc);
+
+  var filas=r.pasos.map(function(p){
+    var cls=p.estado+(p.paso===r.siguiente&&!cargando?' next':'');
+    var bloq=cargando&&p.paso>=4;
+    var marca=p.estado==='ok'?'✓':String(p.paso+1);
+    return '<li class="pk-paso '+cls+'">'
+      +'<span class="pk-num" aria-hidden="true">'+marca+'</span>'
+      +'<div><div class="pk-paso-nom">'+p.nom+'</div><div class="pk-paso-est">'+p.txt+'</div></div>'
+      +'<button type="button" class="pk-paso-btn" onclick="abrirPaqueteEn('+p.paso+')"'+(bloq?' disabled style="opacity:.45;cursor:wait;"':'')+'>'
+      +(p.estado==='ok'&&p.paso<6?'Revisar':'Abrir')+'</button></li>';
+  }).join('');
+
+  el.innerHTML='<div class="pk-d-top"><div style="min-width:0;"><div class="pk-d-nom">'+esc(pk.nombre)+'</div>'
+    +(sub.length?'<div class="pk-d-sub">'+sub.join('<br>')+'</div>':'')+'</div>'
+    +'<div class="pk-d-tools"><button type="button" class="pk-tool" onclick="renombrarPaquete()">Renombrar</button>'
+    +'<button type="button" class="pk-tool del" onclick="eliminarPaquete()">Eliminar</button></div></div>'
+    +syncHtml
+    +'<ol class="pk-ruta" aria-label="Avance del paquete">'+filas+'</ol>';
+
+  if(foot)foot.hidden=false;
+  var txt=document.getElementById('pkSiguienteTxt');
+  if(btn){
+    if(cargando){btn.setAttribute('disabled','disabled');btn.textContent='Sincronizando…';}
+    else{btn.removeAttribute('disabled');btn.style.opacity='';btn.textContent='Continuar con '+_PK_PASO_LBL[r.siguiente];}
+  }
+  if(txt)txt.innerHTML=r.hechos===5?'<strong>Configuración completa.</strong> Revisa los resultados o reevalúa proveedores.'
+    :'<strong>'+r.hechos+' de 5</strong> pasos listos.';
+}
+
+function continuarPaquete(){
+  if(!paqueteActual){tst('Selecciona un paquete primero');return;}
+  if(_pkSync.estado==='cargando'){tst('Espera a que termine la sincronización');return;}
+  abrirPaqueteEn(pkResumen(paqueteActual).siguiente);
+}
+
+function toggleNuevoPaquete(abrir){
+  var f=document.getElementById('pkNuevoForm');if(!f)return;
+  f.hidden=!abrir;
+  var inp=document.getElementById('nuevoPaqueteNombre');
+  if(abrir&&inp){inp.value='';validarNombrePaquete();setTimeout(function(){inp.focus();},30);}
+}
+
+function _pkNombreDuplicado(nombre,exceptoId){
+  var n=_pkNorm(nombre);
+  return _paquetesCache.some(function(p){return p.id!==exceptoId&&_pkNorm(p.nombre)===n;});
+}
+
+function validarNombrePaquete(){
+  var inp=document.getElementById('nuevoPaqueteNombre');
+  var msg=document.getElementById('pkNuevoMsg');
+  if(!inp||!msg)return true;
+  var dup=inp.value.trim()&&_pkNombreDuplicado(inp.value);
+  inp.classList.toggle('err',!!dup);
+  msg.classList.toggle('err',!!dup);
+  msg.textContent=dup?'Ya tienes un paquete con ese nombre. Usa uno distinto.'
+                     :'Empieza con la escala de calificación estándar A–D; podrás cambiarla en el paso 4.';
+  return !dup;
+}
 
 function crearPaquete(){
-  var nombre=document.getElementById('nuevoPaqueteNombre').value.trim();
-  if(!nombre){tst('Escribe un nombre para el paquete');return;}
+  var inp=document.getElementById('nuevoPaqueteNombre');
+  var nombre=(inp?inp.value:'').trim().replace(/\s+/g,' ');
+  if(!nombre){tst('Escribe un nombre para el paquete');if(inp)inp.focus();return;}
+  if(!validarNombrePaquete()){if(inp)inp.focus();return;}
+  if(_pkCarga==='error'){tst('⚠️ Sin conexión con QuintaDB: reintenta la carga antes de crear paquetes');return;}
+  var btn=document.getElementById('btnCrearPaquete');
+  if(btn){btn.setAttribute('disabled','disabled');btn.textContent='Creando…';}
   var pk={
     id:'pk_'+Date.now(),
     _provCount:0,
@@ -2952,29 +3185,64 @@ function crearPaquete(){
     propietario:getUsuarioCorreo(),
     propietarioNombre:getUsuarioNombre(),
     criterios:[],
-    escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};}),
+    escala:SCALE_DEFAULT.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,color:s.color,bg:s.bg};}),
     proveedores:[],
+    productos:[],
     historial:[],
-    fechaCreacion:new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'})
+    fechaCreacion:new Date().toISOString(),
+    ultimaActualizacion:new Date().toISOString()
   };
-  document.getElementById('nuevoPaqueteNombre').value='';
-  // Guardar primero en QuintaDB, luego agregar al cache UNA SOLA VEZ
   guardarPaqueteSheets(pk,function(ok){
-    // Agregar al cache solo si no existe (evitar duplicado)
-    var yaExiste=_paquetesCache.some(function(p){return p.id===pk.id;});
-    if(!yaExiste) _paquetesCache.unshift(pk);
-    tst(ok?'✅ Paquete "'+pk.nombre+'" creado en QuintaDB':'⚠️ Paquete creado localmente');
-    renderListaPaquetes(); // único render
-    seleccionarPaquete(pk); // solo actualiza estado, NO re-renderiza
+    if(btn){btn.removeAttribute('disabled');btn.textContent='Crear paquete';}
+    if(!ok){
+      tst('⚠️ No se pudo crear el paquete en QuintaDB. Inténtalo de nuevo.');
+      return;
+    }
+    if(!_paquetesCache.some(function(p){return p.id===pk.id;}))_paquetesCache.unshift(pk);
+    toggleNuevoPaquete(false);
+    var bus=document.getElementById('pkBuscar');if(bus)bus.value='';
+    tst('✅ Paquete "'+pk.nombre+'" creado');
+    seleccionarPaquete(pk,true);
   });
 }
 
-function irAResultados(){
-  var btnVR=document.getElementById('btnVerResultados');
-  if(btnVR&&!btnVR.disabled){goStep(6);return;}
-  // Si no hay evaluaciones guardadas aún, igual permitir ver resultados
-  if(hist.length>0||provs.some(function(p){return p.guardado;})){goStep(5);}
-  else{tst('Guarda al menos una evaluación primero');}
+function renombrarPaquete(){
+  var pk=paqueteActual;if(!pk)return;
+  miniPrompt('Nuevo nombre del paquete',pk.nombre||'',function(nuevo){
+    nuevo=(nuevo||'').trim().replace(/\s+/g,' ');
+    if(!nuevo||nuevo===pk.nombre)return;
+    if(_pkNombreDuplicado(nuevo,pk.id)){tst('⚠️ Ya tienes un paquete con ese nombre');return;}
+    var anterior=pk.nombre;
+    pk.nombre=nuevo;
+    pk.ultimaActualizacion=new Date().toISOString();
+    var pbnom=document.getElementById('paqueteBadgeNom');if(pbnom)pbnom.textContent=nuevo;
+    renderListaPaquetes();
+    guardarPaqueteSheets(pk,function(ok){
+      if(ok){tst('✅ Paquete renombrado');}
+      else{pk.nombre=anterior;if(pbnom)pbnom.textContent=anterior;renderListaPaquetes();tst('⚠️ No se pudo renombrar en QuintaDB');}
+    });
+  });
+}
+
+function eliminarPaquete(){
+  var pk=paqueteActual;if(!pk)return;
+  var r=pkResumen(pk);
+  var msg='¿Eliminar el paquete "'+pk.nombre+'"?'
+    +(r.nProv?' Sus '+_pkPlural(r.nProv,'proveedor','proveedores')+' y las evaluaciones ya guardadas se conservan en QuintaDB, pero dejarán de verse agrupadas en este paquete.':'');
+  miniConfirm(msg,function(){
+    var qid=pk._qid||'';
+    _paquetesCache=_paquetesCache.filter(function(p){return p.id!==pk.id;});
+    paqueteActual=null;
+    _pkSync={id:null,estado:'idle',hora:''};
+    provs=[];hist=[];crits=[];notasEval={};evFiles={};productos=[];
+    var pb=document.getElementById('paqueteBadge');if(pb)pb.style.display='none';
+    renderListaPaquetes();
+    if(!qid){tst('✅ Paquete eliminado');return;}
+    qdbFetch({accion:'eliminarPaquete',qid:qid},function(res){
+      if(res&&res.ok)tst('✅ Paquete eliminado');
+      else{tst('⚠️ No se pudo eliminar en QuintaDB; se volverá a cargar la lista');cargarPaquetesDesdeSheets();}
+    });
+  });
 }
 
 function abrirPaqueteEn(paso){
@@ -2990,34 +3258,29 @@ function abrirPaqueteEn(paso){
 }
 
 
-function seleccionarPaquete(pk){
-  paqueteActual=pk;
-  // Habilitar botones "Continuar → Productos →" al seleccionar paquete
-  ['btnNext0Paquete','btnNext0PaqueteTopNav'].forEach(function(bid){
-    var b=document.getElementById(bid);
-    if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}
-  });
-
-  // Cargar criterios
-  if(pk.criterios&&pk.criterios.length){
-    crits=[];document.getElementById('critList').innerHTML='';seq=0;
-    pk.criterios.forEach(function(c){addCrit(c);});
-    checkWeight();
-    if(pk._qid) _criteriosGuardados=true;
-  } else {
-    crits=[];document.getElementById('critList').innerHTML='';seq=0;
-    checkWeight();
+function seleccionarPaquete(pk,forzar){
+  if(!pk)return;
+  // Mismo paquete ya cargado: no recargar (se perderían cambios locales)
+  if(!forzar&&paqueteActual&&paqueteActual.id===pk.id&&_pkSync.estado!=='error'){return;}
+  // Cambio de paquete con proveedores sin guardar
+  if(paqueteActual&&paqueteActual.id!==pk.id){
+    var pend=provs.filter(function(p){return p.nom&&(!p._qid||p._modificado);});
+    if(pend.length&&!confirm('⚠️ El paquete "'+paqueteActual.nombre+'" tiene proveedores sin guardar:\n\n'
+        +pend.map(function(p){return '"'+p.nom+'"';}).join(', ')+'\n\n¿Cambiar de paquete sin guardarlos?'))return;
   }
-  // Marcar escala como guardada si viene de QDB
-  if(pk._qid&&pk.escala&&pk.escala.length) _escalaGuardada=true;
+  paqueteActual=pk;
+  var pkId=pk.id;
+  _pkSync={id:pkId,estado:'cargando',hora:''};
 
-  // Limpiar datos del paquete anterior inmediatamente
-  productos=[];prodSeq=0;
-  provs=[];provSeq=0;
-  var prodListEl=document.getElementById('productosList');
-  if(prodListEl)prodListEl.innerHTML='';
+  // Criterios
+  crits=[];document.getElementById('critList').innerHTML='';seq=0;
+  if(pk.criterios&&pk.criterios.length){
+    pk.criterios.forEach(function(c){addCrit(c);});
+    if(pk._qid)_criteriosGuardados=true;
+  }
+  checkWeight();
 
-  // Cargar escala
+  // Escala
   if(pk.escala&&pk.escala.length){
     SCALE=pk.escala.map(function(s){
       return{cat:s.cat,min:parseFloat(s.min)||0,max:parseFloat(s.max)||1,
@@ -3026,24 +3289,45 @@ function seleccionarPaquete(pk){
         bg:s.bg&&s.bg.trim()?s.bg:getScaleBg(s.cat)};
     });
     normalizarColoresSCALE();
-    buildEscalaRows();
+    if(pk._qid)_escalaGuardada=true;
+  } else {
+    SCALE=SCALE_DEFAULT.map(function(s){return Object.assign({},s);});
   }
+  buildEscalaRows();
 
-  // Cargar proveedores desde QDB filtrado por paquete.id
-  provs=[];provSeq=0;notasEval={};evFiles={};
-  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">⏳ Cargando proveedores...</div>';
+  // Limpiar datos del paquete anterior
+  productos=(pk.productos&&pk.productos.length)?pk.productos:[];
+  prodSeq=0;
+  var prodListEl=document.getElementById('productosList');
+  if(prodListEl)prodListEl.innerHTML='';
+  provs=[];provSeq=0;notasEval={};evFiles={};hist=[];provActualId=null;
+  document.getElementById('provList').innerHTML='<div style="padding:12px;color:var(--muted);font-size:.88rem;">Cargando proveedores…</div>';
 
-  function _cargarProveedoresDespues(){
-    cargarProveedoresDesdeQDB(function(qdbProvs){
+  // Cabecera y lista: el cambio se ve de inmediato, sin esperar a la red
+  var pbadge=document.getElementById('paqueteBadge');
+  var pbnom=document.getElementById('paqueteBadgeNom');
+  if(pbadge)pbadge.style.display='flex';
+  if(pbnom)pbnom.textContent=pk.nombre;
+  var pltNom=pk._plantillaActual||pk.plantillaActual||'';
+  var escNom=pk._escalaActual||pk.escalaActual||'';
+  if(pltNom){pk._plantillaActual=pltNom;_actualizarBadgePlantilla(pltNom);}
+  if(escNom){pk._escalaActual=escNom;_actualizarBadgeEscala(escNom);}
+  renderListaPaquetes();
+
+  function _vigente(){return paqueteActual&&paqueteActual.id===pkId;}
+
+  // 1) Proveedores → 2) historial del paquete → 3) evaluaciones de RESUMEN.
+  // En cadena: el historial necesita los proveedores ya cargados para emparejarse.
+  cargarProveedoresDesdeQDB(function(qdbProvs){
+    if(!_vigente())return; // el usuario cambió de paquete mientras cargaba
+    var errorRed=(qdbProvs===null);
     document.getElementById('provList').innerHTML='';
     provs=[];provSeq=0;
 
-    var pkId=pk.id;
     var pkProvNoms=(pk.proveedores||[]).map(function(p){return (p.nom||'').trim().toLowerCase();});
     var pkProvRucs=(pk.proveedores||[]).map(function(p){return (p.ruc||'').trim();}).filter(Boolean);
-
     var misProvs=(qdbProvs||[]).filter(function(qp){
-      if(qp.paquete&&qp.paquete.trim()) return qp.paquete===pkId;
+      if(qp.paquete&&qp.paquete.trim())return qp.paquete===pkId;
       if(pkProvNoms.length){
         var nomMatch=pkProvNoms.indexOf((qp.nom||'').trim().toLowerCase())>-1;
         var rucMatch=qp.ruc&&pkProvRucs.indexOf(qp.ruc.trim())>-1;
@@ -3051,9 +3335,7 @@ function seleccionarPaquete(pk){
       }
       return false;
     });
-
     var fuente=misProvs.length?misProvs:(pk.proveedores||[]);
-
     fuente.forEach(function(p){
       var np={
         id:'p_'+(++provSeq), _qid:p._qid||'',
@@ -3069,13 +3351,13 @@ function seleccionarPaquete(pk){
         contactoCel:p.contactoCel||p.contacto_celular||'',
         contactoEmail:p.contactoEmail||p.contacto_email||'',
         nCuenta:p.nCuenta||p.n_cuenta||'', cci:p.cci||'',
+        estado:p.estado||'normal',
         fec:p.fec||new Date().toISOString().slice(0,10),
         eva:p.eva||'', guardado:!!p._qid, _arch:false,_dest:false
       };
       if(!np.productosIds.length&&np.producto){
         var nombresGuard=np.producto.split(',').map(function(n){return n.trim().toLowerCase();});
-        var prodRef=pk.productos&&pk.productos.length?pk.productos:productos;
-        np.productosIds=prodRef.filter(function(pr){
+        np.productosIds=productos.filter(function(pr){
           return nombresGuard.indexOf((pr.nombre||pr.nom||'').toLowerCase())>-1;
         }).map(function(pr){return pr.id;});
       }
@@ -3083,75 +3365,38 @@ function seleccionarPaquete(pk){
       notasEval[np.id]={};evFiles[np.id]={};
       appendProvRow(np,provs.length-1);
     });
-
-    if(misProvs.length) tst('✅ '+misProvs.length+' proveedor(es) cargados desde QuintaDB');
     checkProvs();
     _proveedoresGuardados=misProvs.length>0;
-    if(paqueteActual){
-      paqueteActual._provCount=provs.length;
-      var cidx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
-      if(cidx>-1){_paquetesCache[cidx]._provCount=provs.length;}
-      renderListaPaquetes();
-    }
-    // Si el panel de Resultados está activo, reconstruir con los datos ya cargados
-    var panelResActivo=document.getElementById('panel-5');
-    if(panelResActivo&&panelResActivo.classList.contains('active')){
-      sanitizarHist();buildResults();
-    }
-    });// fin cargarProveedoresDesdeQDB
-  }// fin _cargarProveedoresDespues
+    pk._provCount=provs.length;
 
-  // Usar productos ya cargados del paquete
-  if(pk.productos&&pk.productos.length&&!productos.length){
-    productos=pk.productos;
-  }
-  _cargarProveedoresDespues();
-
-    // Cargar historial del paquete (si existe en JSON)
-  // Solo limpiar hist si el paquete cambió — no borrar evaluaciones locales recién guardadas
-  var _mismosPaquete=paqueteActual&&hist.length>0&&hist.some(function(h){return h.paquete===pk.nombre||h.paquete===pk.id;});
-  if(!_mismosPaquete) hist=[];
-  if(pk.historial&&pk.historial.length){
-    pk.historial.forEach(function(h){
-      var totalVal=parseFloat(h.total)||0;
-      var ci=getScaleItem(getFinalCat(totalVal));
-      // Remapear provId buscando por nombre O RUC en los proveedores cargados
+    // Historial guardado en el JSON del paquete (respaldo)
+    (pk.historial||[]).forEach(function(h){
       var pMatch=provs.find(function(p){
         return (p.nom&&h.nom&&p.nom.trim().toLowerCase()===h.nom.trim().toLowerCase())||
                (p.ruc&&h.ruc&&p.ruc.trim()===h.ruc.trim());
       });
       if(pMatch){
-        hist.push(Object.assign({},h,{provId:pMatch.id,catItem:ci}));
+        hist.push(Object.assign({},h,{provId:pMatch.id,catItem:getScaleItem(getFinalCat(parseFloat(h.total)||0))}));
         pMatch.guardado=true;
       }
     });
-    _restaurarNotasDesdeHist();
-  }
 
-  // Siempre cargar desde QuintaDB RESUMEN para complementar historial del paquete
-  // Solo cargar evaluaciones de los proveedores que pertenecen a ESTE paquete
-  // Cargar historial siempre
-  _cargarHistorialDesdeResumen(pk.nombre, function(){
-    _restaurarNotasDesdeHist();
-    _actualizarAcciones(pk);
-    // Si el panel de Resultados está activo, reconstruir con los datos ya cargados
-    var panelRes=document.getElementById('panel-5');
-    if(panelRes&&panelRes.classList.contains('active')){
-      sanitizarHist();
-      buildResults();
-    }
+    _cargarHistorialDesdeResumen(pk.nombre,function(okRes){
+      if(!_vigente())return;
+      _restaurarNotasDesdeHist();
+      _pkSync.estado=(errorRed||okRes===false)?'error':'ok';
+      var evAct={};hist.forEach(function(h){if(h.provId)evAct[h.provId]=1;});
+      pk._evalCount=Object.keys(evAct).length;
+      var d=new Date();
+      _pkSync.hora=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      _actualizarAcciones(pk);
+      if(errorRed)tst('⚠️ No se pudieron cargar los proveedores desde QuintaDB');
+      else if(provs.length)tst('✅ "'+pk.nombre+'": '+_pkPlural(provs.length,'proveedor','proveedores')+' cargados');
+      // Si el panel de Resultados está abierto, reconstruirlo
+      var panelRes=document.getElementById('panel-5');
+      if(panelRes&&panelRes.classList.contains('active')){sanitizarHist();buildResults();}
+    });
   });
-  // Mostrar paquete activo en header
-  var pbadge=document.getElementById('paqueteBadge');
-  var pbnom=document.getElementById('paqueteBadgeNom');
-  if(pbadge){pbadge.style.display='flex';}
-  if(pbnom){pbnom.textContent=pk.nombre;}
-  // Restaurar badges de plantilla y escala
-  var pltNom=pk._plantillaActual||pk.plantillaActual||'';
-  var escNom=pk._escalaActual||pk.escalaActual||'';
-  if(pltNom){pk._plantillaActual=pltNom;_actualizarBadgePlantilla(pltNom);}
-  if(escNom){pk._escalaActual=escNom;_actualizarBadgeEscala(escNom);}
-  tst('📦 "'+pk.nombre+'" seleccionado — elige qué hacer');
 }
 
 function _restaurarNotasDesdeHist(){
@@ -3173,6 +3418,9 @@ function _restaurarNotasDesdeHist(){
     }
   });
 }
+
+// Clave de versión insensible a tildes/mayúsculas: "Evaluación inicial" == "Evaluacion inicial"
+function _verKey(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();}
 
 function _cargarHistorialDesdeResumen(nombrePaquete, callback){
   qdbFetch({accion:'cargarResumen'}, function(res){
@@ -3230,7 +3478,7 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
         var ci=getScaleItem(getFinalCat(totalVal));
         // Deduplicar: buscar por _qid primero, luego por versión
         var dupIdx=hist.findIndex(function(h){
-          return (r._qid&&h._qid===r._qid)||(h.provId===pMatch.id&&h.version===rVersion);
+          return (r._qid&&h._qid===r._qid)||(h.provId===pMatch.id&&_verKey(h.version)===_verKey(rVersion));
         });
         if(dupIdx>-1){
           hist.splice(dupIdx,1); // siempre reemplazar con datos frescos de QDB
@@ -3261,34 +3509,17 @@ function _cargarHistorialDesdeResumen(nombrePaquete, callback){
       if(regs.length)tst('\u2705 '+regs.length+' evaluaciones cargadas desde QuintaDB');
     }
     sanitizarHist();
-    if(callback)callback();
-  }, 3000);
+    if(callback)callback(!!(res&&res.ok));
+  });
 }
 
 
 
 function _actualizarAcciones(pk){
-  // Actualizar borde de tarjeta activa sin re-renderizar toda la lista
-  document.querySelectorAll('#listaPaquetes > div').forEach(function(el){
-    el.style.border='1.5px solid var(--border)';
-    el.style.boxShadow='none';
-    var icon=el.querySelector('[data-pkicon]');
-    if(icon){icon.style.background='var(--surface)';}
-  });
-  var acDiv=document.getElementById('acciones-'+pk.id);
-  if(acDiv){
-    document.querySelectorAll('[id^="acciones-"]').forEach(function(el){el.style.display='none';});
-    acDiv.style.display='flex';
-    var cardEl=acDiv.closest('div[id]')||acDiv.parentElement;
-    if(cardEl){cardEl.style.border='1.5px solid var(--primary)';cardEl.style.boxShadow='0 0 0 3px rgba(0,45,84,0.12)';}
-  }
-  // Habilitar botones "Continuar → Productos →" (arriba y abajo)
-  ['btnNext0Paquete','btnNext0PaqueteTopNav'].forEach(function(bid){
-    var b=document.getElementById(bid);
-    if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}
-  });
-  // Habilitar Ver Resultados
-  if((pk.proveedores||[]).length>0||(pk.historial||[]).length>0){
+  // Refresca la lista y el panel de detalle con el avance real del paquete
+  renderListaPaquetes();
+  var hayDatos=provs.length>0||hist.length>0||(pk&&((pk.proveedores||[]).length>0||(pk.historial||[]).length>0));
+  if(hayDatos){
     ['btnVerResultados','btnVReval'].forEach(function(id){
       var b=document.getElementById(id);
       if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}
@@ -3639,7 +3870,7 @@ function cargarProveedoresDesdeQDB(cb){
         };
       });// sin filtro por propietario — el filtro por paquete.id en _cargarProveedoresDespues es suficiente
       if(cb)cb(ps);
-    } else {if(cb)cb([]);}
+    } else {if(cb)cb(null);} // null = error de red (distinto de lista vacía)
   });
 }
 
@@ -3821,38 +4052,6 @@ function guardarPaqueteSheets(pk,callback){
     }
     if(callback)callback(res&&res.ok);
   });
-}
-
-function eliminarPaqueteSheets(id,callback){
-  var pk=_paquetesCache.find(function(p){return p.id===id;});
-  var qid=pk?pk._qid||'':'';
-  // Si no hay _qid, eliminar solo localmente y avisar
-  if(!qid){
-    tst('⚠️ Sin ID de QuintaDB — eliminado solo localmente');
-    if(callback)callback(true);
-    return;
-  }
-  var cbName='_pkdel'+Date.now();
-  var done=false;
-  window[cbName]=function(res){
-    done=true;
-    try{delete window[cbName];}catch(e){}
-    if(res&&res.ok){
-      if(callback)callback(true);
-    } else {
-      tst('⚠️ Error al eliminar en QuintaDB (qid:'+qid.substr(0,8)+'...)');
-      if(callback)callback(false);
-    }
-  };
-  setTimeout(function(){
-    if(!done){
-      done=true;
-      try{delete window[cbName];}catch(e){}
-      tst('⚠️ Tiempo agotado al eliminar paquete');
-      if(callback)callback(false);
-    }
-  },3000);
-  qdbFetch({accion:'eliminarPaquete', qid:qid}, window[cbName], 3000);
 }
 
 // Sincronizar paquete cuando avanzas de paso
@@ -4298,7 +4497,7 @@ function renderPlantillas(){
       btnDel.textContent='🗑 Eliminar';
       btnDel.style.cssText='padding:5px 12px;border-radius:6px;background:none;border:1px solid var(--border);color:var(--no);font-size:.8rem;cursor:pointer;font-family:inherit;';
       (function(pid){btnDel.onclick=function(){
-        miniConfirm('¿Eliminar esta plantilla? ¿Eliminar esta plantilla? Se borrará también de QuintaDB.',function(){
+        miniConfirm('¿Eliminar esta plantilla? Se borrará también de QuintaDB.',function(){
           var arr2=getPlantillas().filter(function(p){return p.id!==pid;});
           savePlantillas(arr2);
           eliminarPlantillaEnSheets(pid,function(ok){
@@ -4417,6 +4616,11 @@ function goStepBack(n){
 }
 
 function goStep(n){
+  // Los pasos 2 a 7 trabajan sobre un paquete: sin paquete activo se vuelve al paso 1
+  if(n>=1&&n<=6&&!paqueteActual){
+    n=0;
+    tst('Selecciona o crea un paquete para continuar');
+  }
   var pids=['panel-0','panel-6','panel-1','panel-2','panel-3','panel-4','panel-5','panel-7'];
   pids.forEach(function(pid,i){var el=document.getElementById(pid);if(el)el.classList.toggle('active',i===n);});
   document.querySelectorAll('.sbtn').forEach(function(b,i){
@@ -4425,7 +4629,9 @@ function goStep(n){
     else if(i<n)b.classList.add('done');
   });
 
-  // ── Paso 1: Productos — cargar lista ──
+  // ── Paso 1: Paquetes — refrescar avance ──
+  if(n===0){renderListaPaquetes();}
+  // ── Paso 2: Productos — cargar lista ──
   if(n===1){
     // Cargar productos desde QDB automáticamente al entrar al paso
     if(paqueteActual){
@@ -4556,7 +4762,7 @@ function goStep(n){
       var banner=document.getElementById('reevalBanner');
       var stepTitle=document.getElementById('evalStepTitle');
       if(banner)banner.style.display='none';
-      if(stepTitle)stepTitle.textContent='Paso 5 — Evaluación'+(paqueteActual?' — '+paqueteActual.nombre:'');
+      if(stepTitle)stepTitle.textContent='Paso 6 — Evaluación'+(paqueteActual?' — '+paqueteActual.nombre:'');
     }
   }
 
@@ -6028,7 +6234,7 @@ function toggleAdvProv(){
 function setFiltroRapido(btn,val){
   _filtroRapidoProv=val;
   document.querySelectorAll('.fbtn-prov').forEach(function(b){b.classList.remove('on');});
-  btn.classList.add('on');
+  if(btn)btn.classList.add('on');
   // sync select si aplica
   var sel=document.getElementById('filtrarCat');
   if(sel&&['A','B','C','D'].indexOf(val)>-1)sel.value=val;
@@ -6036,16 +6242,6 @@ function setFiltroRapido(btn,val){
   buildResults();
 }
 
-function limpiarFiltrosProv(){
-  ['buscarProv','filtrarNom','filtrarRuc','filtrarCat','filtrarFecDesde','filtrarFecHasta','filtrarEva'].forEach(function(id){
-    var el=document.getElementById(id);if(el)el.value='';
-  });
-  _filtroRapidoProv='todos';
-  document.querySelectorAll('.fbtn-prov').forEach(function(b){b.classList.remove('on');});
-  var all=document.querySelector('.fbtn-prov[data-fprov="todos"]');
-  if(all)all.classList.add('on');
-  buildResults();
-}
 
 // ── SISTEMA DE FILTROS AND/OR ──
 var criteriosFiltro=[];
@@ -6461,53 +6657,6 @@ if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',_appInit);
 }else{
   _appInit();
-}
-
-function cargarDesdeSheets(){
-  var cbName='_loadgs'+Date.now();
-  var done=false;
-  window[cbName]=function(res){
-    done=true;
-    try{delete window[cbName];}catch(e){}
-    if(!res||!res.ok||!res.registros||!res.registros.length)return;
-    var regs=res.registros;
-    var provsMap={};  // key=ruc o nom → prov object
-    // limpiar estado previo
-    provs=[];hist=[];notasEval={};evFiles={};
-    document.getElementById('provList').innerHTML='';
-
-    regs.forEach(function(r){
-      var key=r.ruc&&r.ruc.trim()!==''?r.ruc:(r.nom||'_');
-      if(!provsMap[key]){
-        var id='GS'+Date.now()+Math.random().toString(36).substr(2,5);
-        var p={id:id,nom:r.nom||'',ruc:r.ruc||'',dir:r.dir||'',
-          fec:r.fec||'',mat:r.mat||'',eva:r.eva||'',
-          guardado:true,_arch:false,_dest:false};
-        provsMap[key]=p;
-        provs.push(p);
-        notasEval[id]={};evFiles[id]={};
-        appendProvRow(p,provs.length-1);
-      }
-      var pObj=provsMap[key];
-      var totalVal=parseFloat(r.total)||0;
-      var ci=getScaleItem(getFinalCat(totalVal));
-      hist.push({
-        provId:pObj.id,nom:r.nom||'',ruc:r.ruc||'',dir:r.dir||'',
-        fec:r.fec||'',mat:r.mat||'',eva:r.eva||'',
-        total:totalVal,catFinal:r.catFinal&&r.catFinal.trim()?r.catFinal.trim():getFinalCat(totalVal),
-        catInterp:r.catInterp||'',catItem:ci,
-        version:r.version||'Evaluación inicial',ts:r.ts||'',
-        det:r.det||[],notasSnap:{}
-      });
-    });
-
-    checkProvs();
-    // habilitar Ver Resultados y mostrar resultados automáticamente
-    ['btnVerResultados','btnVReval'].forEach(function(id){var b=document.getElementById(id);if(b){b.removeAttribute('disabled');b.style.opacity='1';b.style.cursor='pointer';}});
-    tst('✅ '+provs.length+' proveedor(es) y '+hist.length+' evaluación(es) cargadas desde QuintaDB');
-  }
-  setTimeout(function(){if(!done){try{delete window[cbName];}catch(e){}}},3000);
-  qdbFetch({accion:'cargarPaquetes'}, window[cbName], 3000);
 }
 
 </script>
