@@ -1659,7 +1659,7 @@ function enviarASheets(d,callback){
   qdbFetch({accion:'guardarEvaluacion', datos:JSON.stringify(payload)}, function(res){
     console.log('RESPUESTA guardarEvaluacion:', JSON.stringify(res));
     if(callback)callback(!!(res&&res.ok));
-  }, 30000);
+  }, 60000);
 }
 
 function guardarEvalActual(){
@@ -5014,7 +5014,7 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
       console.log('DETALLE filtrado vacio, usando legacy...');
       _cargarDetalleLegacy(provNom,version,ts,callback);
     }
-  },8000);
+  },45000);
 }
 function _cargarDetalleLegacy(provNom, version, ts, callback){
   qdbFetch({accion:'cargarDetalle'},function(res){
@@ -5069,7 +5069,7 @@ function _cargarDetalleLegacy(provNom, version, ts, callback){
     });
     console.log('LEGACY cargarDetalle: regs='+regs.length+' notas='+JSON.stringify(notas));
     if(callback)callback(notas);
-  },8000);
+  },45000);
 }
 
 // ══ SELECTOR DE VERSIÓN EN EVALUACIÓN ══
