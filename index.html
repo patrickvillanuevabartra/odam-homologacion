@@ -5061,12 +5061,15 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
       _aplicarExtrasDetalle(regsF);
       console.log('DETALLE filtrado OK regs='+res.registros.length+' notas='+JSON.stringify(notas));
       if(callback)callback(notas);
+    } else if(res&&res.ok){
+      // El servidor leyó la tabla completa y no hay calificaciones para esta versión:
+      // repetir la misma lectura en el cliente solo duplicaría la espera.
+      if(callback)callback({});
     } else {
-      // Fallback: cargar todos y filtrar en cliente
-      console.log('DETALLE filtrado vacio, usando legacy...');
-      _cargarDetalleLegacy(provNom,version,ts,callback);
+      // Sin respuesta del servidor: avisar en vez de dejar la pantalla esperando
+      if(callback)callback(null);
     }
-  },45000);
+  },60000);
 }
 function _cargarDetalleLegacy(provNom, version, ts, callback){
   qdbFetch({accion:'cargarDetalle'},function(res){
@@ -5277,7 +5280,17 @@ function seleccionarVersion(){
     tst('⏳ Cargando calificaciones...');
     // Normalizar version para busqueda (quitar tildes)
     var _verBuscar=(hSel.version||'').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+    var _pidCarga=provActualId;
     cargarDetalleEvaluacion(hSel.nom||'', _verBuscar, hSel.ts||'', function(notasQDB){
+      if(provActualId!==_pidCarga)return; // el usuario cambió de proveedor mientras cargaba
+      if(notasQDB===null){
+        var cont=document.getElementById('evalCont');
+        if(cont)cont.innerHTML='<div style="padding:28px 16px;text-align:center;color:#991B1B;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;font-size:.95rem;line-height:1.6;">'
+          +'No se pudieron cargar las calificaciones: QuintaDB no respondió a tiempo.<br>'
+          +'<button class="btn btn-o btn-sm" style="margin-top:10px;" onclick="seleccionarVersion()">Reintentar</button></div>';
+        tst('⚠️ QuintaDB no respondió a tiempo. Pulsa Reintentar.',5000);
+        return;
+      }
       if(notasQDB&&Object.keys(notasQDB).length>0){
         aplicarNotasYBuild(notasQDB);
       } else {
@@ -5348,7 +5361,7 @@ function buildEval(loading){
 
   // ── Si se pidió modo loading: mostrar solo spinner, NO construir sliders aún ──
   if(loading){
-    cont.innerHTML='<div style="padding:32px 16px;text-align:center;color:var(--muted);font-size:.95rem;background:var(--surface);border-radius:10px;border:1.5px dashed var(--border);">⏳ Cargando calificaciones...</div>';
+    cont.innerHTML='<div style="padding:32px 16px;text-align:center;color:var(--muted);font-size:.95rem;background:var(--surface);border-radius:10px;border:1.5px dashed var(--border);">⏳ Cargando calificaciones desde QuintaDB… puede tardar unos segundos.</div>';
     // Actualizar el score bar con el último historial conocido si existe
     var _histPrev2=hist.filter(function(h){return h.provId===provActualId;});
     if(_histPrev2.length){
