@@ -5277,7 +5277,7 @@ function buildEval(loading){
     var mWrap=document.createElement('div'); mWrap.style.cssText='margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;';
     var mHint=document.createElement('div'); mHint.style.cssText='font-size:.84rem;color:var(--muted);'; mHint.textContent='O escribe la calificación:';
     var mInp=document.createElement('input'); mInp.className='cal-nota-inp-manual'; mInp.id='cni-'+c.id;
-    mInp.type='number'; mInp.min='0'; mInp.max='1'; mInp.step='0.01'; mInp.placeholder='0.00';
+    mInp.type='number'; mInp.min='0'; mInp.max='1'; mInp.step='0.001'; mInp.placeholder='0.000'; mInp.inputMode='decimal';
     mWrap.appendChild(mHint); mWrap.appendChild(mInp);
     nRow.appendChild(mWrap);
     cZ.appendChild(nRow);
@@ -5285,7 +5285,7 @@ function buildEval(loading){
     // ── SLIDER PERSONALIZADO ──
     // Usamos un range input oculto + track visual para alineación perfecta
     var sl=document.createElement('input'); sl.className='cal-slider'; sl.id='csl-'+c.id;
-    sl.type='range'; sl.min='0'; sl.max='100'; sl.step='1'; sl.value='0';
+    sl.type='range'; sl.min='0'; sl.max='1000'; sl.step='1'; sl.value='0';
     sl.style.cssText='position:absolute;width:100%;opacity:0;height:28px;cursor:pointer;z-index:2;top:0;left:0;margin:0;padding:0;';
 
     var sliderWrap=document.createElement('div');
@@ -5338,7 +5338,7 @@ function buildEval(loading){
 
     // actualizar thumb y fill al mover
     function updateThumb(val){
-      var pct=val/100;
+      var pct=val/1000;
       var thumbEl=document.getElementById('thumb-'+c.id);
       var fillEl=document.getElementById('fill-'+c.id);
       if(thumbEl){thumbEl.style.left=(pct*100)+'%';var s=getScaleByNota(pct);thumbEl.style.background=s.color;}
@@ -5359,6 +5359,8 @@ function buildEval(loading){
     (function(cid, sliderEl, manualEl){
       sliderEl.addEventListener('input', function(){ onSlider(cid, this.value); });
       manualEl.addEventListener('input', function(){ onNotaManual(cid, this.value); });
+      // Al salir del campo: limitar a 0–1 y mostrar con 3 decimales
+      manualEl.addEventListener('change', function(){ onNotaManual(cid, this.value, true); });
     })(c.id, sl, mInp);
 
     // DERECHA
@@ -5435,21 +5437,25 @@ function buildEval(loading){
 
     // restaurar nota previa
     var prev=prevNotas[c.id];
-    if(prev!==undefined){ sl.value=Math.round(prev*100); setNota(c.id,prev,true); }
+    if(prev!==undefined){ sl.value=Math.round(prev*1000); setNota(c.id,prev,true); }
   });
   recalc();
 }
 
 function onSlider(id,val){
-  var nota=parseInt(val)/100;
+  var nota=parseInt(val,10)/1000;
   setNota(id,nota,true);
 }
-function onNotaManual(id,val){
-  var nota=Math.min(1,Math.max(0,parseFloat(val)||0));
-  // sync slider
+// Calificación escrita a mano: hasta 3 decimales (0.000 – 1.000).
+// Mientras se escribe NO se reescribe el campo (antes se forzaba a 2 decimales y no dejaba poner el tercero).
+function onNotaManual(id,val,alSalir){
+  var txt=String(val||'').replace(',','.');
+  var nota=parseFloat(txt);
+  if(isNaN(nota)){if(!alSalir)return;nota=0;}
+  nota=Math.round(Math.min(1,Math.max(0,nota))*1000)/1000;
   var sl=document.getElementById('csl-'+id);
-  if(sl)sl.value=Math.round(nota*100);
-  setNota(id,nota,true);
+  if(sl)sl.value=Math.round(nota*1000);
+  setNota(id,nota,!!alSalir);
 }
 function setNota(id,nota,updateInput){
   if(!notasEval[provActualId])notasEval[provActualId]={};
@@ -5472,7 +5478,7 @@ function setNota(id,nota,updateInput){
   // input manual sync
   if(updateInput){
     var inp=document.getElementById('cni-'+id);
-    if(inp)inp.value=nota.toFixed(2);
+    if(inp)inp.value=nota.toFixed(3);
   }
 
   // actualizar thumb visual personalizado
@@ -6575,7 +6581,7 @@ function verDetalleProv(pid){
       tr.innerHTML='<td style="font-weight:600">'+esc(dt.label)+'</td>'
         +'<td>'+dt.weight+'%</td>'
         +'<td>'+chip+esc(dt.label_cal||'—')+'</td>'
-        +'<td style="font-weight:700;color:'+(dt.cat&&dt.cat!=='—'?(dt.color||'var(--text)'):'var(--subtle)')+'">'+dt.nota.toFixed(2)+'</td>'
+        +'<td style="font-weight:700;color:'+(dt.cat&&dt.cat!=='—'?(dt.color||'var(--text)'):'var(--subtle)')+'">'+dt.nota.toFixed(3)+'</td>'
         +'<td style="font-weight:700;color:var(--ok)">'+dt.pond.toFixed(3)+'</td>';
       tbody.appendChild(tr);
     });
