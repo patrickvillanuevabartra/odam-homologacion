@@ -1651,7 +1651,9 @@ function enviarASheets(d,callback){
     det:d.det.map(function(r){return{
       label:r.label,weight:r.weight,nota:r.nota,cat:r.cat,pond:r.pond,
       comentario:r.comentario||'',
-      ev:(r.ev||[]).map(function(f){return typeof f==='string'?f:f.name;})
+      ev:(r.ev&&r.ev.length)?[JSON.stringify((r.ev||[]).map(function(f){
+        return typeof f==='string'?{name:f,url:''}:{name:f.name||'',url:f.url||''};
+      }))]:[]
     };}),
     escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};})
   };
@@ -1678,6 +1680,23 @@ function guardarEvalActual(){
   if(!evaCheck){
     tst('⚠️ El evaluador es obligatorio');
     if(selCheck)selCheck.focus();return;
+  }
+  // Links pegados pero sin pulsar "+ Agregar link": no se guardarían
+  var _pendLinks=crits.filter(function(c){var el=document.getElementById('evlink-'+c.id);return el&&el.value.trim();});
+  if(_pendLinks.length){
+    if(confirm('⚠️ Hay links escritos que no agregaste a la lista en:\n\n'
+      +_pendLinks.map(function(c){return '• '+c.label;}).join('\n')
+      +'\n\n¿Agregarlos ahora y guardar? (Cancelar = guardar sin esos links)')){
+      _pendLinks.forEach(function(c){
+        var url=document.getElementById('evlink-'+c.id).value.trim();
+        var nomEl=document.getElementById('evnom-'+c.id);
+        if(!evFiles[provActualId])evFiles[provActualId]={};
+        if(!evFiles[provActualId][c.id])evFiles[provActualId][c.id]=[];
+        evFiles[provActualId][c.id].push({name:(nomEl&&nomEl.value.trim())||('Evidencia '+(evFiles[provActualId][c.id].length+1)),url:url});
+        document.getElementById('evlink-'+c.id).value='';if(nomEl)nomEl.value='';
+        renderEv(c.id);
+      });
+    }
   }
   // Criterios sin calificar: se guardarían con 0 y bajarían el puntaje total
   var _nev=notasEval[provActualId]||{};
@@ -4984,10 +5003,40 @@ function _cancelarReeval(){
 }
 
 // ══ CARGAR DETALLE DE EVALUACIÓN DESDE QDB ══
+// Evidencias guardadas en DETALLE: JSON [{name,url}] (actual) o "nombre1, nombre2" (formato antiguo)
+function _parseEvidencias(txt){
+  txt=String(txt||'').trim();
+  if(!txt)return [];
+  if(txt.charAt(0)==='['){
+    try{return JSON.parse(txt).filter(function(e){return e&&(e.name||e.url);}).map(function(e){return {name:e.name||e.url,url:e.url||''};});}catch(e){}
+  }
+  return txt.split(/,\s*/).filter(Boolean).map(function(n){
+    return /^https?:\/\//i.test(n)?{name:n,url:n}:{name:n,url:''};
+  });
+}
+// Carga en memoria las evidencias y comentarios de los registros de DETALLE leídos
+function _aplicarExtrasDetalle(regs){
+  if(!provActualId)return;
+  if(!evFiles[provActualId])evFiles[provActualId]={};
+  if(!evFiles[provActualId]['_coment'])evFiles[provActualId]['_coment']={};
+  regs.forEach(function(r){
+    var c=_critPorLabel(r.criterio);if(!c)return;
+    evFiles[provActualId][c.id]=_parseEvidencias(r.evidencias);
+    evFiles[provActualId]['_coment'][c.id]=r.comentario||'';
+  });
+}
+
 // Busca el criterio actual que corresponde a un nombre guardado, sin importar tildes, mayúsculas ni espacios
 function _critPorLabel(label){
   var k=_verKey(label);
   return crits.find(function(cc){return _verKey(cc.label)===k;});
+}
+
+function _ultimoGuardado(regs){
+  var claves=regs.map(function(r){return normalizarFechaQDB(r.timestamp)||r.timestamp||'';});
+  var max=claves.slice().sort().pop()||'';
+  var ult=regs.filter(function(r,i){return claves[i]===max;});
+  return ult.length?ult:regs;
 }
 
 function cargarDetalleEvaluacion(provNom, version, ts, callback){
@@ -5003,10 +5052,13 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
   },function(res){
     if(res&&res.ok&&res.registros&&res.registros.length>0){
       var notas={};
-      res.registros.forEach(function(r){
+      // Si hay varios guardados de la misma versión, usar solo el más reciente
+      var regsF=_ultimoGuardado(res.registros);
+      regsF.forEach(function(r){
         var critAct=_critPorLabel(r.criterio);
         if(critAct) notas[critAct.id]=parseFloat(r.calificacion)||0;
       });
+      _aplicarExtrasDetalle(regsF);
       console.log('DETALLE filtrado OK regs='+res.registros.length+' notas='+JSON.stringify(notas));
       if(callback)callback(notas);
     } else {
@@ -5067,6 +5119,7 @@ function _cargarDetalleLegacy(provNom, version, ts, callback){
       var critAct=_critPorLabel(r.criterio);
       if(critAct){notas[critAct.id]=parseFloat(r.calificacion)||0;}
     });
+    _aplicarExtrasDetalle(regs);
     console.log('LEGACY cargarDetalle: regs='+regs.length+' notas='+JSON.stringify(notas));
     if(callback)callback(notas);
   },45000);
@@ -5474,10 +5527,10 @@ function buildEval(loading){
     var linkRow=document.createElement('div');
     linkRow.style.cssText='display:flex;flex-direction:column;gap:5px;margin-bottom:6px;';
     var linkInp=document.createElement('input');
-    linkInp.type='text'; linkInp.placeholder='🔗 Pega el link de Drive, OneDrive, etc.';
+    linkInp.type='text'; linkInp.placeholder='🔗 Pega el link de Drive, OneDrive, etc.'; linkInp.id='evlink-'+c.id;
     linkInp.style.cssText='width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:.84rem;font-family:inherit;color:var(--text);box-sizing:border-box;';
     var linkNom=document.createElement('input');
-    linkNom.type='text'; linkNom.placeholder='Nombre descriptivo del archivo';
+    linkNom.type='text'; linkNom.placeholder='Nombre descriptivo del archivo'; linkNom.id='evnom-'+c.id;
     linkNom.style.cssText='width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:.84rem;font-family:inherit;color:var(--text);box-sizing:border-box;';
     var linkBtn=document.createElement('button');
     linkBtn.textContent='+ Agregar link';
@@ -5494,7 +5547,14 @@ function buildEval(loading){
         renderEv(cid);
       };
     })(c.id,linkInp,linkNom);
-    linkRow.appendChild(linkInp); linkRow.appendChild(linkNom); linkRow.appendChild(linkBtn);
+    // Enter en cualquiera de los dos campos equivale a pulsar "+ Agregar link"
+    [linkInp,linkNom].forEach(function(el){
+      el.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();linkBtn.click();}});
+    });
+    var linkNota=document.createElement('div');
+    linkNota.style.cssText='font-size:.76rem;line-height:1.4;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 8px;';
+    linkNota.textContent='Pega el link y su descripción, y pulsa «+ Agregar link». Solo se guardan los links que aparecen en la lista de abajo.';
+    linkRow.appendChild(linkInp); linkRow.appendChild(linkNom); linkRow.appendChild(linkBtn); linkRow.appendChild(linkNota);
     eW.appendChild(linkRow);
     var eL=document.createElement('div'); eL.id='evfiles-'+c.id; eW.appendChild(eL);
 
@@ -5525,6 +5585,7 @@ function buildEval(loading){
     body.appendChild(right);
     card.appendChild(body);
     cont.appendChild(card);
+    renderEv(c.id);
 
     // restaurar nota previa
     var prev=prevNotas[c.id];
