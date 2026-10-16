@@ -1679,6 +1679,14 @@ function guardarEvalActual(){
     tst('⚠️ El evaluador es obligatorio');
     if(selCheck)selCheck.focus();return;
   }
+  // Criterios sin calificar: se guardarían con 0 y bajarían el puntaje total
+  var _nev=notasEval[provActualId]||{};
+  var _sinNota=crits.filter(function(c){return _nev[c.id]===undefined||_nev[c.id]===null||isNaN(parseFloat(_nev[c.id]));});
+  if(_sinNota.length){
+    var _lista=_sinNota.map(function(c){return '• '+c.label;}).join('\n');
+    if(!confirm('⚠️ '+_sinNota.length+' de '+crits.length+' criterios no tienen calificación:\n\n'+_lista
+      +'\n\nSe guardarán con 0.000 y el puntaje total bajará. ¿Guardar de todas formas?'))return;
+  }
   // Sync evaluador — prioridad: select > text input
   var selEva=document.getElementById('evalResponsableSelect');
   var txtEva=document.getElementById('evalResponsable');
@@ -4097,10 +4105,13 @@ function cargarEvaluadoresDesdeSheets(){
       var uid=getUsuarioCorreo();
       _evaluadoresCache=res.evaluadores.filter(function(ev){
         return !ev.propietario||ev.propietario===''||ev.propietario===uid;
+      }).map(function(ev){
+        ev.id=ev.id||ev._qid;            // registros antiguos sin id propio
+        return ev;
       });
       actualizarDropdownEvaluadores();
     }
-  }, 3000);
+  });
 }
 
 
@@ -4197,10 +4208,35 @@ function editarEvaluador(id){
 function eliminarEvaluador(id){
   var ev=_evaluadoresCache.find(function(e){return e.id===id;});
   miniConfirm('¿Eliminar al evaluador "'+(ev?ev.nombre:id)+'"?',function(){
-    _evaluadoresCache=_evaluadoresCache.filter(function(e){return e.id!==id;});
-    actualizarDropdownEvaluadores();renderListaEvaluadores();
-    qdbFetch({accion:'eliminarEvaluador', qid:id}, function(res){
-      tst(res&&res.ok?'✅ Eliminado de QuintaDB':'Eliminado localmente');
+    if(!ev)return;
+    // Antes se enviaba el id interno ("ev_…") como si fuera el ID de QuintaDB: el borrado
+    // fallaba siempre y el evaluador reaparecía al recargar la página.
+    var nomKey=(ev.nombre||'').trim().toLowerCase();
+    var qids=_evaluadoresCache.filter(function(e){
+      return e._qid&&(e.id===id||(e.nombre||'').trim().toLowerCase()===nomKey);
+    }).map(function(e){return e._qid;});
+    if(!qids.length){
+      _evaluadoresCache=_evaluadoresCache.filter(function(e){return e.id!==id;});
+      actualizarDropdownEvaluadores();renderListaEvaluadores();
+      tst('✅ Evaluador eliminado');return;
+    }
+    tst('Eliminando evaluador…');
+    var pendientes=qids.length,fallos=0;
+    qids.forEach(function(q){
+      qdbFetch({accion:'eliminarEvaluador', qid:q}, function(res){
+        if(!(res&&res.ok))fallos++;
+        if(--pendientes>0)return;
+        if(fallos){
+          tst('⚠️ No se pudo eliminar en QuintaDB. Revisa la conexión e inténtalo de nuevo.',5000);
+          cargarEvaluadoresDesdeSheets();
+          return;
+        }
+        _evaluadoresCache=_evaluadoresCache.filter(function(e){return qids.indexOf(e._qid)===-1&&e.id!==id;});
+        var sel=document.getElementById('evalResponsableSelect');
+        if(sel&&sel.value===ev.nombre)sel.value='';
+        actualizarDropdownEvaluadores();renderListaEvaluadores();
+        tst('✅ Evaluador eliminado de QuintaDB');
+      });
     });
   });
 }
@@ -4218,10 +4254,20 @@ function guardarEvaluador(){
     propietarioNombre:getUsuarioNombre()
   };
   var idx=_evaluadoresCache.findIndex(function(e){return e.id===ev.id;});
-  if(idx>-1)_evaluadoresCache[idx]=ev;else _evaluadoresCache.push(ev);
-  actualizarDropdownEvaluadores();renderListaEvaluadores();limpiarFormEvaluador();
-  qdbFetch({accion:'guardarEvaluador', datos:JSON.stringify(ev)}, function(res){
-    tst(res&&res.ok?'✅ Evaluador guardado en QuintaDB':'⚠️ Guardado localmente');
+  if(idx>-1){ev._qid=_evaluadoresCache[idx]._qid||'';ev.fecha_registro=_evaluadoresCache[idx].fecha_registro||'';}
+  var datos={id:ev.id,nombre:ev.nombre,empresa:ev.empresa,cargo:ev.cargo,celular:ev.celular,correo:ev.correo,
+    propietario:ev.propietario,propietario_nombre:ev.propietarioNombre,
+    fecha_registro:ev.fecha_registro||new Date().toISOString()};
+  var btnG=document.querySelector('[onclick="guardarEvaluador()"]');
+  if(btnG)btnG.setAttribute('disabled','disabled');
+  qdbFetch({accion:'guardarEvaluador', datos:JSON.stringify(datos), qid:ev._qid||''}, function(res){
+    if(btnG)btnG.removeAttribute('disabled');
+    if(!(res&&res.ok)){tst('⚠️ No se pudo guardar el evaluador en QuintaDB. Inténtalo de nuevo.',5000);return;}
+    ev._qid=res.qid||ev._qid;
+    ev.fecha_registro=datos.fecha_registro;
+    if(idx>-1)_evaluadoresCache[idx]=ev;else _evaluadoresCache.push(ev);
+    actualizarDropdownEvaluadores();renderListaEvaluadores();limpiarFormEvaluador();
+    tst('✅ Evaluador guardado en QuintaDB');
   });
 }
 
@@ -4909,6 +4955,12 @@ function _cancelarReeval(){
 }
 
 // ══ CARGAR DETALLE DE EVALUACIÓN DESDE QDB ══
+// Busca el criterio actual que corresponde a un nombre guardado, sin importar tildes, mayúsculas ni espacios
+function _critPorLabel(label){
+  var k=_verKey(label);
+  return crits.find(function(cc){return _verKey(cc.label)===k;});
+}
+
 function cargarDetalleEvaluacion(provNom, version, ts, callback){
   // Intentar primero con filtrado en servidor
   var correo=getUsuarioCorreo();
@@ -4923,7 +4975,7 @@ function cargarDetalleEvaluacion(provNom, version, ts, callback){
     if(res&&res.ok&&res.registros&&res.registros.length>0){
       var notas={};
       res.registros.forEach(function(r){
-        var critAct=crits.find(function(cc){return cc.label===(r.criterio||'');});
+        var critAct=_critPorLabel(r.criterio);
         if(critAct) notas[critAct.id]=parseFloat(r.calificacion)||0;
       });
       console.log('DETALLE filtrado OK regs='+res.registros.length+' notas='+JSON.stringify(notas));
@@ -4983,7 +5035,7 @@ function _cargarDetalleLegacy(provNom, version, ts, callback){
     }
     var notas={};
     regs.forEach(function(r){
-      var critAct=crits.find(function(cc){return cc.label===(r.criterio||'');});
+      var critAct=_critPorLabel(r.criterio);
       if(critAct){notas[critAct.id]=parseFloat(r.calificacion)||0;}
     });
     console.log('LEGACY cargarDetalle: regs='+regs.length+' notas='+JSON.stringify(notas));
@@ -5152,7 +5204,7 @@ function seleccionarVersion(){
           });
         } else if(hSel.det&&hSel.det.length>0){
           hSel.det.forEach(function(d){
-            var c=crits.find(function(cc){return cc.label===d.label;});
+            var c=_critPorLabel(d.label);
             if(c) snap[c.id]=parseFloat(d.nota)||0;
           });
         }
@@ -5161,9 +5213,10 @@ function seleccionarVersion(){
           var memNotas=notasEval[provActualId]||{};
           if(Object.keys(memNotas).length>0) snap=memNotas;
         }
-        // Fallback 3: si total conocido, distribuir proporcionalmente por peso
-        if(Object.keys(snap).length===0&&hSel.total>0&&crits.length>0){
-          crits.forEach(function(c){snap[c.id]=hSel.total;});
+        // Sin calificaciones por criterio: NO se inventan valores (antes se copiaba el
+        // puntaje total ponderado a todos los criterios y todos salían en rojo)
+        if(Object.keys(snap).length===0){
+          tst('⚠️ No se encontraron las calificaciones por criterio de esta evaluación en QuintaDB. Vuelve a intentarlo.',5000);
         }
         aplicarNotasYBuild(Object.keys(snap).length>0?snap:{});
       }
