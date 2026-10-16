@@ -2676,10 +2676,47 @@ function adminCargarUsuarios(){
           +'<div style="flex:1;"><div style="font-weight:700;font-size:.95rem;">'+esc(u.nombre)+(isAdmin?' <span style="background:#7C3AED;color:white;padding:1px 8px;border-radius:10px;font-size:.72rem;margin-left:6px;">ADMIN</span>':'')+'</div>'
           +'<div style="font-size:.82rem;color:var(--muted);">'+esc(u.correo)+'</div></div>'
           +'<div style="font-size:.82rem;color:var(--muted);">📦 '+u.paquetes+' paquete(s)</div>';
+        if(!isAdmin){
+          var del=document.createElement('button');
+          del.type='button';del.title='Eliminar usuario y todos sus datos';del.textContent='🗑';
+          del.style.cssText='padding:6px 11px;border-radius:7px;background:white;border:1px solid #FCA5A5;color:#DC2626;font-size:.95rem;cursor:pointer;flex-shrink:0;';
+          (function(usr,btn){btn.onclick=function(){adminEliminarUsuario(usr,btn);};})(u,del);
+          row.appendChild(del);
+        }
         wrap.appendChild(row);
       });
     },5000);
   },5000);
+}
+
+// Elimina un usuario: primero cuenta sus datos, luego pide escribir su correo para confirmar
+var _ADMIN_TABLAS_LBL={paquetes:'paquetes',productos:'productos',proveedores:'proveedores',evaluadores:'evaluadores',
+  plantillas:'plantillas de criterios',escala:'escalas',resumen:'evaluaciones (resumen)',detalle:'calificaciones por criterio'};
+function adminEliminarUsuario(u,btn){
+  if(!esAdmin()){tst('⚠️ Acceso restringido');return;}
+  btn.disabled=true;btn.textContent='⏳';
+  tst('Contando los datos de '+u.correo+'…',4000);
+  qdbFetch({accion:'contarDatosUsuario',correo:u.correo,admin:getUsuarioCorreo()},function(res){
+    btn.disabled=false;btn.textContent='🗑';
+    if(!res||!res.ok){tst('⚠️ '+((res&&res.error)||'QuintaDB no respondió. Inténtalo de nuevo.'),5000);return;}
+    var det=Object.keys(res.conteo).filter(function(k){return res.conteo[k]>0;})
+      .map(function(k){return res.conteo[k]+' '+_ADMIN_TABLAS_LBL[k];}).join(', ');
+    if(!res.total){tst('Este usuario no tiene datos guardados.');return;}
+    miniPrompt('Se eliminarán '+res.total+' registros de '+(u.nombre||u.correo)+': '+det
+      +'. Esta acción no se puede deshacer. Escribe el correo del usuario para confirmar:','',function(txt){
+      if((txt||'').trim().toLowerCase()!==u.correo){tst('El correo no coincide. No se eliminó nada.',4000);return;}
+      btn.disabled=true;btn.textContent='⏳';
+      tst('Eliminando '+res.total+' registros…',8000);
+      qdbFetch({accion:'eliminarDatosUsuario',correo:u.correo,admin:getUsuarioCorreo()},function(r2){
+        if(r2&&r2.ok){tst('✅ Usuario '+u.correo+' eliminado ('+r2.borrados+' registros)',5000);}
+        else if(r2&&r2.borrados){tst('⚠️ Se eliminaron '+r2.borrados+' registros; '+r2.fallidos+' fallaron. Vuelve a pulsar 🗑 para terminar.',7000);}
+        else{tst('⚠️ '+((r2&&r2.error)||'QuintaDB no respondió. Vuelve a cargar la lista para ver qué quedó.'),7000);}
+        adminCargarUsuarios();
+      },180000);
+    });
+    var okb=document.getElementById('miniModalOk');okb.textContent='Eliminar';okb.style.background='#DC2626';
+    var inp=document.getElementById('miniModalInput');inp.placeholder=u.correo;
+  },120000);
 }
 
 function adminCargarTodosPaquetes(){
