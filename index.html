@@ -4661,7 +4661,30 @@ function goStepBack(n){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
+// Registro id de criterio → nombre. Los IDs de criterio (c1, c2…) se regeneran al pasar por
+// el paso Criterios; las notas guardadas en memoria usan esos IDs, así que se re-asocian por nombre.
+var _critLabelPorId={};
+function _registrarCrits(){crits.forEach(function(c){if(c&&c.id)_critLabelPorId[c.id]=c.label;});}
+function _reasociarNotasPorNombre(){
+  var porNombre={};crits.forEach(function(c){porNombre[_verKey(c.label)]=c.id;});
+  function rekey(obj){
+    if(!obj)return obj;var out={};
+    Object.keys(obj).forEach(function(k){
+      if(crits.some(function(c){return c.id===k;})){out[k]=obj[k];return;}
+      var lab=_critLabelPorId[k];var nid=lab!==undefined?porNombre[_verKey(lab)]:null;
+      if(nid&&out[nid]===undefined)out[nid]=obj[k];
+    });
+    return out;
+  }
+  Object.keys(notasEval).forEach(function(pid){notasEval[pid]=rekey(notasEval[pid]);});
+  Object.keys(evFiles).forEach(function(pid){
+    if(evFiles[pid]&&evFiles[pid]['_coment'])evFiles[pid]['_coment']=rekey(evFiles[pid]['_coment']);
+  });
+  _registrarCrits();
+}
+
 function goStep(n){
+  _registrarCrits();
   // Los pasos 2 a 7 trabajan sobre un paquete: sin paquete activo se vuelve al paso 1
   if(n>=1&&n<=6&&!paqueteActual){
     n=0;
@@ -4735,8 +4758,12 @@ function goStep(n){
     // Cargar criterios desde paquete SOLO si no están cargados o cambiaron
     // CRÍTICO: no regenerar IDs si ya existen — notasEval depende de esos IDs
     var _pkCrits=paqueteActual&&paqueteActual.criterios?paqueteActual.criterios:[];
-    var _critLabels=crits.map(function(c){return c.label+'_'+c.weight;}).join('|');
-    var _pkLabels=_pkCrits.map(function(c){return c.label+'_'+c.weight;}).join('|');
+    var _critLabels=crits.map(function(c){return c.label;}).join('|');
+    var _pkLabels=_pkCrits.map(function(c){return c.label;}).join('|');
+    // Mismos criterios con otro peso: actualizar el peso sin tocar IDs ni notas
+    if(_pkCrits.length&&crits.length&&_critLabels===_pkLabels){
+      _pkCrits.forEach(function(pc,i){crits[i].weight=parseFloat(pc.weight)||0;});
+    }
     if(_pkCrits.length&&(!crits.length||_critLabels!==_pkLabels)){
       // Guardar notas actuales por label antes de reasignar IDs
       var _notasPorLabel={};
@@ -4766,6 +4793,8 @@ function goStep(n){
       });
       tst('📋 '+crits.length+' criterios cargados desde paquete');
     }
+    // Re-asociar notas cuyos IDs de criterio cambiaron (p. ej. tras editar pesos en Criterios)
+    _reasociarNotasPorNombre();
     // También cargar escala si está vacía
     if(paqueteActual&&paqueteActual.escala&&paqueteActual.escala.length&&(!SCALE.length||SCALE.length<2)){
       SCALE=paqueteActual.escala.map(function(s){
@@ -5162,22 +5191,31 @@ function seleccionarVersion(){
   if(lblEva)lblEva.innerHTML='Evaluador de '+vLabel+' <span style="color:var(--no)">*</span>';
   if(metaTitle)metaTitle.textContent='Editando: '+vLabel;
 
-  var critsActuales=crits.map(function(cc){return cc.label+'_'+cc.weight;}).sort().join('|');
-  var critsSnap=(hSel.critsSnap||[]).map(function(cc){return cc.label+'_'+cc.weight;}).sort().join('|');
-  var critsDifieren=critsSnap&&critsActuales!==critsSnap;
+  // Cambiar PESOS no invalida las calificaciones: cada nota (0–1) se conserva y el
+  // puntaje ponderado se recalcula con los pesos actuales. Solo los criterios NUEVOS
+  // (que no existían en esta versión) quedan sin calificar.
+  // Antes cualquier cambio de peso borraba todas las notas.
+  var _labsSnap=(hSel.critsSnap||[]).map(function(cc){return _verKey(cc.label);});
+  var _nuevos=_labsSnap.length?crits.filter(function(cc){return _labsSnap.indexOf(_verKey(cc.label))===-1;}):[];
+  var _pesoCambio=(hSel.critsSnap||[]).some(function(cs){
+    var ca=_critPorLabel(cs.label);return ca&&parseFloat(ca.weight)!==parseFloat(cs.weight);
+  });
 
   // Función para aplicar notas y construir eval
   function aplicarNotasYBuild(notas){
     notasEval[provActualId]=notas;
     buildEval();
+    if(_pesoCambio&&!_nuevos.length)tst('Pesos actualizados: el puntaje se recalculó con los pesos actuales',4000);
   }
 
-  if(critsDifieren){
-    notasEval[provActualId]={};
-    if(warn)warn.style.display='block';
-    buildEval();
-  } else {
-    if(warn)warn.style.display='none';
+  {
+    if(warn){
+      if(_nuevos.length){
+        warn.textContent='⚠️ Criterios nuevos sin calificar en esta versión: '+_nuevos.map(function(c){return c.label;}).join(', ')
+          +'. Las demás notas se conservan y el puntaje se recalcula con los pesos actuales.';
+        warn.style.display='block';
+      } else warn.style.display='none';
+    }
     // Limpiar notas en memoria para esta versión — evita que el Fallback 2 reutilice
     // datos de una versión distinta que se haya cargado antes en la misma sesión
     notasEval[provActualId]={};
