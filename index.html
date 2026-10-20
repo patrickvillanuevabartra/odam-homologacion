@@ -2936,6 +2936,7 @@ function safeJsonParse(v,d){try{var s=String(v||'');return s&&s!=='false'?JSON.p
 
 // ── Estado de la pantalla de paquetes ──
 var _pkCarga='cargando';               // 'cargando' | 'ok' | 'error'  (lista de paquetes)
+var _pkErrorTxt='';                    // detalle del error para mostrarlo en pantalla
 var _pkSync={id:null,estado:'idle',hora:''}; // sincronización del paquete activo: 'cargando' | 'ok' | 'error'
 
 function _pkNorm(s){
@@ -2970,6 +2971,9 @@ function cargarPaquetesDesdeSheets(){
   renderListaPaquetes();
   qdbFetch({accion:'cargarPaquetes'}, function(res){
     if(!res||!res.ok){
+      _pkErrorTxt=!res?'El servidor (Apps Script) no respondió en 25 segundos.'
+        :res.offline?'El navegador no pudo llegar al servidor (Apps Script). Revisa tu conexión a internet.'
+        :('El servidor respondió con un error: '+(res.error||'sin detalle'));
       _pkCarga='error';
       renderListaPaquetes();
       tst('⚠️ No se pudo conectar con QuintaDB');
@@ -3096,7 +3100,7 @@ function renderListaPaquetes(){
     if(_pkCarga==='cargando'){
       wrap.innerHTML='<div class="pk-state">Cargando paquetes desde QuintaDB…<br><small>La primera conexión del día puede tardar unos segundos.</small></div>';
     } else if(_pkCarga==='error'){
-      wrap.innerHTML='<div class="pk-state">No se pudo conectar con QuintaDB.<br>Revisa tu conexión e inténtalo de nuevo.<br><button class="btn btn-o btn-sm" onclick="cargarPaquetesDesdeSheets()">Reintentar</button></div>';
+      wrap.innerHTML='<div class="pk-state">No se pudieron cargar los paquetes.<br><small style="display:block;margin-top:6px;color:#991B1B;">'+esc(_pkErrorTxt)+'</small><button class="btn btn-o btn-sm" onclick="cargarPaquetesDesdeSheets()">Reintentar</button></div>';
     } else {
       wrap.innerHTML='<div class="pk-state">Todavía no tienes paquetes.<br>Crea el primero con el botón <strong>+ Nuevo paquete</strong>.</div>';
     }
