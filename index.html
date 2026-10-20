@@ -78,6 +78,42 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 .peso-bar-fill{height:100%;border-radius:4px;transition:width .35s,background .35s;}
 .peso-msg{font-size:.96rem;color:var(--muted);line-height:1.5;min-width:180px;}
 
+.regla-wrap{border-top:1px solid var(--border);background:var(--surface);padding:10px 14px 12px;}
+.rg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.rg-lbl{font-size:.8rem;font-weight:700;color:var(--text);}
+.rg-sel{padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:.82rem;font-family:inherit;background:white;max-width:100%;}
+.rg-note{font-size:.78rem;color:var(--muted);margin-top:6px;}
+.rg-body{margin-top:10px;display:flex;flex-direction:column;gap:9px;}
+.rg-field{display:flex;flex-direction:column;gap:3px;}
+.rg-field label{font-size:.76rem;font-weight:600;color:var(--muted);}
+.rg-field input,.rg-field textarea,.rg-niv textarea{width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:.83rem;font-family:inherit;box-sizing:border-box;resize:vertical;background:white;}
+.rg-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.rg-sub{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--subtle);margin-top:2px;}
+.rg-niv{display:grid;grid-template-columns:34px 78px 1fr;gap:8px;align-items:center;}
+.rg-chip{width:30px;height:30px;border-radius:7px;color:white;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.rg-rng{font-size:.76rem;color:var(--muted);}
+.rg-opt{font-size:.74rem;color:var(--muted);font-weight:400;}
+.rg-ia{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.rg-btn{padding:6px 12px;border-radius:7px;background:var(--blue-light);border:1px solid #BAE6FD;color:var(--blue);font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;}
+.rg-btn.ia{background:#F5F3FF;border-color:#DDD6FE;color:#6D28D9;}
+.rg-btn:disabled{opacity:.6;cursor:wait;}
+.rg-iaop{border:1px solid #DDD6FE;background:#FAF5FF;border-radius:8px;padding:8px 10px;margin-top:6px;}
+.rg-aprob{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.78rem;}
+.rg-tag{font-size:.7rem;padding:2px 7px;border-radius:10px;background:#E2E8F0;color:#334155;font-weight:600;}
+.rg-tag.ia{background:#EDE9FE;color:#6D28D9;}
+.rg-ok{color:#059669;}
+.rg-pend{color:#B45309;}
+.rg-err{font-size:.8rem;color:#991B1B;background:#FEE2E2;border:1px solid #FECACA;border-radius:7px;padding:7px 9px;margin-top:6px;}
+.ev-regla{background:#F8FAFC;border:1.5px dashed var(--border);border-radius:9px;padding:9px 11px;margin-bottom:10px;}
+.ev-regla-t{font-size:.76rem;font-weight:700;color:var(--muted);margin-bottom:6px;}
+.ev-niv{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;background:white;cursor:pointer;margin-bottom:5px;font-size:.84rem;text-align:left;width:100%;font-family:inherit;}
+.ev-niv.sel{box-shadow:0 0 0 2px var(--primary) inset;}
+.ev-niv .rg-chip{width:24px;height:24px;flex:none;font-size:.8rem;}
+.ev-cuant{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.ev-cuant label{font-size:.76rem;color:var(--muted);font-weight:600;display:block;margin-bottom:2px;}
+.ev-cuant input{width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:.9rem;box-sizing:border-box;}
+.ev-res{font-size:.8rem;margin-top:6px;color:var(--text);}
+@media(max-width:600px){.rg-2col,.ev-cuant{grid-template-columns:1fr;}.rg-niv{grid-template-columns:30px 1fr;}.rg-niv textarea{grid-column:1/-1;}}
 .crit-row{background:white;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px;}
 .crit-row-head{display:grid;grid-template-columns:1fr 110px 36px;align-items:center;padding:12px 14px;gap:10px;background:var(--surface);}
 .crit-name-inp{border:1.5px solid var(--border);border-radius:7px;padding:8px 12px;font-family:"IBM Plex Sans",sans-serif;font-size:1rem;font-weight:600;color:var(--text);width:100%;outline:none;background:white;}
@@ -1004,6 +1040,79 @@ if(_hd)_hd.textContent=new Date().toLocaleDateString('es-PE',{day:'2-digit',mont
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 function tst(m,dur){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},dur||2600);}
 function getCrit(id){return crits.find(function(c){return c.id===id;});}
+
+// ══ REGLAS DE MEDICIÓN POR CRITERIO (rúbrica / indicador) ══
+// tipo: 'manual' (nota directa, como antes) | 'cualitativo' (descriptores por nivel de la escala) | 'cuantitativo' (fórmula con datos tabulados)
+var CRIT_EXTRA_KEYS=['tipo','descriptores','formula','variables','fuente','como_medir','origen','aprobado_por','fecha_aprob'];
+function critSerial(c){
+  var o={label:c.label,weight:c.weight};
+  CRIT_EXTRA_KEYS.forEach(function(k){
+    var v=c[k];
+    if(v===undefined||v===null||v==='')return;
+    if(k==='tipo'&&v==='manual')return;
+    o[k]=JSON.parse(JSON.stringify(v));
+  });
+  return o;
+}
+var FORMULAS_CUANT={
+  proporcion:{nombre:'Proporción (a favor ÷ total)',vars:['Casos a favor','Total de casos'],
+    desc:'Nota = a favor ÷ total. Ej.: Reputación = 23 reseñas que recomiendan ÷ 25 reseñas = 0.920',
+    calc:function(a,b){return b>0?a/b:null;}},
+  menor_mejor:{nombre:'Menor es mejor (valor vs. referencia)',vars:['Valor del proveedor','Valor de referencia'],
+    desc:'Nota = 1 si el valor ≤ referencia; si la supera, baja en la misma proporción. Ej.: Precio S/150 vs. mercado S/249 = 1.000',
+    calc:function(a,b){if(!(b>0)||a<0)return null;return a<=b?1:Math.max(0,1-(a/b-1));}},
+  mayor_mejor:{nombre:'Lineal con meta (valor ÷ meta, tope 1)',vars:['Valor obtenido','Meta (valor que da 1.00)'],
+    desc:'Nota = valor ÷ meta, máximo 1. Ej.: Antigüedad 2.6 años con meta de 5 años = 0.520',
+    calc:function(a,b){return b>0?Math.min(1,Math.max(0,a/b)):null;}}
+};
+function critTipo(c){return (c&&c.tipo)||'manual';}
+function calcNotaCuant(c,v1,v2){
+  var f=FORMULAS_CUANT[c.formula||'proporcion'];if(!f)return null;
+  var a=parseFloat(String(v1).replace(',','.')),b=parseFloat(String(v2).replace(',','.'));
+  if(isNaN(a)||isNaN(b))return null;
+  var n=f.calc(a,b);if(n===null||isNaN(n))return null;
+  return Math.round(Math.min(1,Math.max(0,n))*1000)/1000;
+}
+// Nota que se asigna al elegir un nivel de la rúbrica: punto medio del rango del nivel (ajustable luego con el deslizador)
+function notaDeNivel(cat){
+  var s=SCALE.find(function(x){return x.cat===cat;});if(!s)return null;
+  return Math.round(((parseFloat(s.min)+parseFloat(s.max))/2)*1000)/1000;
+}
+function critVars(c){
+  var f=FORMULAS_CUANT[c.formula||'proporcion']||FORMULAS_CUANT.proporcion;
+  var v=(c.variables&&c.variables.length===2)?c.variables:f.vars;
+  return [v[0]||f.vars[0],v[1]||f.vars[1]];
+}
+function datosTexto(c,datos){
+  if(!datos)return '';
+  if(critTipo(c)==='cualitativo'&&datos.nivel){
+    return 'Nivel '+datos.nivel+': '+(((c.descriptores||{})[datos.nivel])||'');
+  }
+  if(critTipo(c)==='cuantitativo'&&(datos.v1!==undefined||datos.v2!==undefined)){
+    var vs=critVars(c);
+    return vs[0]+' = '+datos.v1+' · '+vs[1]+' = '+datos.v2+' · Fórmula: '+((FORMULAS_CUANT[c.formula||'proporcion']||{}).nombre||'');
+  }
+  return '';
+}
+function _datosProv(pid){
+  if(!evFiles[pid])evFiles[pid]={};
+  if(!evFiles[pid]['_datos'])evFiles[pid]['_datos']={};
+  return evFiles[pid]['_datos'];
+}
+// Recupera los datos crudos guardados en el historial (historial_json) si aún no están en memoria
+function _restaurarDatosDesdeHist(pid){
+  var dd=_datosProv(pid);
+  if(Object.keys(dd).length)return;
+  var regs=hist.filter(function(h){return h.provId===pid&&h.det&&h.det.length;});
+  if(!regs.length)return;
+  var ult=regs[regs.length-1];
+  ult.det.forEach(function(d){
+    if(!d.datos)return;
+    var c=crits.find(function(x){return _verKey(x.label)===_verKey(d.label);});
+    if(c)dd[c.id]=JSON.parse(JSON.stringify(d.datos));
+  });
+}
+
 function getProv(id){return provs.find(function(p){return p.id===id;});}
 
 // ── GESTIÓN DE PROVEEDORES ──
@@ -1651,6 +1760,7 @@ function enviarASheets(d,callback){
     det:d.det.map(function(r){return{
       label:r.label,weight:r.weight,nota:r.nota,cat:r.cat,pond:r.pond,
       comentario:r.comentario||'',
+      metodo:r.metodo||'manual',datos_txt:r.datos_txt||'',
       ev:(r.ev&&r.ev.length)?[JSON.stringify((r.ev||[]).map(function(f){
         return typeof f==='string'?{name:f,url:''}:{name:f.name||'',url:f.url||''};
       }))]:[]
@@ -1750,7 +1860,7 @@ function guardarEvalActual(){
   // Guardar notasSnap para poder restaurar en reevaluación
   d.notasSnap=JSON.parse(JSON.stringify(notasEval[provActualId]||{}));
   // Guardar snapshot de criterios, escala y plantilla usados en esta evaluación
-  d.critsSnap=crits.map(function(c){return{id:c.id,label:c.label,weight:c.weight};});
+  d.critsSnap=crits.map(function(c){return Object.assign({id:c.id},critSerial(c));});
   d.scaleSnap=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,color:s.color,bg:s.bg};});
   d.plantilla=paqueteActual&&(paqueteActual._plantillaActual||paqueteActual.plantillaActual)||'';
   d.propietario=getUsuarioCorreo();
@@ -1807,7 +1917,9 @@ function getProvData(pid){
     var si=getScaleByNota(nota);
     var hasNota=nev[c.id]!==undefined;
     var comentario=(evFiles[pid]&&evFiles[pid]['_coment']&&evFiles[pid]['_coment'][c.id])||'';
+    var datos=(evFiles[pid]&&evFiles[pid]['_datos']&&evFiles[pid]['_datos'][c.id])||null;
     return{label:c.label,weight:c.weight,cat:hasNota?si.cat:'—',nota:nota,pond:pond,
+      metodo:critTipo(c),datos:datos,datos_txt:datosTexto(c,datos),
       label_cal:hasNota?si.label:'No calificado',
       color:si?si.color:'var(--subtle)',bg:si?si.bg:'var(--surface)',
       ev:((evFiles[pid]||{})[c.id]||[]),
@@ -2299,7 +2411,7 @@ var _criteriosGuardados = false;
 function guardarCriteriosEnQDB(){
   if(!paqueteActual){tst('Selecciona un paquete primero');return;}
   if(!crits.length){tst('Agrega criterios primero');return;}
-  paqueteActual.criterios=crits.map(function(c){return{label:c.label,weight:c.weight};});
+  paqueteActual.criterios=crits.map(critSerial);
   var idx=_paquetesCache.findIndex(function(p){return p.id===paqueteActual.id;});
   if(idx>-1)_paquetesCache[idx].criterios=paqueteActual.criterios;
 
@@ -2314,7 +2426,7 @@ function guardarCriteriosEnQDB(){
     nombre=nombre.trim();
     // Guardar en biblioteca
     var nueva={id:'pt_'+Date.now(),nombre:nombre,
-      criterios:crits.map(function(c){return{label:c.label,weight:c.weight};}),
+      criterios:crits.map(critSerial),
       fechaCreacion:new Date().toLocaleString('es-PE')};
     _plantillasCache.push(nueva);
     guardarPlantillaEnSheets(nueva,function(){});
@@ -2361,6 +2473,7 @@ function verificarCriteriosGuardados(){
 function addCrit(preset){
   var id='c'+(++seq);
   var c=preset?{id:id,label:preset.label,weight:preset.weight}:{id:id,label:'',weight:0};
+  if(preset)CRIT_EXTRA_KEYS.forEach(function(k){if(preset[k]!==undefined)c[k]=JSON.parse(JSON.stringify(preset[k]));});
   crits.push(c);evFiles[id]=[];
   renderCrit(c);checkWeight();
 }
@@ -2380,12 +2493,139 @@ function renderCrit(c){
       +'</div>'
       +'<button class="btn-del-crit" onclick="delCrit(\''+c.id+'\')">🗑</button>'
     +'</div>'
-    +'<div style="padding:8px 14px 12px;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:8px;">'
-      +'<span style="font-size:1rem;">🏅</span>'
-      +'<span style="font-size:.78rem;color:var(--muted);">Se calificará según la <strong>Escala de Calificación</strong> definida en el paso siguiente.</span>'
-    +'</div>';
+    +'<div class="regla-wrap" id="regla-'+c.id+'"></div>';
 
   wrap.appendChild(div);
+  renderReglaPanel(c.id);
+}
+
+// ── Panel "¿Cómo se medirá?" de cada criterio (Paso 03) ──
+function _reglaEdit(id){var c=getCrit(id);if(!c)return null;_criteriosGuardados=false;if(c.aprobado_por){c.aprobado_por='';c.fecha_aprob='';_pintarAprob(id);}return c;}
+function _pintarAprob(id){
+  var c=getCrit(id),el=document.getElementById('raprob-'+id);if(!c||!el)return;
+  el.innerHTML=(c.origen==='IA'?'<span class="rg-tag ia">✨ Propuesto por IA</span>':'<span class="rg-tag">✍️ Definido por el usuario</span>')
+    +(c.aprobado_por?'<span class="rg-ok">✔ Aprobado por <strong>'+esc(c.aprobado_por)+'</strong> el '+esc(c.fecha_aprob)+'</span>'
+      :'<button class="rg-btn" onclick="aprobarRegla(\''+id+'\')">✔ Aprobar regla</button><span class="rg-pend">Pendiente de aprobación</span>');
+}
+function renderReglaPanel(id){
+  var c=getCrit(id),box=document.getElementById('regla-'+id);if(!c||!box)return;
+  var t=critTipo(c);
+  var h='<div class="rg-head"><span style="font-size:1rem;">🏅</span>'
+    +'<label class="rg-lbl">¿Cómo se medirá?</label>'
+    +'<select class="rg-sel" onchange="updCritTipo(\''+id+'\',this.value)">'
+      +'<option value="manual"'+(t==='manual'?' selected':'')+'>Nota directa 0–1 (como hasta ahora)</option>'
+      +'<option value="cualitativo"'+(t==='cualitativo'?' selected':'')+'>Rúbrica: descriptores por nivel de la escala</option>'
+      +'<option value="cuantitativo"'+(t==='cuantitativo'?' selected':'')+'>Indicador: datos tabulados + fórmula</option>'
+    +'</select></div>';
+  if(t==='manual'){
+    h+='<div class="rg-note">Se calificará según la <strong>Escala de Calificación</strong> definida en el paso siguiente.</div>';
+    box.innerHTML=h;return;
+  }
+  h+='<div class="rg-body">'
+    +'<div class="rg-field"><label>¿Cómo quieres medirlo? <span class="rg-opt">(opcional · orienta la propuesta de la IA)</span></label>'
+    +'<textarea rows="2" placeholder="Ej.: % de reseñas que recomiendan en Facebook; mínimo 10 reseñas" oninput="var c=_reglaEdit(\''+id+'\');if(c)c.como_medir=this.value;">'+esc(c.como_medir||'')+'</textarea></div>'
+    +'<div class="rg-ia"><button class="rg-btn ia" id="riabtn-'+id+'" onclick="proponerReglaIA(\''+id+'\')">✨ Proponer formas de medir con IA</button>'
+    +'<span class="rg-opt">La IA sugiere opciones; tú eliges, editas y apruebas.</span></div>'
+    +'<div id="riaops-'+id+'"></div>';
+  if(t==='cualitativo'){
+    var d=c.descriptores||{};
+    h+='<div class="rg-sub">Descriptores por nivel <span class="rg-opt">(niveles tomados de la Escala del Paso 04)</span></div>';
+    SCALE.forEach(function(s){
+      var col=s.color||getScaleColor(s.cat);
+      h+='<div class="rg-niv"><div class="rg-chip" style="background:'+col+'">'+esc(s.cat)+'</div>'
+        +'<div class="rg-rng">'+parseFloat(s.min).toFixed(2)+'–'+parseFloat(s.max).toFixed(2)+'</div>'
+        +'<textarea rows="2" placeholder="Qué debe cumplir el proveedor para estar en el nivel '+esc(s.cat)+'" oninput="var c=_reglaEdit(\''+id+'\');if(c){c.descriptores=c.descriptores||{};c.descriptores[\''+s.cat+'\']=this.value;}">'+esc(d[s.cat]||'')+'</textarea></div>';
+    });
+  } else {
+    var fk=c.formula||'proporcion',vs=critVars(c);
+    h+='<div class="rg-sub">Indicador</div>'
+      +'<div class="rg-field"><label>Fórmula</label><select class="rg-sel" onchange="updCritFormula(\''+id+'\',this.value)">'
+      +Object.keys(FORMULAS_CUANT).map(function(k){return '<option value="'+k+'"'+(k===fk?' selected':'')+'>'+FORMULAS_CUANT[k].nombre+'</option>';}).join('')
+      +'</select><div class="rg-opt" style="margin-top:4px;">'+esc(FORMULAS_CUANT[fk].desc)+'</div></div>'
+      +'<div class="rg-2col"><div class="rg-field"><label>Dato 1</label><input type="text" value="'+esc(vs[0])+'" oninput="var c=_reglaEdit(\''+id+'\');if(c){c.variables=critVars(c);c.variables[0]=this.value;}"></div>'
+      +'<div class="rg-field"><label>Dato 2</label><input type="text" value="'+esc(vs[1])+'" oninput="var c=_reglaEdit(\''+id+'\');if(c){c.variables=critVars(c);c.variables[1]=this.value;}"></div></div>'
+      +'<div class="rg-opt">La nota calculada (0–1) se convierte automáticamente en A/B/C/D con la Escala del Paso 04.</div>';
+  }
+  h+='<div class="rg-field"><label>Fuente de verificación</label><input type="text" placeholder="Ej.: SUNAT – Consulta RUC; Facebook – pestaña Opiniones" value="'+esc(c.fuente||'')+'" oninput="var c=_reglaEdit(\''+id+'\');if(c)c.fuente=this.value;"></div>'
+    +'<div class="rg-aprob" id="raprob-'+id+'"></div>'
+    +'</div>';
+  box.innerHTML=h;
+  _pintarAprob(id);
+}
+function updCritTipo(id,v){
+  var c=_reglaEdit(id);if(!c)return;
+  c.tipo=v;
+  if(v==='cualitativo'&&!c.descriptores)c.descriptores={};
+  if(v==='cuantitativo'&&!c.formula){c.formula='proporcion';c.variables=FORMULAS_CUANT.proporcion.vars.slice();}
+  if(!c.origen)c.origen='Manual';
+  renderReglaPanel(id);
+}
+function updCritFormula(id,v){
+  var c=_reglaEdit(id);if(!c)return;
+  c.formula=v;c.variables=FORMULAS_CUANT[v].vars.slice();
+  renderReglaPanel(id);
+}
+function aprobarRegla(id){
+  var c=getCrit(id);if(!c)return;
+  var t=critTipo(c);
+  if(t==='cualitativo'){
+    var faltan=SCALE.filter(function(s){return !((c.descriptores||{})[s.cat]||'').trim();});
+    if(faltan.length){tst('⚠️ Falta el descriptor del nivel '+faltan.map(function(s){return s.cat;}).join(', '));return;}
+  }
+  c.aprobado_por=getUsuarioNombre()||getUsuarioCorreo()||'Usuario';
+  c.fecha_aprob=new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  _criteriosGuardados=false;
+  _pintarAprob(id);
+  tst('✔ Regla aprobada — recuerda 💾 guardar los criterios');
+}
+// ── Propuesta con IA (vía Apps Script: accion=proponerRubrica) ──
+function proponerReglaIA(id){
+  var c=getCrit(id);if(!c)return;
+  if(!(c.label||'').trim()){tst('Escribe primero el nombre del criterio');return;}
+  var btn=document.getElementById('riabtn-'+id);
+  if(btn){btn.disabled=true;btn.textContent='⏳ Consultando a la IA…';}
+  var payload={
+    paquete:paqueteActual?paqueteActual.nombre:'',
+    productos:(productos||[]).map(function(p){return (p.nombre||'')+(p.descripcion?' — '+p.descripcion:'');}).slice(0,10),
+    criterio:c.label,peso:c.weight,tipo:critTipo(c),como_medir:c.como_medir||'',
+    escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,interp:s.interp||''};}),
+    formulas:Object.keys(FORMULAS_CUANT).map(function(k){return{clave:k,nombre:FORMULAS_CUANT[k].nombre,datos:FORMULAS_CUANT[k].vars};})
+  };
+  qdbFetch({accion:'proponerRubrica',datos:JSON.stringify(payload)},function(res){
+    if(btn){btn.disabled=false;btn.textContent='✨ Proponer formas de medir con IA';}
+    var box=document.getElementById('riaops-'+id);if(!box)return;
+    if(!res||!res.ok||!res.opciones||!res.opciones.length){
+      box.innerHTML='<div class="rg-err">No se pudo obtener la propuesta'+(res&&res.error?': '+esc(String(res.error)):'')+'. Verifica que el Apps Script tenga la acción <code>proponerRubrica</code> y la clave de la API.</div>';
+      return;
+    }
+    window._iaOps=window._iaOps||{};window._iaOps[id]=res.opciones;
+    box.innerHTML='<div class="rg-sub">Opciones sugeridas por la IA</div>'+res.opciones.map(function(o,i){
+      var det=o.tipo==='cuantitativo'
+        ?'<div class="rg-opt">Fórmula: '+esc((FORMULAS_CUANT[o.formula]||{}).nombre||o.formula||'')+' · Datos: '+esc((o.variables||[]).join(' / '))+'</div>'
+        :'<div class="rg-opt">'+Object.keys(o.descriptores||{}).map(function(k){return '<strong>'+esc(k)+':</strong> '+esc(o.descriptores[k]);}).join('<br>')+'</div>';
+      return '<div class="rg-iaop"><div><strong>'+esc(o.titulo||('Opción '+(i+1)))+'</strong> <span class="rg-tag">'+(o.tipo==='cuantitativo'?'Indicador':'Rúbrica')+'</span></div>'
+        +'<div style="font-size:.8rem;margin:3px 0;">'+esc(o.como_medir||'')+'</div>'
+        +(o.fuente?'<div class="rg-opt">Fuente: '+esc(o.fuente)+'</div>':'')+det
+        +'<button class="rg-btn" style="margin-top:6px;" onclick="usarOpcionIA(\''+id+'\','+i+')">Usar esta opción</button></div>';
+    }).join('');
+  },60000);
+}
+function usarOpcionIA(id,i){
+  var c=getCrit(id),o=window._iaOps&&window._iaOps[id]&&window._iaOps[id][i];if(!c||!o)return;
+  c.tipo=o.tipo==='cuantitativo'?'cuantitativo':'cualitativo';
+  c.como_medir=o.como_medir||c.como_medir||'';
+  if(o.fuente)c.fuente=o.fuente;
+  if(c.tipo==='cuantitativo'){
+    c.formula=FORMULAS_CUANT[o.formula]?o.formula:'proporcion';
+    c.variables=(o.variables&&o.variables.length===2)?o.variables.slice():FORMULAS_CUANT[c.formula].vars.slice();
+  } else {
+    c.descriptores={};
+    SCALE.forEach(function(s){c.descriptores[s.cat]=(o.descriptores||{})[s.cat]||'';});
+  }
+  c.origen='IA';c.aprobado_por='';c.fecha_aprob='';
+  _criteriosGuardados=false;
+  renderReglaPanel(id);
+  tst('✨ Opción aplicada — revísala, edítala y apruébala');
 }
 
 function updCritLbl(id,v){getCrit(id).label=v;_criteriosGuardados=false;}
@@ -3884,7 +4124,7 @@ function guardarPaqueteActual(){
   if(!paqueteActual)return;
   // Solo sobrescribir criterios si crits tiene datos
   if(crits.length>0){
-    paqueteActual.criterios=crits.map(function(c){return{label:c.label,weight:c.weight};});
+    paqueteActual.criterios=crits.map(critSerial);
   }
   if(SCALE.length>0){
     paqueteActual.escala=SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp};});
@@ -4516,7 +4756,7 @@ function renderPlantillas(){
           editor.appendChild(critsWrap);
 
           // Clonar criterios para editar
-          var tempCrits=plantilla.criterios.map(function(c){return{label:c.label,weight:c.weight};});
+          var tempCrits=plantilla.criterios.map(function(c){return JSON.parse(JSON.stringify(c));});
 
           function renderTempCrits(){
             critsWrap.innerHTML='';
@@ -4580,7 +4820,7 @@ function renderPlantillas(){
             var suma=tempCrits.reduce(function(s,c){return s+(parseInt(c.weight)||0);},0);
             if(suma!==100){tst('Los pesos deben sumar 100%');return;}
             plantilla.nombre=nuevoNombre;
-            plantilla.criterios=tempCrits.map(function(c){return{label:c.label.trim(),weight:parseInt(c.weight)||0};});
+            plantilla.criterios=tempCrits.map(function(c){return Object.assign({},c,{label:(c.label||'').trim(),weight:parseInt(c.weight)||0});});
             var arr=getPlantillas();
             var idx=arr.findIndex(function(p){return p.id===plantilla.id;});
             if(idx>-1)arr[idx]=plantilla; else arr.push(plantilla);
@@ -4653,7 +4893,7 @@ function guardarPlantilla(){
   var existente=arr.findIndex(function(p){return p.nombre.toLowerCase()===nombre.toLowerCase();});
   var nueva={
     id:'pt_'+Date.now(),nombre:nombre,
-    criterios:crits.map(function(c){return{label:c.label,weight:c.weight};}),
+    criterios:crits.map(critSerial),
     fechaCreacion:new Date().toLocaleString('es-PE')
   };
   function doGuardar(pt,arrActual){
@@ -4739,6 +4979,7 @@ function _reasociarNotasPorNombre(){
   Object.keys(notasEval).forEach(function(pid){notasEval[pid]=rekey(notasEval[pid]);});
   Object.keys(evFiles).forEach(function(pid){
     if(evFiles[pid]&&evFiles[pid]['_coment'])evFiles[pid]['_coment']=rekey(evFiles[pid]['_coment']);
+    if(evFiles[pid]&&evFiles[pid]['_datos'])evFiles[pid]['_datos']=rekey(evFiles[pid]['_datos']);
   });
   _registrarCrits();
 }
@@ -5399,6 +5640,7 @@ function buildEval(loading){
   }
   if(!notasEval[provActualId])notasEval[provActualId]={};
   if(!evFiles[provActualId])evFiles[provActualId]={};
+  _restaurarDatosDesdeHist(provActualId);
 
   // ── Si se pidió modo loading: mostrar solo spinner, NO construir sliders aún ──
   if(loading){
@@ -5460,6 +5702,8 @@ function buildEval(loading){
     var left=document.createElement('div');
     var cT=document.createElement('div'); cT.className='ev-cal-title'; cT.textContent='Calificación del criterio (0.00 – 1.00)';
     left.appendChild(cT);
+    var _regla=_construirReglaEval(c);
+    if(_regla)left.appendChild(_regla);
     var cZ=document.createElement('div'); cZ.className='cal-zone';
 
     // fila nota
@@ -5644,8 +5888,73 @@ function buildEval(loading){
     // restaurar nota previa
     var prev=prevNotas[c.id];
     if(prev!==undefined){ sl.value=Math.round(prev*1000); setNota(c.id,prev,true); }
+    else {
+      // Sin nota previa pero con datos de medición guardados: recalcular la nota desde los datos
+      var _dg=_datosProv(provActualId)[c.id],_nr=null;
+      if(_dg&&critTipo(c)==='cualitativo'&&_dg.nivel)_nr=notaDeNivel(_dg.nivel);
+      if(_dg&&critTipo(c)==='cuantitativo')_nr=calcNotaCuant(c,_dg.v1,_dg.v2);
+      if(_nr!==null&&_nr!==undefined){ sl.value=Math.round(_nr*1000); setNota(c.id,_nr,true); }
+    }
   });
   recalc();
+}
+
+// ── Bloque de medición en el Paso 06 (rúbrica o indicador) ──
+function _construirReglaEval(c){
+  var t=critTipo(c);if(t==='manual')return null;
+  var dd=_datosProv(provActualId),dat=dd[c.id]||{};
+  var box=document.createElement('div');box.className='ev-regla';box.id='evregla-'+c.id;
+  var tit=document.createElement('div');tit.className='ev-regla-t';
+  tit.textContent=(t==='cualitativo'?'📋 Elige el nivel que describe al proveedor':'🧮 Ingresa los datos tabulados')
+    +(c.fuente?' · Fuente: '+c.fuente:'');
+  box.appendChild(tit);
+  if(t==='cualitativo'){
+    SCALE.forEach(function(s){
+      var b=document.createElement('button');b.type='button';
+      b.className='ev-niv'+(dat.nivel===s.cat?' sel':'');b.id='evniv-'+c.id+'-'+s.cat;
+      b.innerHTML='<span class="rg-chip" style="background:'+(s.color||getScaleColor(s.cat))+'">'+esc(s.cat)+'</span>'
+        +'<span>'+esc(((c.descriptores||{})[s.cat])||'(sin descriptor)')+'</span>';
+      b.onclick=function(){
+        dd[c.id]={nivel:s.cat};
+        SCALE.forEach(function(x){var e=document.getElementById('evniv-'+c.id+'-'+x.cat);if(e)e.classList.toggle('sel',x.cat===s.cat);});
+        var n=notaDeNivel(s.cat);
+        var sl=document.getElementById('csl-'+c.id);if(sl)sl.value=Math.round(n*1000);
+        setNota(c.id,n,true);
+      };
+      box.appendChild(b);
+    });
+    var hint=document.createElement('div');hint.className='rg-opt';
+    hint.textContent='Al elegir un nivel se asigna el punto medio de su rango; puedes afinar la nota con el deslizador.';
+    box.appendChild(hint);
+  } else {
+    var vs=critVars(c);
+    var g=document.createElement('div');g.className='ev-cuant';
+    var res=document.createElement('div');res.className='ev-res';res.id='evres-'+c.id;
+    var inps=[];
+    [0,1].forEach(function(i){
+      var w=document.createElement('div');
+      var l=document.createElement('label');l.textContent=vs[i];
+      var inp=document.createElement('input');inp.type='number';inp.step='any';inp.inputMode='decimal';
+      inp.value=(i===0?dat.v1:dat.v2);if(inp.value==='undefined')inp.value='';
+      w.appendChild(l);w.appendChild(inp);g.appendChild(w);inps.push(inp);
+    });
+    function recalcCuant(){
+      var v1=inps[0].value,v2=inps[1].value;
+      dd[c.id]={v1:v1,v2:v2};
+      var n=calcNotaCuant(c,v1,v2);
+      if(n===null){res.textContent=(v1!==''||v2!=='')?'⚠️ Completa ambos datos con valores válidos.':'';return;}
+      res.innerHTML='= <strong>'+n.toFixed(3)+'</strong> · '+esc((FORMULAS_CUANT[c.formula||'proporcion']||{}).nombre||'');
+      var sl=document.getElementById('csl-'+c.id);if(sl)sl.value=Math.round(n*1000);
+      setNota(c.id,n,true);
+    }
+    inps.forEach(function(inp){inp.addEventListener('input',recalcCuant);});
+    box.appendChild(g);box.appendChild(res);
+    if(dat.v1!==undefined&&dat.v2!==undefined){
+      var n0=calcNotaCuant(c,dat.v1,dat.v2);
+      if(n0!==null)res.innerHTML='= <strong>'+n0.toFixed(3)+'</strong> · '+esc((FORMULAS_CUANT[c.formula||'proporcion']||{}).nombre||'');
+    }
+  }
+  return box;
 }
 
 function onSlider(id,val){
