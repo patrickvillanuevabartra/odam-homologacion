@@ -2619,6 +2619,8 @@ function proponerReglaIA(id){
   if(!(c.label||'').trim()){tst('Escribe primero el nombre del criterio');return;}
   var btn=document.getElementById('riabtn-'+id);
   if(btn){btn.disabled=true;btn.textContent='⏳ Consultando a la IA…';}
+  var boxIni=document.getElementById('riaops-'+id);
+  if(boxIni)boxIni.innerHTML='<div class="rg-espera">⏳ La IA está preparando las propuestas. Puede tardar hasta 1 minuto; no cierres la página.</div>';
   var payload={
     paquete:paqueteActual?paqueteActual.nombre:'',
     productos:(productos||[]).map(function(p){return (p.nombre||'')+(p.descripcion?' — '+p.descripcion:'');}).slice(0,10),
@@ -2644,7 +2646,7 @@ function proponerReglaIA(id){
         box.innerHTML='<div class="rg-err"><strong>La IA de Google (Gemini) sigue saturada.</strong> No es un error de la aplicación ni de tus datos: es una congestión temporal del servicio. '
           +'Espera de 2 a 5 minutos y vuelve a pulsar «Proponer formas de medir con IA». Mientras tanto puedes escribir tú mismo los descriptores.</div>';
       } else if(!res){
-        box.innerHTML='<div class="rg-err">La consulta tardó demasiado y no llegó respuesta. Vuelve a pulsar «Proponer formas de medir con IA».</div>';
+        box.innerHTML='<div class="rg-err">La IA no respondió en 2 minutos y medio. Vuelve a pulsar «Proponer formas de medir con IA»; la segunda vez suele ser más rápida.</div>';
       } else {
         box.innerHTML='<div class="rg-err">No se pudo obtener la propuesta'+(err?': '+esc(err):'')+'.'
           +(/clave|api.?key|accion|acción|no reconocida|permission|403|401/i.test(err)?' Verifica que el Apps Script tenga la acción <code>proponerRubrica</code> y la clave de la API.':' Vuelve a intentarlo en unos minutos.')+'</div>';
@@ -2662,7 +2664,7 @@ function proponerReglaIA(id){
         +(o.fuente?'<div class="rg-opt">Fuente: '+esc(o.fuente)+'</div>':'')+det
         +'<button class="rg-btn" style="margin-top:6px;" onclick="usarOpcionIA(\''+id+'\','+i+')">Usar esta opción</button></div>';
     }).join('');
-  },60000);
+  },150000);
   }
   pedir();
 }
