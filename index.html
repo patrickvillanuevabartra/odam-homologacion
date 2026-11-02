@@ -80,21 +80,21 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 
 .regla-wrap{border-top:1px solid var(--border);background:var(--surface);padding:10px 14px 12px;}
 .rg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.rg-lbl{font-size:.8rem;font-weight:700;color:var(--text);}
-.rg-sel{padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:.82rem;font-family:inherit;background:white;max-width:100%;}
-.rg-note{font-size:.78rem;color:var(--muted);margin-top:6px;}
+.rg-lbl{font-size:.92rem;font-weight:700;color:var(--text);}
+.rg-sel{padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:.9rem;font-family:inherit;background:white;max-width:100%;}
+.rg-note{font-size:.86rem;line-height:1.5;color:var(--muted);margin-top:6px;}
 .rg-body{margin-top:10px;display:flex;flex-direction:column;gap:9px;}
 .rg-field{display:flex;flex-direction:column;gap:3px;}
-.rg-field label{font-size:.76rem;font-weight:600;color:var(--muted);}
-.rg-field input,.rg-field textarea,.rg-niv textarea{width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:.83rem;font-family:inherit;box-sizing:border-box;resize:vertical;background:white;}
+.rg-field label{font-size:.88rem;font-weight:600;color:var(--muted);}
+.rg-field input,.rg-field textarea,.rg-niv textarea{width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:.92rem;line-height:1.45;font-family:inherit;box-sizing:border-box;resize:vertical;background:white;}
 .rg-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .rg-sub{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--subtle);margin-top:2px;}
 .rg-niv{display:grid;grid-template-columns:34px 78px 1fr;gap:8px;align-items:center;}
 .rg-chip{width:30px;height:30px;border-radius:7px;color:white;font-weight:800;display:flex;align-items:center;justify-content:center;}
 .rg-rng{font-size:.76rem;color:var(--muted);}
-.rg-opt{font-size:.74rem;color:var(--muted);font-weight:400;}
+.rg-opt{font-size:.82rem;color:var(--muted);font-weight:400;}
 .rg-ia{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.rg-btn{padding:6px 12px;border-radius:7px;background:var(--blue-light);border:1px solid #BAE6FD;color:var(--blue);font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;}
+.rg-btn{padding:7px 13px;border-radius:7px;background:var(--blue-light);border:1px solid #BAE6FD;color:var(--blue);font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;}
 .rg-btn.ia{background:#F5F3FF;border-color:#DDD6FE;color:#6D28D9;}
 .rg-btn:disabled{opacity:.6;cursor:wait;}
 .rg-iaop{border:1px solid #DDD6FE;background:#FAF5FF;border-radius:8px;padding:8px 10px;margin-top:6px;}
@@ -103,7 +103,11 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 .rg-tag.ia{background:#EDE9FE;color:#6D28D9;}
 .rg-ok{color:#059669;}
 .rg-pend{color:#B45309;}
-.rg-err{font-size:.8rem;color:#991B1B;background:#FEE2E2;border:1px solid #FECACA;border-radius:7px;padding:7px 9px;margin-top:6px;}
+.rg-err{font-size:.88rem;line-height:1.5;color:#991B1B;background:#FEE2E2;border:1px solid #FECACA;border-radius:7px;padding:7px 9px;margin-top:6px;}
+.rg-ayuda{background:#F5F3FF;border:1px solid #DDD6FE;border-radius:8px;padding:9px 11px;font-size:.88rem;line-height:1.5;color:#3B0764;}
+.rg-ayuda b{color:#5B21B6;}
+.rg-ej{display:block;margin-top:6px;padding:7px 9px;background:white;border:1px dashed #C4B5FD;border-radius:7px;color:#334155;font-style:italic;}
+.rg-espera{font-size:.88rem;line-height:1.5;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:7px;padding:7px 9px;margin-top:6px;}
 .ev-regla{background:#F8FAFC;border:1.5px dashed var(--border);border-radius:9px;padding:9px 11px;margin-bottom:10px;}
 .ev-regla-t{font-size:.76rem;font-weight:700;color:var(--muted);margin-bottom:6px;}
 .ev-niv{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;background:white;cursor:pointer;margin-bottom:5px;font-size:.84rem;text-align:left;width:100%;font-family:inherit;}
@@ -2513,17 +2517,24 @@ function renderReglaPanel(id){
   var h='<div class="rg-head"><span style="font-size:1rem;">🏅</span>'
     +'<label class="rg-lbl">¿Cómo se medirá?</label>'
     +'<select class="rg-sel" onchange="updCritTipo(\''+id+'\',this.value)">'
-      +'<option value="manual"'+(t==='manual'?' selected':'')+'>Nota directa 0–1 (como hasta ahora)</option>'
+      +(t==='manual'?'<option value="" selected disabled>— Elige cómo se medirá —</option>':'')
       +'<option value="cualitativo"'+(t==='cualitativo'?' selected':'')+'>Rúbrica: descriptores por nivel de la escala</option>'
       +'<option value="cuantitativo"'+(t==='cuantitativo'?' selected':'')+'>Indicador: datos tabulados + fórmula</option>'
     +'</select></div>';
   if(t==='manual'){
-    h+='<div class="rg-note">Se calificará según la <strong>Escala de Calificación</strong> definida en el paso siguiente.</div>';
+    h+='<div class="rg-note">Elige <strong>Rúbrica</strong> si el criterio se juzga por niveles descritos con palabras '
+      +'(por ejemplo, la reputación o la antigüedad), o <strong>Indicador</strong> si se calcula con datos numéricos '
+      +'(por ejemplo, el % de entregas a tiempo). Mientras no elijas, este criterio se califica con una nota directa de 0 a 1.</div>';
     box.innerHTML=h;return;
   }
   h+='<div class="rg-body">'
-    +'<div class="rg-field"><label>¿Cómo quieres medirlo? <span class="rg-opt">(opcional · orienta la propuesta de la IA)</span></label>'
-    +'<textarea rows="2" placeholder="Ej.: % de reseñas que recomiendan en Facebook; mínimo 10 reseñas" oninput="var c=_reglaEdit(\''+id+'\');if(c)c.como_medir=this.value;">'+esc(c.como_medir||'')+'</textarea></div>'
+    +'<div class="rg-ayuda"><b>✨ Pregúntale a la IA cómo medir este criterio.</b> Escribe en el recuadro de abajo, con tus palabras, '
+      +'<b>qué dato quieres revisar</b>, <b>dónde se verifica</b> y <b>qué consideras bueno o malo</b>. '
+      +'Luego pulsa «Proponer formas de medir con IA»: te dará opciones para elegir, editar y aprobar. Si lo dejas vacío, la IA propone según el nombre del criterio.'
+      +'<span class="rg-ej" id="rgej-'+id+'">Ejemplo: '+esc(_ejemploIA(c,t))+'</span>'
+      +'<button type="button" class="rg-btn" style="margin-top:6px;" onclick="usarEjemploIA(\''+id+'\')">Copiar este ejemplo al recuadro</button></div>'
+    +'<div class="rg-field"><label>Tu consulta a la IA <span class="rg-opt">(opcional)</span></label>'
+    +'<textarea id="rgcm-'+id+'" rows="3" placeholder="Escribe aquí qué dato revisar, dónde se verifica y qué es bueno o malo" oninput="var c=_reglaEdit(\''+id+'\');if(c)c.como_medir=this.value;">'+esc(c.como_medir||'')+'</textarea></div>'
     +'<div class="rg-ia"><button class="rg-btn ia" id="riabtn-'+id+'" onclick="proponerReglaIA(\''+id+'\')">✨ Proponer formas de medir con IA</button>'
     +'<span class="rg-opt">La IA sugiere opciones; tú eliges, editas y apruebas.</span></div>'
     +'<div id="riaops-'+id+'"></div>';
@@ -2578,6 +2589,30 @@ function aprobarRegla(id){
   _pintarAprob(id);
   tst('✔ Regla aprobada — recuerda 💾 guardar los criterios');
 }
+// Ejemplo práctico de consulta según el tipo elegido (y el nombre del criterio si se reconoce)
+function _ejemploIA(c,t){
+  var n=(c&&c.label||'').toLowerCase();
+  if(t==='cuantitativo'){
+    if(/puntual|entrega|plazo/.test(n))return 'Quiero medir el porcentaje de pedidos entregados en la fecha pactada sobre el total de pedidos del último año. Lo verifico con las guías de remisión y las órdenes de compra. 95 % o más es excelente; menos de 70 % es inaceptable.';
+    if(/precio|costo/.test(n))return 'Quiero comparar el precio del proveedor con el precio promedio de mercado del mismo producto, usando 3 cotizaciones. Si es igual o menor al promedio es lo mejor; si es 20 % más caro o más, es lo peor.';
+    return 'Quiero medir el porcentaje de reseñas positivas (4 o 5 estrellas) sobre el total de reseñas en Google Maps y Facebook, con un mínimo de 10 reseñas. 90 % o más es excelente; menos de 60 % es malo.';
+  }
+  if(/antig|experien|años/.test(n))return 'Quiero medir los años de funcionamiento de la empresa usando la fecha de inicio de actividades que aparece en la Consulta RUC de SUNAT. Más de 10 años es excelente; de 5 a 10, bueno; de 2 a 5, regular; menos de 2 años, insuficiente.';
+  if(/reputa|opini|reseñ|referen/.test(n))return 'Quiero medir la reputación revisando las opiniones en Facebook y Google Maps y si tiene quejas en Indecopi. Muchas opiniones positivas y sin quejas es excelente; opiniones mixtas, regular; quejas o sanciones, insuficiente.';
+  if(/certific|calidad|iso/.test(n))return 'Quiero verificar si la empresa tiene certificación ISO 9001 u otra vigente, revisando el certificado y su fecha de vencimiento. Certificación vigente del servicio es excelente; en trámite, regular; ninguna, insuficiente.';
+  return 'Quiero medir este criterio con un documento o dato que se pueda comprobar (por ejemplo, Consulta RUC de SUNAT, certificados o referencias de otros clientes). Explica qué es excelente, bueno, regular e insuficiente.';
+}
+function usarEjemploIA(id){
+  var c=_reglaEdit(id);if(!c)return;
+  var ta=document.getElementById('rgcm-'+id);
+  var ej=_ejemploIA(c,critTipo(c));
+  if(ta&&ta.value.trim()&&ta.value.trim()!==ej&&!confirm('El recuadro ya tiene texto. ¿Reemplazarlo por el ejemplo?'))return;
+  c.como_medir=ej;if(ta){ta.value=ej;ta.focus();}
+  tst('Ejemplo copiado: adáptalo a tu caso y pulsa «Proponer formas de medir con IA»');
+}
+// Gemini a veces responde 503 (saturado) o 429 (demasiadas consultas): es temporal, se reintenta solo
+function _iaSaturada(err){return /\b(503|429|500)\b|high demand|overload|unavailable|resource.?exhausted|try again later/i.test(String(err||''));}
+
 // ── Propuesta con IA (vía Apps Script: accion=proponerRubrica) ──
 function proponerReglaIA(id){
   var c=getCrit(id);if(!c)return;
@@ -2591,13 +2626,32 @@ function proponerReglaIA(id){
     escala:SCALE.map(function(s){return{cat:s.cat,min:s.min,max:s.max,interp:s.interp||''};}),
     formulas:Object.keys(FORMULAS_CUANT).map(function(k){return{clave:k,nombre:FORMULAS_CUANT[k].nombre,datos:FORMULAS_CUANT[k].vars};})
   };
+  var ESPERAS=[5,12,25],intento=0;
+  function pedir(){
   qdbFetch({accion:'proponerRubrica',datos:JSON.stringify(payload)},function(res){
-    if(btn){btn.disabled=false;btn.textContent='✨ Proponer formas de medir con IA';}
     var box=document.getElementById('riaops-'+id);if(!box)return;
     if(!res||!res.ok||!res.opciones||!res.opciones.length){
-      box.innerHTML='<div class="rg-err">No se pudo obtener la propuesta'+(res&&res.error?': '+esc(String(res.error)):'')+'. Verifica que el Apps Script tenga la acción <code>proponerRubrica</code> y la clave de la API.</div>';
+      var err=res&&res.error?String(res.error):'';
+      if(_iaSaturada(err)&&intento<ESPERAS.length){
+        var seg=ESPERAS[intento++];
+        box.innerHTML='<div class="rg-espera">⏳ El servicio de IA de Google está saturado en este momento. Se volverá a intentar solo en '+seg+' segundos (intento '+(intento+1)+' de '+(ESPERAS.length+1)+'). No cierres la página.</div>';
+        if(btn)btn.textContent='⏳ Reintentando…';
+        setTimeout(pedir,seg*1000);
+        return;
+      }
+      if(btn){btn.disabled=false;btn.textContent='✨ Proponer formas de medir con IA';}
+      if(_iaSaturada(err)){
+        box.innerHTML='<div class="rg-err"><strong>La IA de Google (Gemini) sigue saturada.</strong> No es un error de la aplicación ni de tus datos: es una congestión temporal del servicio. '
+          +'Espera de 2 a 5 minutos y vuelve a pulsar «Proponer formas de medir con IA». Mientras tanto puedes escribir tú mismo los descriptores.</div>';
+      } else if(!res){
+        box.innerHTML='<div class="rg-err">La consulta tardó demasiado y no llegó respuesta. Vuelve a pulsar «Proponer formas de medir con IA».</div>';
+      } else {
+        box.innerHTML='<div class="rg-err">No se pudo obtener la propuesta'+(err?': '+esc(err):'')+'.'
+          +(/clave|api.?key|accion|acción|no reconocida|permission|403|401/i.test(err)?' Verifica que el Apps Script tenga la acción <code>proponerRubrica</code> y la clave de la API.':' Vuelve a intentarlo en unos minutos.')+'</div>';
+      }
       return;
     }
+    if(btn){btn.disabled=false;btn.textContent='✨ Proponer formas de medir con IA';}
     window._iaOps=window._iaOps||{};window._iaOps[id]=res.opciones;
     box.innerHTML='<div class="rg-sub">Opciones sugeridas por la IA</div>'+res.opciones.map(function(o,i){
       var det=o.tipo==='cuantitativo'
@@ -2609,6 +2663,8 @@ function proponerReglaIA(id){
         +'<button class="rg-btn" style="margin-top:6px;" onclick="usarOpcionIA(\''+id+'\','+i+')">Usar esta opción</button></div>';
     }).join('');
   },60000);
+  }
+  pedir();
 }
 function usarOpcionIA(id,i){
   var c=getCrit(id),o=window._iaOps&&window._iaOps[id]&&window._iaOps[id][i];if(!c||!o)return;
