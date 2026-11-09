@@ -267,6 +267,12 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 /* ══ PASO 1 · SELECCIÓN DE PAQUETE ══ */
 .pk-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px;}
 .pk-h{font-size:1.55rem;font-weight:700;color:var(--primary);line-height:1.2;letter-spacing:-.01em;}
+.paso-nota{display:flex;gap:12px;align-items:flex-start;background:#F0F9FF;border:1.5px solid #BAE6FD;border-left:5px solid #0284c7;border-radius:10px;padding:14px 16px;margin:0 0 18px;font-size:1rem;line-height:1.6;color:#0C4A6E;}
+.paso-nota .pn-ico{font-size:1.5rem;line-height:1;flex-shrink:0;}
+.paso-nota b{color:#075985;}
+.paso-nota .pn-tit{font-weight:700;font-size:1.05rem;color:#075985;margin-bottom:3px;}
+.paso-nota ul{margin:6px 0 0 18px;}
+.paso-nota li{margin:2px 0;}
 .pk-lead{font-size:.95rem;color:var(--muted);margin-top:6px;max-width:62ch;line-height:1.55;}
 .pk-layout{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:22px;align-items:start;}
 .pk-col-list{display:flex;flex-direction:column;gap:12px;min-width:0;}
@@ -397,14 +403,14 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 
 <!-- PASOS -->
 <div class="steps">
-  <button class="sbtn active" onclick="goStep(0)"><span class="snum">01</span>Paquete</button>
-  <button class="sbtn" onclick="goStep(1)"><span class="snum">02</span>Productos/Servicios</button>
-  <button class="sbtn" onclick="goStep(2)"><span class="snum">03</span>Criterios</button>
-  <button class="sbtn" onclick="goStep(3)"><span class="snum">04</span>Escala</button>
-  <button class="sbtn" onclick="goStep(4)"><span class="snum">05</span>Proveedores</button>
-  <button class="sbtn" onclick="goStep(5)"><span class="snum">06</span>Evaluación</button>
-  <button class="sbtn" onclick="goStep(6)"><span class="snum">07</span>Resultados</button>
-  <button class="sbtn" id="btnStepAdmin" onclick="goStep(7)" style="display:none;background:#7C3AED;color:white;"><span class="snum">⚙</span>Admin</button>
+  <button class="sbtn active" data-step="0" onclick="goStep(0)"><span class="snum">01</span>Paquete</button>
+  <button class="sbtn" data-step="1" onclick="goStep(1)"><span class="snum">02</span>Productos/Servicios</button>
+  <button class="sbtn" data-step="3" onclick="goStep(3)"><span class="snum">03</span>Escala</button>
+  <button class="sbtn" data-step="2" onclick="goStep(2)"><span class="snum">04</span>Criterios</button>
+  <button class="sbtn" data-step="4" onclick="goStep(4)"><span class="snum">05</span>Proveedores</button>
+  <button class="sbtn" data-step="5" onclick="goStep(5)"><span class="snum">06</span>Evaluación</button>
+  <button class="sbtn" data-step="6" onclick="goStep(6)"><span class="snum">07</span>Resultados</button>
+  <button class="sbtn" data-step="7" id="btnStepAdmin" onclick="goStep(7)" style="display:none;background:#7C3AED;color:white;"><span class="snum">⚙</span>Admin</button>
 </div>
 </div><!-- /portal-sticky -->
 <div class="portal-inner">
@@ -417,6 +423,12 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
       <p class="pk-lead">Un paquete reúne los productos, criterios, escala y proveedores de un proceso de homologación. Selecciona uno para retomar donde lo dejaste o crea uno nuevo.</p>
     </div>
   </div>
+  <div class="paso-nota"><span class="pn-ico">💡</span><div>
+    <div class="pn-tit">¿Paquete o categoría?</div>
+    El <b>paquete</b> es <b>un proceso de evaluación concreto</b>: los proveedores que comparas para una necesidad, con los mismos criterios y la misma escala. Ejemplo: <i>Tabiquería drywall y albañilería menor – La Molina 2026</i>.<br>
+    La <b>categoría</b> es el <b>tipo de producto o servicio</b> y se escribe en el paso 2. Se repite en varios paquetes y sirve para agruparlos. Ejemplo: <i>Construcción y remodelación</i>.<br>
+    La categoría es el cajón; cada paquete es una vez que abres ese cajón para evaluar.
+  </div></div>
 
   <div class="pk-layout">
     <!-- Columna izquierda: lista -->
@@ -430,7 +442,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
         <label class="pk-new-lbl" for="nuevoPaqueteNombre">Nombre del nuevo paquete</label>
         <input id="nuevoPaqueteNombre" class="pk-new-inp" type="text" placeholder="Ej.: Proveedores de limpieza 2026" maxlength="80"
           onkeydown="if(event.key==='Enter'){crearPaquete();}else if(event.key==='Escape'){toggleNuevoPaquete(false);}" oninput="validarNombrePaquete()">
-        <div id="pkNuevoMsg" class="pk-new-msg">Empieza con la escala de calificación estándar A–D; podrás cambiarla en el paso 4.</div>
+        <div id="pkNuevoMsg" class="pk-new-msg">Empieza con la escala de calificación estándar A–D; podrás cambiarla en el paso 3.</div>
         <div class="pk-new-acts">
           <button class="btn btn-o btn-sm" onclick="toggleNuevoPaquete(false)">Cancelar</button>
           <button class="btn btn-p btn-sm" id="btnCrearPaquete" onclick="crearPaquete()">Crear paquete</button>
@@ -467,11 +479,11 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 <!-- ══════════ P2: TABLA DE CALIFICACIÓN ══════════ -->
 <div class="panel" id="panel-2">
   <div class="acts" style="margin-bottom:16px;">
-    <button class="btn btn-o" onclick="goStep(2)">← Criterios</button>
-    <button class="btn btn-p" id="btnNext0top" onclick="sincronizarPaqueteYAvanzar(4)">Continuar → Proveedores →</button>
+    <button class="btn btn-o" onclick="goStep(1)">← Productos</button>
+    <button class="btn btn-p" id="btnNext0top" onclick="sincronizarPaqueteYAvanzar(2)">Continuar → Criterios →</button>
   </div>
   <p class="stitle" style="display:flex;justify-content:space-between;align-items:center;">
-    <span>Paso 4 — Escala de Calificación</span>
+    <span>Paso 3 — Escala de Calificación</span>
     <span style="display:flex;align-items:center;gap:8px;">
       <span id="badgeEscalaActual" style="display:none;padding:3px 10px;border-radius:20px;background:#FEF9C3;color:#92400E;font-size:.75rem;font-weight:600;"></span>
       <button class="btn btn-o btn-sm" onclick="guardarEscalaEnQDB();" style="font-size:.8rem;">💾 Guardar ahora</button>
@@ -479,6 +491,14 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   </p>
 
   <!-- ESCALA A/B/C/D -->
+  <div class="paso-nota"><span class="pn-ico">🏅</span><div>
+    <div class="pn-tit">Primero la escala, después los criterios</div>
+    Define los niveles de calificación (A, B, C, D) y el rango de cada uno, de 0 a 1.
+    Los criterios del <b>paso 4</b> se miden con estos niveles: cada descripción de rúbrica corresponde a un nivel,
+    y cada indicador da una nota de 0 a 1 que cae en uno de estos rangos.
+    <ul><li>Ejemplo: <b>A</b> de 0,90 a 1,00 = proveedor recomendable; <b>D</b> de 0,00 a 0,60 = no aprobado.</li>
+    <li>Pulsa <b>💾 Guardar ahora</b> antes de continuar.</li></ul>
+  </div></div>
   <div id="tab-escala">
 
     <div class="escala-card">
@@ -532,8 +552,8 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
     </div>
 
     <div class="acts" style="margin-top:16px;">
-      <button class="btn btn-o" onclick="goStep(2)">← Criterios</button>
-      <button class="btn btn-p" id="btnNext0bot" onclick="sincronizarPaqueteYAvanzar(4)">Continuar → Proveedores →</button>
+      <button class="btn btn-o" onclick="goStep(1)">← Productos</button>
+      <button class="btn btn-p" id="btnNext0bot" onclick="sincronizarPaqueteYAvanzar(2)">Continuar → Criterios →</button>
     </div>
   </div><!-- /tab-escala -->
 
@@ -542,17 +562,25 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 <!-- ══════════ P1: CRITERIOS DE EVALUACIÓN ══════════ -->
 <div class="panel" id="panel-1">
   <div class="acts" style="margin-bottom:16px;">
-    <button class="btn btn-o" onclick="goStep(1)">← Productos</button>
-    <button class="btn btn-p" id="btnNext1crit" onclick="sincronizarPaqueteYAvanzar(3)" disabled>Continuar → Escala →</button>
+    <button class="btn btn-o" onclick="goStep(3)">← Escala</button>
+    <button class="btn btn-p" id="btnNext1crit" onclick="sincronizarPaqueteYAvanzar(4)" disabled>Continuar → Proveedores →</button>
   </div>
   <p class="stitle" style="display:flex;justify-content:space-between;align-items:center;">
-  <span>Paso 3 — Criterios de Evaluación</span>
+  <span>Paso 4 — Criterios de Evaluación</span>
   <span style="display:flex;align-items:center;gap:8px;">
     <span id="badgePlantillaActual" style="display:none;padding:3px 10px;border-radius:20px;background:#EFF6FF;color:#0284c7;font-size:.75rem;font-weight:600;"></span>
     <button class="btn btn-o btn-sm" onclick="guardarCriteriosEnQDB();" style="font-size:.8rem;">💾 Guardar ahora</button>
   </span>
 </p>
 
+  <div class="paso-nota"><span class="pn-ico">📋</span><div>
+    <div class="pn-tit">¿Qué vas a evaluar y cuánto pesa cada cosa?</div>
+    Escribe cada criterio (por ejemplo: <i>Puntualidad</i>, <i>Precio</i>) y su <b>peso en %</b>. Los pesos deben sumar <b>100 %</b>.
+    En <b>¿Cómo se medirá?</b> elige:
+    <ul><li><b>Rúbrica</b>: describes qué debe cumplir el proveedor en cada nivel de la escala del paso 3.</li>
+    <li><b>Indicador</b>: se calcula con dos datos y una fórmula (por ejemplo, entregas a tiempo ÷ entregas totales).</li></ul>
+    La IA puede proponerte cómo medir cada criterio. Al terminar, aprueba cada regla y pulsa <b>💾 Guardar ahora</b>.
+  </div></div>
   <div id="tab-criterios"><!-- inner -->
 
     <div class="peso-banner">
@@ -569,7 +597,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 
     <div class="acts" style="margin-top:14px;">
       <button class="btn btn-o btn-sm" onclick="togglePlantillas()" id="btnPlantillas">📂 Usar plantilla de criterios</button>
-      <button class="btn btn-p" id="btnNext0" onclick="sincronizarPaqueteYAvanzar(2)" disabled>Continuar → Escala →</button>
+      <button class="btn btn-p" id="btnNext0" onclick="sincronizarPaqueteYAvanzar(4)" disabled>Continuar → Proveedores →</button>
     </div>
 
     <!-- PANEL DE PLANTILLAS -->
@@ -597,8 +625,8 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   </div><!-- /tab-criterios -->
 
   <div class="acts" style="margin-top:16px;">
-    <button class="btn btn-o" onclick="goStep(1)">← Productos</button>
-    <button class="btn btn-p" id="btnNext1crit2" onclick="sincronizarPaqueteYAvanzar(3)">Continuar → Escala →</button>
+    <button class="btn btn-o" onclick="goStep(3)">← Escala</button>
+    <button class="btn btn-p" id="btnNext1crit2" onclick="sincronizarPaqueteYAvanzar(4)">Continuar → Proveedores →</button>
   </div>
 
 </div><!-- /panel-1 criterios -->
@@ -608,9 +636,15 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 <div class="panel" id="panel-6">
   <div class="acts" style="margin-bottom:16px;">
     <button class="btn btn-o" onclick="goStep(0)">← Paquete</button>
-    <button class="btn btn-p" id="btnNext6" onclick="avanzarDesdeProdutos()">Continuar → Criterios →</button>
+    <button class="btn btn-p" id="btnNext6" onclick="avanzarDesdeProdutos()">Continuar → Escala →</button>
   </div>
   <p class="stitle">Paso 2 — Productos / Servicios</p>
+  <div class="paso-nota"><span class="pn-ico">📦</span><div>
+    <div class="pn-tit">¿Qué vas a contratar o comprar?</div>
+    Registra cada producto o servicio de este paquete y guárdalo con 💾.
+    En <b>Categoría</b> escribe el tipo de producto o servicio (por ejemplo: <i>Construcción y remodelación</i>, <i>Servicio de limpieza</i>).
+    Escríbela <b>siempre igual</b> en todos los paquetes para poder agrupar y comparar proveedores después.
+  </div></div>
   <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
     <button class="btn btn-o" onclick="addProducto()">+ Agregar Producto/Servicio</button>
     <button class="btn btn-o" onclick="cargarProductosDesdeQDB()" title="Importar productos guardados en QuintaDB — útil cuando subes el archivo maestro de la universidad">🔄 Importar desde QuintaDB</button>
@@ -619,27 +653,30 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div id="productosList"></div>
   <div class="acts">
     <button class="btn btn-o" onclick="goStep(0)">← Paquete</button>
-    <button class="btn btn-p" onclick="avanzarDesdeProdutos()">Continuar → Criterios →</button>
+    <button class="btn btn-p" onclick="avanzarDesdeProdutos()">Continuar → Escala →</button>
   </div>
 </div>
 
 <div class="panel" id="panel-3">
   <div class="acts" style="margin-bottom:16px;">
-    <button class="btn btn-o" onclick="goStep(3)">← Escala</button>
+    <button class="btn btn-o" onclick="goStep(2)">← Criterios</button>
     <button class="btn btn-p" id="btnNext2top" onclick="sincronizarPaqueteYAvanzar(5)" disabled>Continuar → Evaluación →</button>
   </div>
   <p class="stitle">Paso 5 — Proveedores a Evaluar</p>
 
-  <p style="font-size:.96rem;color:var(--muted);margin-bottom:16px;padding:12px 16px;background:var(--surface);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;line-height:1.6;">
-    Agrega todos los proveedores que deseas evaluar. Luego, en el paso 6, seleccionas uno por uno y le asignas las calificaciones.
-  </p>
+  <div class="paso-nota"><span class="pn-ico">🏢</span><div>
+    <div class="pn-tit">¿A qué empresas vas a comparar?</div>
+    Registra a cada proveedor con su <b>RUC</b>, datos de contacto y los productos o servicios que ofrece, y guárdalo con 💾.
+    Con el RUC puedes verificar su antigüedad y estado en la Consulta RUC de SUNAT.
+    En el <b>paso 6</b> los calificas uno por uno.
+  </div></div>
 
   <div id="provList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
 
   <button class="btn-add-crit" onclick="addProv()" style="margin-bottom:0;">＋ Agregar Proveedor</button>
 
   <div class="acts" style="margin-top:18px">
-    <button class="btn btn-o" onclick="goStep(3)">← Escala</button>
+    <button class="btn btn-o" onclick="goStep(2)">← Criterios</button>
     <button class="btn btn-p" id="btnNext2" onclick="sincronizarPaqueteYAvanzar(5)" disabled>Continuar → Evaluación →</button>
   </div>
 </div>
@@ -651,6 +688,13 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
     <button class="btn btn-g" id="btnVerResultados" onclick="goStep(6)" style="opacity:.5;cursor:not-allowed;" disabled>Ver Resultados →</button>
   </div>
   <p class="stitle" id="evalStepTitle">Paso 6 — Evaluación</p>
+  <div class="paso-nota"><span class="pn-ico">✍️</span><div>
+    <div class="pn-tit">Califica a cada proveedor</div>
+    Elige el proveedor y, en cada criterio, asigna su nota de 0 a 1 (según la rúbrica o el indicador definidos en el paso 4).
+    Agrega los links de evidencia con <b>«+ Agregar link»</b> y pulsa <b>Guardar</b>.
+    <ul><li><b>Calificación ponderada</b> de un criterio = nota × peso. Ejemplo: 0,90 × 20 % = 0,18.</li>
+    <li><b>Calificación total</b> = suma de las calificaciones ponderadas (de 0 a 1). Esa cifra se ubica en la escala del paso 3 y da la categoría final A, B, C o D.</li></ul>
+  </div></div>
 
   <!-- Selector desplegable de proveedor -->
   <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -743,6 +787,11 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
     <button class="btn btn-o" onclick="goStep(5)">← Evaluación</button>
   </div>
   <p class="stitle">Paso 7 — Resultados de Todos los Proveedores</p>
+  <div class="paso-nota"><span class="pn-ico">📊</span><div>
+    <div class="pn-tit">Compara y decide</div>
+    Aquí ves a todos los proveedores evaluados, ordenados por su <b>calificación total</b> (suma de nota × peso de cada criterio, de 0 a 1) y su categoría A–D según la escala del paso 3.
+    Puedes ver el historial de reevaluaciones de cada uno y descargar los resultados en Excel.
+  </div></div>
 
   <!-- BARRA DE BÚSQUEDA -->
   <div style="display:flex;gap:9px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
@@ -2540,7 +2589,7 @@ function renderReglaPanel(id){
     +'<div id="riaops-'+id+'"></div>';
   if(t==='cualitativo'){
     var d=c.descriptores||{};
-    h+='<div class="rg-sub">Descriptores por nivel <span class="rg-opt">(niveles tomados de la Escala del Paso 04)</span></div>';
+    h+='<div class="rg-sub">Descriptores por nivel <span class="rg-opt">(niveles tomados de la Escala del Paso 03)</span></div>';
     SCALE.forEach(function(s){
       var col=s.color||getScaleColor(s.cat);
       h+='<div class="rg-niv"><div class="rg-chip" style="background:'+col+'">'+esc(s.cat)+'</div>'
@@ -2555,7 +2604,7 @@ function renderReglaPanel(id){
       +'</select><div class="rg-opt" style="margin-top:4px;">'+esc(FORMULAS_CUANT[fk].desc)+'</div></div>'
       +'<div class="rg-2col"><div class="rg-field"><label>Dato 1</label><input type="text" value="'+esc(vs[0])+'" oninput="var c=_reglaEdit(\''+id+'\');if(c){c.variables=critVars(c);c.variables[0]=this.value;}"></div>'
       +'<div class="rg-field"><label>Dato 2</label><input type="text" value="'+esc(vs[1])+'" oninput="var c=_reglaEdit(\''+id+'\');if(c){c.variables=critVars(c);c.variables[1]=this.value;}"></div></div>'
-      +'<div class="rg-opt">La nota calculada (0–1) se convierte automáticamente en A/B/C/D con la Escala del Paso 04.</div>';
+      +'<div class="rg-opt">La nota calculada (0–1) se convierte automáticamente en A/B/C/D con la Escala del Paso 03.</div>';
   }
   h+='<div class="rg-field"><label>Fuente de verificación</label><input type="text" placeholder="Ej.: SUNAT – Consulta RUC; Facebook – pestaña Opiniones" value="'+esc(c.fuente||'')+'" oninput="var c=_reglaEdit(\''+id+'\');if(c)c.fuente=this.value;"></div>'
     +'<div class="rg-aprob" id="raprob-'+id+'"></div>'
@@ -2869,11 +2918,11 @@ function doLogout(){
   }
   // Verificar criterios sin guardar
   if(!_criteriosGuardados && crits.length){
-    if(!confirm('⚠️ Tienes criterios sin guardar en el Paso 3.\n\n¿Salir sin guardarlos?')) return;
+    if(!confirm('⚠️ Tienes criterios sin guardar en el Paso 4.\n\n¿Salir sin guardarlos?')) return;
   }
   // Verificar escala sin guardar
   if(!_escalaGuardada && SCALE.length){
-    if(!confirm('⚠️ Tienes cambios en la escala de calificación sin guardar (Paso 4).\n\n¿Salir sin guardarlos?')) return;
+    if(!confirm('⚠️ Tienes cambios en la escala de calificación sin guardar (Paso 3).\n\n¿Salir sin guardarlos?')) return;
   }
   // Verificar plantillas sin guardar en biblioteca
   var ptSinGuardar=_plantillasCache.filter(function(p){return !p._qid;});
@@ -3351,12 +3400,12 @@ function pkResumen(pk){
     {paso:1,nom:'Productos y servicios',
       estado:nProd?'ok':'pend',
       txt:nProd?_pkPlural(nProd,'producto o servicio registrado','productos o servicios registrados'):'Aún no hay productos ni servicios'},
-    {paso:2,nom:'Criterios de evaluación',
-      estado:!crs.length?'pend':(suma===100?'ok':'mid'),
-      txt:!crs.length?'Aún no hay criterios':_pkPlural(crs.length,'criterio','criterios')+(suma===100?'; los pesos suman 100 %':'; los pesos suman '+suma+' % y deben sumar 100 %')},
     {paso:3,nom:'Escala de calificación',
       estado:esc.length>=2?'ok':'pend',
       txt:esc.length>=2?_pkPlural(esc.length,'nivel','niveles')+' ('+esc.map(function(s){return s.cat;}).join(', ')+')':'Falta definir la escala'},
+    {paso:2,nom:'Criterios de evaluación',
+      estado:!crs.length?'pend':(suma===100?'ok':'mid'),
+      txt:!crs.length?'Aún no hay criterios':_pkPlural(crs.length,'criterio','criterios')+(suma===100?'; los pesos suman 100 %':'; los pesos suman '+suma+' % y deben sumar 100 %')},
     {paso:4,nom:'Proveedores',
       estado:cargando?'pend':(nProv?'ok':'pend'),
       txt:cargando?'Consultando QuintaDB…':(nProv?_pkPlural(nProv,'proveedor registrado','proveedores registrados'):'Aún no hay proveedores')},
@@ -3478,10 +3527,10 @@ function renderDetallePaquete(){
   if(pk.propietarioNombre)sub.push('Responsable: '+esc(pk.propietarioNombre));
   var fc=_pkFechaCorta(pk);if(fc)sub.push('Última actualización: '+fc);
 
-  var filas=r.pasos.map(function(p){
+  var filas=r.pasos.map(function(p,ix){
     var cls=p.estado+(p.paso===r.siguiente&&!cargando?' next':'');
     var bloq=cargando&&p.paso>=4;
-    var marca=p.estado==='ok'?'✓':String(p.paso+1);
+    var marca=p.estado==='ok'?'✓':String(ix+2);
     return '<li class="pk-paso '+cls+'">'
       +'<span class="pk-num" aria-hidden="true">'+marca+'</span>'
       +'<div><div class="pk-paso-nom">'+p.nom+'</div><div class="pk-paso-est">'+p.txt+'</div></div>'
@@ -3532,7 +3581,7 @@ function validarNombrePaquete(){
   inp.classList.toggle('err',!!dup);
   msg.classList.toggle('err',!!dup);
   msg.textContent=dup?'Ya tienes un paquete con ese nombre. Usa uno distinto.'
-                     :'Empieza con la escala de calificación estándar A–D; podrás cambiarla en el paso 4.';
+                     :'Empieza con la escala de calificación estándar A–D; podrás cambiarla en el paso 3.';
   return !dup;
 }
 
@@ -4043,7 +4092,7 @@ function avanzarDesdeProdutos(){
   if(_productosModificados){
     if(!confirm('⚠️ Hay cambios en productos sin guardar.\n\n¿Continuar sin guardarlos?')) return;
   }
-  sincronizarPaqueteYAvanzar(2);
+  sincronizarPaqueteYAvanzar(3);
 }
 
 function verificarProductosSinGuardar(){
@@ -4094,7 +4143,7 @@ function renderProductos(){
 
     var catInp = document.createElement('input');
     catInp.type='text'; catInp.value=p.categoria||'';
-    catInp.placeholder='Categoría (ej: Textil, Servicio, Limpieza...)';
+    catInp.placeholder='Categoría: tipo de producto o servicio (ej.: Construcción y remodelación)'; catInp.title='Tipo de producto o servicio. Escríbelo siempre igual para agrupar proveedores de distintos paquetes.';
     catInp.style.cssText='flex:1;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-family:inherit;font-size:.95rem;';
     (function(idx){catInp.oninput=function(){productos[idx].categoria=this.value;if(paqueteActual)paqueteActual.productos=productos;};})(i);
 
@@ -4422,13 +4471,18 @@ function guardarPaqueteSheets(pk,callback){
 
 // Sincronizar paquete cuando avanzas de paso
 function sincronizarPaqueteYAvanzar(destino){
-  // Si venimos de criterios (destino=3=Calificación), verificar que estén guardados
-  if(destino===3 && !_criteriosGuardados){
+  // Escala → Criterios: la escala debe estar guardada (los criterios se miden con ella)
+  if(destino===2 && !_escalaGuardada){
+    alert('⚠️ Debes guardar la escala de calificación antes de continuar.\n\nHaz clic en "💾 Guardar ahora".');
+    return;
+  }
+  // Criterios → Proveedores: los criterios deben estar guardados
+  if(destino===4 && !_criteriosGuardados){
     alert('⚠️ Debes guardar los criterios antes de continuar.\n\nHaz clic en "💾 Guardar ahora".');
     return;
   }
   // Verificar plantillas sin guardar en biblioteca
-  if(destino===3){
+  if(destino===4){
     var ptSinGuardar=_plantillasCache.filter(function(p){return !p._qid;});
     if(ptSinGuardar.length){
       var nombres=ptSinGuardar.map(function(p){return '"'+p.nombre+'"';}).join(', ');
@@ -4444,10 +4498,6 @@ function sincronizarPaqueteYAvanzar(destino){
       alert('⚠️ Tienes proveedores sin guardar.\n\nUsa el botón 💾 de cada proveedor antes de continuar.');
       return;
     }
-  }
-  if(destino===4 && !_escalaGuardada){
-    alert('⚠️ Debes guardar la escala de calificación antes de continuar.\n\nHaz clic en "💾 Guardar ahora".');
-    return;
   }
   guardarPaqueteActual();
   goStep(destino);
@@ -4987,6 +5037,18 @@ function loadDefaults(){
 
 
 // ── NAVEGACIÓN ──
+// Orden en pantalla de los pasos internos (Escala va antes que Criterios)
+var ORDEN_PASOS=[0,1,3,2,4,5,6,7];
+function _marcarPasos(n){
+  var pos=ORDEN_PASOS.indexOf(n);
+  document.querySelectorAll('.sbtn').forEach(function(b){
+    var st=parseInt(b.getAttribute('data-step'),10);
+    b.classList.remove('active','done');
+    if(st===n)b.classList.add('active');
+    else if(st!==7&&ORDEN_PASOS.indexOf(st)<pos)b.classList.add('done');
+  });
+}
+
 function goStepBack(n){
   // Al ir al paso PROVEEDORES (n===3), limpiar DOM duplicados
   if(n===3){
@@ -5011,11 +5073,7 @@ function goStepBack(n){
   }
   var pids=['panel-0','panel-6','panel-1','panel-2','panel-3','panel-4','panel-5','panel-7'];
   pids.forEach(function(pid,i){var el=document.getElementById(pid);if(el)el.classList.toggle('active',i===n);});
-  document.querySelectorAll('.sbtn').forEach(function(b,i){
-    b.classList.remove('active','done');
-    if(i===n)b.classList.add('active');
-    else if(i<n)b.classList.add('done');
-  });
+  _marcarPasos(n);
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -5051,11 +5109,7 @@ function goStep(n){
   }
   var pids=['panel-0','panel-6','panel-1','panel-2','panel-3','panel-4','panel-5','panel-7'];
   pids.forEach(function(pid,i){var el=document.getElementById(pid);if(el)el.classList.toggle('active',i===n);});
-  document.querySelectorAll('.sbtn').forEach(function(b,i){
-    b.classList.remove('active','done');
-    if(i===n)b.classList.add('active');
-    else if(i<n)b.classList.add('done');
-  });
+  _marcarPasos(n);
 
   // ── Paso 1: Paquetes — refrescar avance ──
   if(n===0){renderListaPaquetes();}
