@@ -274,6 +274,26 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 .paso-nota ul{margin:6px 0 0 18px;}
 .paso-nota li{margin:2px 0;}
 .pk-lead{font-size:.95rem;color:var(--muted);margin-top:6px;max-width:62ch;line-height:1.55;}
+.pk-cat-h{font-size:1.15rem;font-weight:700;color:var(--text);margin:4px 0 10px;display:flex;align-items:center;gap:10px;}
+.pk-cat-h .pk-num-g{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:var(--primary);color:white;font-size:1rem;}
+.pk-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:22px;}
+.pk-cat{display:flex;align-items:center;gap:10px;text-align:left;font-family:inherit;background:white;border:2px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--text);min-height:64px;}
+.pk-cat:hover{border-color:var(--primary);}
+.pk-cat.on{border-color:var(--primary);background:#EFF6FF;box-shadow:0 0 0 3px rgba(2,132,199,.15);}
+.pk-cat-ico{font-size:1.7rem;line-height:1;flex-shrink:0;}
+.pk-cat-nom{font-size:1rem;font-weight:700;line-height:1.25;}
+.pk-cat-n{font-size:.9rem;color:var(--muted);margin-top:2px;}
+.pk-cat-sel{width:100%;padding:10px;font-size:1rem;font-family:inherit;border:1.5px solid var(--border);border-radius:8px;background:white;margin-bottom:8px;}
+.pk-d-cat{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 4px;font-size:1rem;}
+.pk-d-cat select{padding:7px 10px;font-size:.98rem;font-family:inherit;border:1.5px solid var(--border);border-radius:8px;background:white;}
+.et-chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px;}
+.et-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:.95rem;cursor:pointer;background:white;user-select:none;}
+.et-chip input{width:18px;height:18px;margin:0;cursor:pointer;}
+.et-chip.on{border-color:#059669;background:#ECFDF5;color:#065F46;font-weight:600;}
+.adm-cat{background:white;border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.adm-lbl{display:block;font-size:.95rem;font-weight:700;color:var(--text);margin:10px 0 4px;}
+.adm-inp{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;box-sizing:border-box;}
+.adm-ayuda{font-size:.9rem;color:var(--muted);margin-top:3px;line-height:1.45;}
 .pk-layout{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:22px;align-items:start;}
 .pk-col-list{display:flex;flex-direction:column;gap:12px;min-width:0;}
 .pk-toolbar{display:flex;gap:8px;}
@@ -419,16 +439,20 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 <div class="panel active" id="panel-0">
   <div class="pk-head">
     <div class="pk-head-txt">
-      <h2 class="pk-h">Elige el paquete de evaluación</h2>
-      <p class="pk-lead">Un paquete reúne los productos, criterios, escala y proveedores de un proceso de homologación. Selecciona uno para retomar donde lo dejaste o crea uno nuevo.</p>
+      <h2 class="pk-h">Elige la categoría y luego el paquete</h2>
+      <p class="pk-lead">Primero abre el <b>cajón</b> (la categoría: qué tipo de producto o servicio compras). Dentro verás sus <b>paquetes</b>: cada uno es un proceso de evaluación con sus productos, criterios, escala y proveedores.</p>
     </div>
   </div>
   <div class="paso-nota"><span class="pn-ico">💡</span><div>
     <div class="pn-tit">¿Paquete o categoría?</div>
-    El <b>paquete</b> es <b>un proceso de evaluación concreto</b>: los proveedores que comparas para una necesidad, con los mismos criterios y la misma escala. Ejemplo: <i>Tabiquería drywall y albañilería menor – La Molina 2026</i>.<br>
-    La <b>categoría</b> es el <b>tipo de producto o servicio</b> y se escribe en el paso 2. Se repite en varios paquetes y sirve para agruparlos. Ejemplo: <i>Construcción y remodelación</i>.<br>
-    La categoría es el cajón; cada paquete es una vez que abres ese cajón para evaluar.
+    La <b>categoría</b> es el <b>cajón</b>: el tipo de producto o servicio. Es una lista fija que mantiene el administrador, y cada una trae sus <b>etiquetas</b> y <b>criterios sugeridos</b>. Ejemplo: <i>🏗️ Construcción y remodelación</i>.<br>
+    El <b>paquete</b> es <b>un proceso de evaluación concreto</b> dentro de ese cajón: los proveedores que comparas para una necesidad, con los mismos criterios y la misma escala. Ejemplo: <i>Tabiquería drywall y albañilería menor – La Molina 2026</i>.<br>
+    Por eso el orden es: <b>1)</b> elige la categoría, <b>2)</b> elige o crea el paquete. Si no encuentras la categoría que necesitas, pídesela al administrador.
   </div></div>
+
+  <div class="pk-cat-h"><span class="pk-num-g">1</span>Elige la categoría (el cajón)</div>
+  <div id="pkCats" class="pk-cats" role="listbox" aria-label="Categorías"></div>
+  <div class="pk-cat-h"><span class="pk-num-g">2</span><span id="pkCatTitulo">Elige o crea el paquete</span></div>
 
   <div class="pk-layout">
     <!-- Columna izquierda: lista -->
@@ -439,6 +463,8 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
       </div>
 
       <div id="pkNuevoForm" class="pk-new" hidden>
+        <label class="pk-new-lbl" for="nuevoPaqueteCat">Categoría (cajón) *</label>
+        <select id="nuevoPaqueteCat" class="pk-cat-sel" onchange="validarNombrePaquete()"></select>
         <label class="pk-new-lbl" for="nuevoPaqueteNombre">Nombre del nuevo paquete</label>
         <input id="nuevoPaqueteNombre" class="pk-new-inp" type="text" placeholder="Ej.: Proveedores de limpieza 2026" maxlength="80"
           onkeydown="if(event.key==='Enter'){crearPaquete();}else if(event.key==='Escape'){toggleNuevoPaquete(false);}" oninput="validarNombrePaquete()">
@@ -642,8 +668,8 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div class="paso-nota"><span class="pn-ico">📦</span><div>
     <div class="pn-tit">¿Qué vas a contratar o comprar?</div>
     Registra cada producto o servicio de este paquete y guárdalo con 💾.
-    En <b>Categoría</b> escribe el tipo de producto o servicio (por ejemplo: <i>Construcción y remodelación</i>, <i>Servicio de limpieza</i>).
-    Escríbela <b>siempre igual</b> en todos los paquetes para poder agrupar y comparar proveedores después.
+    La <b>categoría</b> ya viene del paquete (la elegiste en el paso 1), así que no tienes que escribirla.
+    Marca las <b>etiquetas</b> que describen cada producto o servicio. Ejemplo: en un presupuesto de obra, <i>Trabajos de drywall</i> lleva la etiqueta <i>Drywall / tabiquería</i> y <i>Trabajos de albañilería</i> la etiqueta <i>Albañilería</i>.
   </div></div>
   <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
     <button class="btn btn-o" onclick="addProducto()">+ Agregar Producto/Servicio</button>
@@ -869,6 +895,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
     <button id="adminTab2" onclick="switchAdminTab(2)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">📦 Todos los Paquetes</button>
     <button id="adminTab3" onclick="switchAdminTab(3)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">🔍 Proveedores Restringidos</button>
     <button id="adminTab4" onclick="switchAdminTab(4)" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">⚙️ Reglas Globales</button>
+    <button id="adminTab5" onclick="switchAdminTab(5);adminRenderCategorias();" style="flex:1;padding:11px 14px;background:var(--surface);border:none;border-left:1.5px solid var(--border);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--muted);">🗂️ Categorías</button>
   </div>
 
   <!-- Tab 1: Usuarios -->
@@ -928,6 +955,25 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
       <button onclick="adminGuardarReglas()" style="margin-top:16px;padding:11px 24px;border-radius:8px;background:var(--primary);color:white;border:none;font-size:.96rem;font-weight:700;cursor:pointer;font-family:inherit;">💾 Guardar reglas</button>
       <div id="reglaStatus" style="margin-top:10px;font-size:.86rem;"></div>
     </div>
+  </div>
+
+  <!-- Tab 5: Categorías -->
+  <div id="adminTabPanel5" style="display:none;">
+    <div class="paso-nota"><span class="pn-ico">🗂️</span><div>
+      <div class="pn-tit">Categorías (cajones) de homologación</div>
+      Aquí defines la lista fija de categorías que verán todos los usuarios en el paso 1. Cada categoría tiene:
+      <b>etiquetas</b> (para marcar qué es cada producto o servicio en el paso 2) y <b>criterios sugeridos</b> con su peso (se cargan solos al crear un paquete nuevo; el usuario puede ajustarlos en el paso 4).
+      Si desactivas una categoría deja de ofrecerse para paquetes nuevos, pero los paquetes que ya la usan la conservan.
+    </div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="font-size:1rem;font-weight:700;" id="admCatConteo">Categorías</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="cargarCategorias(adminRenderCategorias)" class="btn btn-o btn-sm">🔄 Actualizar</button>
+        <button onclick="adminEditarCategoria(null)" class="btn btn-p btn-sm">+ Nueva categoría</button>
+      </div>
+    </div>
+    <div id="admCatForm" class="adm-cat" style="display:none;border-color:var(--primary);"></div>
+    <div id="admCatLista"></div>
   </div>
 </div>
 
@@ -2800,6 +2846,7 @@ function iniciarSesion(){
       _usuarioActual=JSON.parse(s);
       document.getElementById('loginOverlay').style.display='none';
       aplicarUsuario();
+      cargarCategorias();
       cargarPaquetesDesdeSheets();
       cargarEvaluadoresDesdeSheets();
       cargarPlantillasDesdeSheets();
@@ -2900,6 +2947,7 @@ function _establecerUsuario(nombre, correo){
   try{localStorage.setItem('homolog_last_correo',correo);localStorage.setItem('homolog_last_nombre',nombre);}catch(e){}
   document.getElementById('loginOverlay').style.display='none';
   aplicarUsuario();
+  cargarCategorias();
   cargarPaquetesDesdeSheets();
   cargarEvaluadoresDesdeSheets();
   cargarPlantillasDesdeSheets();
@@ -2977,7 +3025,7 @@ function aplicarUsuario(){
 // PANEL DE ADMINISTRACIÓN
 // ══════════════════════════════════════
 function switchAdminTab(n){
-  for(var i=1;i<=4;i++){
+  for(var i=1;i<=5;i++){
     var panel=document.getElementById('adminTabPanel'+i);
     var btn=document.getElementById('adminTab'+i);
     if(panel)panel.style.display=(i===n)?'block':'none';
@@ -3291,6 +3339,220 @@ function _pkNorm(s){
 }
 function _pkPlural(n,uno,varios){return n+' '+(n===1?uno:varios);}
 
+// ══════════════════════════════════════
+// CATEGORÍAS (cajones): lista fija que mantiene el administrador
+// Cada categoría trae etiquetas (paso 2) y criterios sugeridos (al crear un paquete)
+// ══════════════════════════════════════
+var CATS_BASE=[{"id": "cat_construccion", "nombre": "Construcción y remodelación", "icono": "🏗️", "descripcion": "Obras, remodelaciones e instalaciones en ambientes.", "etiquetas": ["Drywall / tabiquería", "Albañilería", "Pintura", "Gasfitería", "Electricidad", "Carpintería", "Pisos y enchapes", "Techos y coberturas"], "criterios": [{"label": "Precio", "weight": 20}, {"label": "Plazo de ejecución", "weight": 20}, {"label": "Experiencia en obras similares", "weight": 20}, {"label": "Garantía de los trabajos", "weight": 15}, {"label": "Calidad de materiales", "weight": 15}, {"label": "Formalidad (RUC activo y habido)", "weight": 10}], "orden": 1, "activa": true}, {"id": "cat_limpieza", "nombre": "Limpieza y mantenimiento", "icono": "🧽", "descripcion": "Servicios de limpieza, desinfección y mantenimiento.", "etiquetas": ["Limpieza de ambientes", "Lavado de muebles y alfombras", "Fumigación y desinfección", "Jardinería", "Mantenimiento de equipos"], "criterios": [{"label": "Calidad del servicio", "weight": 25}, {"label": "Puntualidad", "weight": 20}, {"label": "Precio", "weight": 20}, {"label": "Reputación de la empresa", "weight": 15}, {"label": "Responsabilidad", "weight": 10}, {"label": "Formalidad (RUC activo y habido)", "weight": 10}], "orden": 2, "activa": true}, {"id": "cat_oficina", "nombre": "Útiles y materiales de oficina", "icono": "📎", "descripcion": "Papelería, útiles, consumibles y mobiliario de oficina.", "etiquetas": ["Papelería", "Útiles de escritorio", "Tóneres y tintas", "Mobiliario de oficina"], "criterios": [{"label": "Precio", "weight": 30}, {"label": "Calidad del producto", "weight": 25}, {"label": "Tiempo de entrega", "weight": 20}, {"label": "Disponibilidad de stock", "weight": 15}, {"label": "Formalidad (RUC activo y habido)", "weight": 10}], "orden": 3, "activa": true}, {"id": "cat_tecnologia", "nombre": "Equipos y tecnología", "icono": "💻", "descripcion": "Equipos de cómputo, laboratorio, redes y software.", "etiquetas": ["Computadoras", "Impresoras", "Redes y telecomunicaciones", "Software y licencias", "Equipos de laboratorio"], "criterios": [{"label": "Especificaciones técnicas", "weight": 25}, {"label": "Precio", "weight": 20}, {"label": "Garantía y soporte", "weight": 20}, {"label": "Tiempo de entrega", "weight": 15}, {"label": "Experiencia del proveedor", "weight": 10}, {"label": "Formalidad (RUC activo y habido)", "weight": 10}], "orden": 4, "activa": true}, {"id": "cat_profesionales", "nombre": "Servicios profesionales", "icono": "👔", "descripcion": "Consultoría, capacitación, auditoría y asesoría.", "etiquetas": ["Consultoría", "Capacitación", "Auditoría", "Diseño y publicidad", "Asesoría legal o contable"], "criterios": [{"label": "Experiencia y perfil profesional", "weight": 30}, {"label": "Propuesta técnica", "weight": 25}, {"label": "Precio", "weight": 20}, {"label": "Plazo de entrega", "weight": 15}, {"label": "Formalidad (RUC activo y habido)", "weight": 10}], "orden": 5, "activa": true}, {"id": "cat_alimentos", "nombre": "Alimentos y catering", "icono": "🍽️", "descripcion": "Catering, coffee break e insumos de cafetería.", "etiquetas": ["Catering para eventos", "Coffee break", "Bebidas", "Insumos de cafetería"], "criterios": [{"label": "Calidad e inocuidad", "weight": 30}, {"label": "Precio", "weight": 20}, {"label": "Puntualidad", "weight": 20}, {"label": "Licencias sanitarias", "weight": 15}, {"label": "Reputación de la empresa", "weight": 15}], "orden": 6, "activa": true}];
+var _categorias=CATS_BASE.map(function(c){return Object.assign({_base:true},c);});
+var _catFiltro='todas';   // 'todas' | 'sin' | id de categoría
+var _catCargadas=false;
+
+function _catMap(r){
+  var et=safeJsonParse(r.etiquetas_json,[]);
+  var cr=safeJsonParse(r.criterios_json,[]);
+  return {
+    id:r.id||r._qid, _qid:r._qid, nombre:r.nombre||'', icono:r.icono||'🗂️',
+    descripcion:r.descripcion||'',
+    etiquetas:Array.isArray(et)?et.filter(Boolean):[],
+    criterios:Array.isArray(cr)?cr.filter(function(c){return c&&c.label;}).map(function(c){return {label:c.label,weight:parseFloat(c.weight)||0};}):[],
+    orden:parseFloat(r.orden)||99,
+    activa:String(r.activa||'si').toLowerCase()!=='no'
+  };
+}
+function cargarCategorias(cb){
+  qdbFetch({accion:'cargarCategorias'},function(res){
+    if(res&&res.ok&&Array.isArray(res.registros)&&res.registros.length){
+      _categorias=res.registros.map(_catMap).filter(function(c){return c.nombre;});
+      _categorias.sort(function(a,b){return a.orden-b.orden||a.nombre.localeCompare(b.nombre);});
+      _catCargadas=true;
+    }
+    renderListaPaquetes();
+    if(typeof cb==='function')cb();
+  });
+}
+function getCategoria(id){
+  if(!id)return null;
+  return _categorias.find(function(c){return c.id===id;})
+      ||_categorias.find(function(c){return _pkNorm(c.nombre)===_pkNorm(id);})||null;
+}
+function pkEnFiltroCat(pk){
+  if(_catFiltro==='todas')return true;
+  var c=getCategoria(pk.categoria);
+  if(_catFiltro==='sin')return !c;
+  return !!c&&c.id===_catFiltro;
+}
+function elegirCategoria(id){
+  _catFiltro=id;
+  // Si el paquete activo no está en el cajón elegido, se deja de mostrar su detalle
+  renderListaPaquetes();
+  var f=document.getElementById('pkNuevoForm');
+  if(f&&!f.hidden)llenarSelectCategoria(document.getElementById('nuevoPaqueteCat'),id!=='todas'&&id!=='sin'?id:'',true);
+}
+function renderCategoriasBar(){
+  var wrap=document.getElementById('pkCats');if(!wrap)return;
+  var cuenta={},sin=0;
+  _paquetesCache.forEach(function(pk){var c=getCategoria(pk.categoria);if(c)cuenta[c.id]=(cuenta[c.id]||0)+1;else sin++;});
+  var items=[{id:'todas',icono:'📚',nombre:'Todas',n:_paquetesCache.length}];
+  _categorias.forEach(function(c){
+    if(!c.activa&&!cuenta[c.id])return;
+    items.push({id:c.id,icono:c.icono,nombre:c.nombre,n:cuenta[c.id]||0});
+  });
+  if(sin)items.push({id:'sin',icono:'📂',nombre:'Sin categoría',n:sin});
+  if(!items.some(function(x){return x.id===_catFiltro;}))_catFiltro='todas';
+  wrap.innerHTML=items.map(function(x){
+    var on=x.id===_catFiltro;
+    return '<button type="button" class="pk-cat'+(on?' on':'')+'" role="option" aria-selected="'+on+'" onclick="elegirCategoria(\''+String(x.id).replace(/'/g,"\\'")+'\')">'
+      +'<span class="pk-cat-ico" aria-hidden="true">'+x.icono+'</span>'
+      +'<span><span class="pk-cat-nom">'+esc(x.nombre)+'</span><br><span class="pk-cat-n">'+_pkPlural(x.n,'paquete','paquetes')+'</span></span></button>';
+  }).join('');
+  var tit=document.getElementById('pkCatTitulo');
+  if(tit){
+    var c=getCategoria(_catFiltro);
+    tit.textContent=c?'Elige o crea el paquete en '+c.nombre:(_catFiltro==='sin'?'Paquetes sin categoría (asígnales una)':'Elige o crea el paquete (todas las categorías)');
+  }
+}
+function llenarSelectCategoria(sel,valor,conVacio){
+  if(!sel)return;
+  var h=conVacio?'<option value="">— Elige la categoría —</option>':'';
+  _categorias.forEach(function(c){
+    if(!c.activa&&c.id!==valor)return;
+    h+='<option value="'+esc(c.id)+'"'+(c.id===valor?' selected':'')+'>'+c.icono+' '+esc(c.nombre)+'</option>';
+  });
+  h+='<option value="__sin__"'+(valor==='__sin__'?' selected':'')+'>📂 Ninguna encaja (quedará sin categoría)</option>';
+  sel.innerHTML=h;
+}
+function _pkDetalleCatHtml(pk){
+  var c=getCategoria(pk.categoria);
+  var opts=_categorias.filter(function(x){return x.activa||(c&&x.id===c.id);}).map(function(x){
+    return '<option value="'+esc(x.id)+'"'+(c&&x.id===c.id?' selected':'')+'>'+x.icono+' '+esc(x.nombre)+'</option>';
+  }).join('');
+  return '<div class="pk-d-cat"><b>Categoría:</b> '
+    +'<select aria-label="Categoría del paquete" onchange="cambiarCategoriaPaquete(this.value)">'
+    +(c?'':'<option value="" selected>📂 Sin categoría — elige una</option>')+opts+'</select></div>';
+}
+function cambiarCategoriaPaquete(id){
+  var pk=paqueteActual;if(!pk)return;
+  var c=getCategoria(id);if(!c)return;
+  var anterior=pk.categoria||'';
+  pk.categoria=c.id;
+  // Las etiquetas de la categoría anterior ya no aplican
+  (pk.productos||[]).forEach(function(p){
+    p.categoria=c.nombre;
+    if(Array.isArray(p.etiquetas))p.etiquetas=p.etiquetas.filter(function(e){return c.etiquetas.indexOf(e)>-1;});
+  });
+  _catFiltro=c.id;
+  renderListaPaquetes();
+  guardarPaqueteSheets(pk,function(ok){
+    if(ok)tst('✅ Paquete movido a '+c.nombre);
+    else{pk.categoria=anterior;renderListaPaquetes();tst('⚠️ No se pudo cambiar la categoría en QuintaDB');}
+  });
+}
+function categoriaDelPaquete(){return paqueteActual?getCategoria(paqueteActual.categoria):null;}
+
+// ── Administración de categorías (pestaña 5 del panel admin) ──
+function adminRenderCategorias(){
+  var wrap=document.getElementById('admCatLista');if(!wrap)return;
+  var cnt=document.getElementById('admCatConteo');
+  if(cnt)cnt.textContent=_pkPlural(_categorias.length,'categoría','categorías')+(_catCargadas?'':' (lista inicial; pulsa Actualizar para leer QuintaDB)');
+  wrap.innerHTML=_categorias.map(function(c,i){
+    var suma=Math.round(c.criterios.reduce(function(s,x){return s+(x.weight||0);},0));
+    return '<div class="adm-cat"'+(c.activa?'':' style="opacity:.6;"')+'>'
+      +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">'
+      +'<div style="font-size:1.1rem;font-weight:700;">'+c.icono+' '+esc(c.nombre)+(c.activa?'':' <span style="font-size:.85rem;color:#991B1B;">(desactivada)</span>')+'</div>'
+      +'<div style="display:flex;gap:6px;"><button class="pk-tool" style="font-size:.95rem;" onclick="adminEditarCategoria('+i+')">✏️ Editar</button>'
+      +'<button class="pk-tool del" style="font-size:.95rem;" onclick="adminEliminarCategoria('+i+')">🗑 Eliminar</button></div></div>'
+      +(c.descripcion?'<div class="adm-ayuda">'+esc(c.descripcion)+'</div>':'')
+      +'<div style="margin-top:8px;font-size:.95rem;"><b>Etiquetas:</b> '+(c.etiquetas.length?c.etiquetas.map(esc).join(' · '):'<i>ninguna</i>')+'</div>'
+      +'<div style="margin-top:4px;font-size:.95rem;"><b>Criterios sugeridos</b> (suman '+suma+' %'+(suma===100?' ✓':' — deben sumar 100 %')+'): '
+      +(c.criterios.length?c.criterios.map(function(x){return esc(x.label)+' '+x.weight+' %';}).join(' · '):'<i>ninguno</i>')+'</div></div>';
+  }).join('')||'<div class="pk-state">No hay categorías.</div>';
+}
+function adminEditarCategoria(i){
+  var f=document.getElementById('admCatForm');if(!f)return;
+  var c=i===null?{id:'',nombre:'',icono:'🗂️',descripcion:'',etiquetas:[],criterios:[],orden:_categorias.length+1,activa:true}:_categorias[i];
+  f.style.display='block';
+  f.innerHTML='<div style="font-size:1.1rem;font-weight:700;">'+(i===null?'Nueva categoría':'Editar categoría')+'</div>'
+    +'<input type="hidden" id="acIdx" value="'+(i===null?'':i)+'">'
+    +'<div style="display:grid;grid-template-columns:110px 1fr 110px;gap:10px;">'
+    +'<div><label class="adm-lbl" for="acIco">Ícono</label><input id="acIco" class="adm-inp" maxlength="4" value="'+esc(c.icono)+'"></div>'
+    +'<div><label class="adm-lbl" for="acNom">Nombre *</label><input id="acNom" class="adm-inp" maxlength="60" value="'+esc(c.nombre)+'" placeholder="Ej.: Construcción y remodelación"></div>'
+    +'<div><label class="adm-lbl" for="acOrd">Orden</label><input id="acOrd" class="adm-inp" type="number" min="1" value="'+(c.orden||'')+'"></div></div>'
+    +'<label class="adm-lbl" for="acDes">Descripción</label><input id="acDes" class="adm-inp" maxlength="160" value="'+esc(c.descripcion)+'" placeholder="Qué tipo de compras van en este cajón">'
+    +'<label class="adm-lbl" for="acEt">Etiquetas (una por línea)</label>'
+    +'<textarea id="acEt" class="adm-inp" rows="5" placeholder="Drywall / tabiquería&#10;Albañilería&#10;Pintura">'+esc(c.etiquetas.join('\n'))+'</textarea>'
+    +'<div class="adm-ayuda">Sirven para marcar qué es cada producto o servicio en el paso 2 (ej.: un presupuesto de obra con drywall y albañilería).</div>'
+    +'<label class="adm-lbl" for="acCr">Criterios sugeridos (uno por línea: nombre ; peso en %)</label>'
+    +'<textarea id="acCr" class="adm-inp" rows="6" oninput="adminSumaCrit()" placeholder="Precio ; 20&#10;Plazo de ejecución ; 20">'+esc(c.criterios.map(function(x){return x.label+' ; '+x.weight;}).join('\n'))+'</textarea>'
+    +'<div class="adm-ayuda" id="acSuma"></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:1rem;"><input type="checkbox" id="acAct" style="width:20px;height:20px;"'+(c.activa?' checked':'')+'> Activa (se ofrece al crear paquetes)</label>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;"><button class="btn btn-o" onclick="document.getElementById(\'admCatForm\').style.display=\'none\'">Cancelar</button>'
+    +'<button class="btn btn-p" id="acGuardar" onclick="adminGuardarCategoria()">💾 Guardar categoría</button></div>';
+  adminSumaCrit();
+  f.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function _acParseCrit(){
+  var t=(document.getElementById('acCr')||{}).value||'';
+  return t.split('\n').map(function(l){
+    var m=l.split(/[;|]/);var lab=(m[0]||'').trim();
+    var w=parseFloat(String(m[1]||'').replace('%','').replace(',','.'));
+    return lab?{label:lab,weight:isNaN(w)?0:w}:null;
+  }).filter(Boolean);
+}
+function adminSumaCrit(){
+  var el=document.getElementById('acSuma');if(!el)return;
+  var cr=_acParseCrit();var s=Math.round(cr.reduce(function(a,c){return a+c.weight;},0)*100)/100;
+  el.innerHTML='Suma de pesos: <b>'+s+' %</b>'+(cr.length?(s===100?' ✓ correcto':' — debe sumar 100 % para que la nota final vaya de 0 a 1'):'');
+  el.style.color=cr.length&&s!==100?'#991B1B':'';
+}
+function adminGuardarCategoria(){
+  var nom=(document.getElementById('acNom').value||'').trim().replace(/\s+/g,' ');
+  if(!nom){tst('Escribe el nombre de la categoría');return;}
+  var idxTxt=document.getElementById('acIdx').value;
+  var prev=idxTxt===''?null:_categorias[+idxTxt];
+  if(_categorias.some(function(c){return c!==prev&&_pkNorm(c.nombre)===_pkNorm(nom);})){tst('⚠️ Ya existe una categoría con ese nombre');return;}
+  var cr=_acParseCrit();
+  var suma=Math.round(cr.reduce(function(a,c){return a+c.weight;},0)*100)/100;
+  if(cr.length&&suma!==100&&!confirm('Los criterios sugeridos suman '+suma+' %, no 100 %.\n\n¿Guardar de todos modos?'))return;
+  var c={
+    id:prev?prev.id:'cat_'+_pkNorm(nom).replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,30)+'_'+Date.now().toString(36),
+    _qid:prev?prev._qid:'',
+    nombre:nom,
+    icono:(document.getElementById('acIco').value||'🗂️').trim(),
+    descripcion:(document.getElementById('acDes').value||'').trim(),
+    etiquetas:(document.getElementById('acEt').value||'').split('\n').map(function(x){return x.trim();}).filter(Boolean),
+    criterios:cr,
+    orden:parseFloat(document.getElementById('acOrd').value)||(_categorias.length+1),
+    activa:document.getElementById('acAct').checked
+  };
+  var datos={id:c.id,nombre:c.nombre,icono:c.icono,descripcion:c.descripcion,
+    etiquetas_json:JSON.stringify(c.etiquetas),criterios_json:JSON.stringify(c.criterios),
+    orden:String(c.orden),activa:c.activa?'si':'no'};
+  var btn=document.getElementById('acGuardar');if(btn){btn.disabled=true;btn.textContent='Guardando…';}
+  qdbFetch({accion:'guardarCategoria',datos:JSON.stringify(datos),qid:c._qid||''},function(res){
+    if(btn){btn.disabled=false;btn.textContent='💾 Guardar categoría';}
+    if(!res||!res.ok){tst('⚠️ No se pudo guardar en QuintaDB'+(res&&res.error?': '+res.error:''),5000);return;}
+    c._qid=res.qid||c._qid;
+    if(prev)_categorias[+idxTxt]=c;else _categorias.push(c);
+    _categorias.sort(function(a,b){return a.orden-b.orden||a.nombre.localeCompare(b.nombre);});
+    document.getElementById('admCatForm').style.display='none';
+    adminRenderCategorias();renderListaPaquetes();
+    tst('✅ Categoría "'+c.nombre+'" guardada');
+  });
+}
+function adminEliminarCategoria(i){
+  var c=_categorias[i];if(!c)return;
+  var usados=_paquetesCache.filter(function(pk){return getCategoria(pk.categoria)===c;}).length;
+  var msg='¿Eliminar la categoría "'+c.nombre+'"?'+(usados?'\n\nTienes '+_pkPlural(usados,'paquete','paquetes')+' en ella: pasarán a "Sin categoría". Si solo quieres que no se use en paquetes nuevos, mejor desactívala.':'');
+  if(!confirm(msg))return;
+  if(!c._qid){_categorias.splice(i,1);adminRenderCategorias();renderListaPaquetes();return;}
+  qdbFetch({accion:'eliminarCategoria',qid:c._qid},function(res){
+    if(!res||!res.ok){tst('⚠️ No se pudo eliminar en QuintaDB');return;}
+    _categorias.splice(i,1);adminRenderCategorias();renderListaPaquetes();
+    tst('✅ Categoría eliminada');
+  });
+}
+
 function _mapPaqueteQDB(r){
   var esCampoQDB=r.criterios_json!==undefined||r.escala_json!==undefined;
   if(!esCampoQDB)return r;
@@ -3307,6 +3569,7 @@ function _mapPaqueteQDB(r){
     plantillaActual:Array.isArray(h)?'':(h.plantillaActual||''),
     escalaActual:Array.isArray(h)?'':(h.escalaActual||''),
     productos:safeJsonParse(r.productos_json,[]),
+    categoria:r.categoria||'',
     fechaCreacion:r.fecha_creacion||'',
     ultimaActualizacion:r.ultima_actualizacion||'',
     _provCount:provJson.length
@@ -3457,8 +3720,9 @@ function renderListaPaquetes(){
 
   var q=_pkNorm((document.getElementById('pkBuscar')||{}).value||'');
   var orden=(document.getElementById('pkOrden')||{}).value||'reciente';
+  renderCategoriasBar();
   var lista=_paquetesCache.map(function(pk){return {pk:pk,r:pkResumen(pk)};})
-    .filter(function(x){return !q||_pkNorm(x.pk.nombre).indexOf(q)>-1;});
+    .filter(function(x){return (!q||_pkNorm(x.pk.nombre).indexOf(q)>-1)&&pkEnFiltroCat(x.pk);});
   lista.sort(function(a,b){
     if(orden==='nombre')return _pkNorm(a.pk.nombre).localeCompare(_pkNorm(b.pk.nombre));
     if(orden==='avance')return a.r.hechos-b.r.hechos||_pkNorm(a.pk.nombre).localeCompare(_pkNorm(b.pk.nombre));
@@ -3467,12 +3731,14 @@ function renderListaPaquetes(){
 
   if(conteo){
     var tot=_paquetesCache.length;
-    conteo.textContent=q?(lista.length+' de '+_pkPlural(tot,'paquete','paquetes')):_pkPlural(tot,'paquete','paquetes');
+    conteo.textContent=(q||_catFiltro!=='todas')?(lista.length+' de '+_pkPlural(tot,'paquete','paquetes')):_pkPlural(tot,'paquete','paquetes');
   }
 
   wrap.innerHTML='';
   if(!lista.length){
-    wrap.innerHTML='<div class="pk-state">Ningún paquete coincide con “'+esc(q)+'”.</div>';
+    wrap.innerHTML=q?'<div class="pk-state">Ningún paquete coincide con “'+esc(q)+'”.</div>'
+      :(_catFiltro==='sin'?'<div class="pk-state">No hay paquetes sin categoría.</div>'
+      :'<div class="pk-state">Esta categoría todavía no tiene paquetes.<br>Crea el primero con el botón <strong>+ Nuevo paquete</strong>.</div>');
   }
   lista.forEach(function(x){
     var pk=x.pk,r=x.r;
@@ -3487,6 +3753,7 @@ function renderListaPaquetes(){
     }).join('');
     var fec=_pkFechaCorta(pk);
     var meta=_pkPlural(r.nProv,'proveedor','proveedores')+(r.nProv?', '+r.nEval+' evaluado'+(r.nEval===1?'':'s'):'');
+    if(_catFiltro==='todas'){var ck=getCategoria(pk.categoria);meta=(ck?ck.icono+' '+esc(ck.nombre):'Sin categoría')+' · '+meta;}
     b.innerHTML='<div class="pk-item-top"><span class="pk-item-nom">'+esc(pk.nombre)+'</span>'
       +(fec?'<span class="pk-item-fec">'+fec+'</span>':'')+'</div>'
       +'<div class="pk-item-meta">'+meta+'</div>'
@@ -3542,6 +3809,7 @@ function renderDetallePaquete(){
     +(sub.length?'<div class="pk-d-sub">'+sub.join('<br>')+'</div>':'')+'</div>'
     +'<div class="pk-d-tools"><button type="button" class="pk-tool" onclick="renombrarPaquete()">Renombrar</button>'
     +'<button type="button" class="pk-tool del" onclick="eliminarPaquete()">Eliminar</button></div></div>'
+    +_pkDetalleCatHtml(pk)
     +syncHtml
     +'<ol class="pk-ruta" aria-label="Avance del paquete">'+filas+'</ol>';
 
@@ -3565,6 +3833,7 @@ function toggleNuevoPaquete(abrir){
   var f=document.getElementById('pkNuevoForm');if(!f)return;
   f.hidden=!abrir;
   var inp=document.getElementById('nuevoPaqueteNombre');
+  if(abrir){llenarSelectCategoria(document.getElementById('nuevoPaqueteCat'),_catFiltro!=='todas'&&_catFiltro!=='sin'?_catFiltro:'',true);}
   if(abrir&&inp){inp.value='';validarNombrePaquete();setTimeout(function(){inp.focus();},30);}
 }
 
@@ -3580,8 +3849,12 @@ function validarNombrePaquete(){
   var dup=inp.value.trim()&&_pkNombreDuplicado(inp.value);
   inp.classList.toggle('err',!!dup);
   msg.classList.toggle('err',!!dup);
-  msg.textContent=dup?'Ya tienes un paquete con ese nombre. Usa uno distinto.'
-                     :'Empieza con la escala de calificación estándar A–D; podrás cambiarla en el paso 3.';
+  var selC=document.getElementById('nuevoPaqueteCat');
+  var cat=selC?getCategoria(selC.value):null;
+  var base='Empieza con la escala de calificación estándar A–D; podrás cambiarla en el paso 3.';
+  if(cat&&cat.criterios.length)base+=' Se cargarán '+_pkPlural(cat.criterios.length,'criterio sugerido','criterios sugeridos')+' de '+cat.nombre+'; podrás ajustarlos en el paso 4.';
+  else if(selC&&!selC.value)base='Primero elige la categoría (el cajón) a la que pertenece el paquete.';
+  msg.textContent=dup?'Ya tienes un paquete con ese nombre. Usa uno distinto.':base;
   return !dup;
 }
 
@@ -3590,6 +3863,10 @@ function crearPaquete(){
   var nombre=(inp?inp.value:'').trim().replace(/\s+/g,' ');
   if(!nombre){tst('Escribe un nombre para el paquete');if(inp)inp.focus();return;}
   if(!validarNombrePaquete()){if(inp)inp.focus();return;}
+  var selCat=document.getElementById('nuevoPaqueteCat');
+  var catVal=selCat?selCat.value:'';
+  if(!catVal){tst('Elige la categoría (el cajón) del paquete');if(selCat)selCat.focus();return;}
+  var catObj=catVal==='__sin__'?null:getCategoria(catVal);
   if(_pkCarga==='error'){tst('⚠️ Sin conexión con QuintaDB: reintenta la carga antes de crear paquetes');return;}
   var btn=document.getElementById('btnCrearPaquete');
   if(btn){btn.setAttribute('disabled','disabled');btn.textContent='Creando…';}
@@ -3597,9 +3874,10 @@ function crearPaquete(){
     id:'pk_'+Date.now(),
     _provCount:0,
     nombre:nombre,
+    categoria:catObj?catObj.id:'',
     propietario:getUsuarioCorreo(),
     propietarioNombre:getUsuarioNombre(),
-    criterios:[],
+    criterios:catObj?catObj.criterios.map(function(c){return {label:c.label,weight:c.weight};}):[],
     escala:SCALE_DEFAULT.map(function(s){return{cat:s.cat,min:s.min,max:s.max,label:s.label,interp:s.interp,color:s.color,bg:s.bg};}),
     proveedores:[],
     productos:[],
@@ -3616,7 +3894,8 @@ function crearPaquete(){
     if(!_paquetesCache.some(function(p){return p.id===pk.id;}))_paquetesCache.unshift(pk);
     toggleNuevoPaquete(false);
     var bus=document.getElementById('pkBuscar');if(bus)bus.value='';
-    tst('✅ Paquete "'+pk.nombre+'" creado');
+    _catFiltro=pk.categoria||'sin';
+    tst('✅ Paquete "'+pk.nombre+'" creado'+(pk.criterios.length?' con '+pk.criterios.length+' criterios sugeridos':''));
     seleccionarPaquete(pk,true);
   });
 }
@@ -3996,6 +4275,8 @@ function guardarProductosEnQDB(){
       nombre: p.nombre||'',
       descripcion: p.descripcion||'',
       unidad: p.unidad||'',
+      categoria: p.categoria||'',
+      etiquetas: (p.etiquetas||[]).join('; '),
       paquete: paqueteActual?paqueteActual.id:'',
       propietario: getUsuarioCorreo(),
       propietario_nombre: getUsuarioNombre(),
@@ -4043,7 +4324,9 @@ function cargarProductosDesdeQDB(){
         nombre:r.nombre||'',
         descripcion:r.descripcion||'',
         unidad:r.unidad||'',
-        categoria:r.categoria||''
+        categoria:r.categoria||'',
+        codigo:r.codigo||'',
+        etiquetas:String(r.etiquetas||'').split(/\s*;\s*/).filter(Boolean)
       });
     });
     // Agregar nuevos locales que aún no están en QDB
@@ -4141,11 +4424,37 @@ function renderProductos(){
     var row2 = document.createElement('div');
     row2.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
 
-    var catInp = document.createElement('input');
-    catInp.type='text'; catInp.value=p.categoria||'';
-    catInp.placeholder='Categoría: tipo de producto o servicio (ej.: Construcción y remodelación)'; catInp.title='Tipo de producto o servicio. Escríbelo siempre igual para agrupar proveedores de distintos paquetes.';
-    catInp.style.cssText='flex:1;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-family:inherit;font-size:.95rem;';
-    (function(idx){catInp.oninput=function(){productos[idx].categoria=this.value;if(paqueteActual)paqueteActual.productos=productos;};})(i);
+    // Categoría: viene del paquete (paso 1); aquí solo se muestra
+    var catPk=categoriaDelPaquete();
+    if(catPk)p.categoria=catPk.nombre;
+    var catInp = document.createElement('div');
+    catInp.style.cssText='flex:1;padding:8px 10px;border:1.5px dashed var(--border);border-radius:7px;font-size:.98rem;background:var(--surface);';
+    catInp.innerHTML=catPk?'<b>Categoría:</b> '+catPk.icono+' '+esc(catPk.nombre)+' <span style="color:var(--muted);font-size:.9rem;">(del paquete)</span>'
+      :'<b>Categoría:</b> <span style="color:#991B1B;">el paquete no tiene categoría; asígnala en el paso 1</span>';
+    // Etiquetas de la categoría: marca qué es este producto o servicio
+    var etWrap=null;
+    if(catPk&&catPk.etiquetas.length){
+      if(!Array.isArray(p.etiquetas))p.etiquetas=p.etiquetas?String(p.etiquetas).split(/\s*;\s*/).filter(Boolean):[];
+      etWrap=document.createElement('div');
+      etWrap.innerHTML='<div style="font-size:.95rem;font-weight:600;margin:2px 0 2px;">Etiquetas <span style="font-weight:400;color:var(--muted);">— marca qué es este producto o servicio (una o varias)</span></div>';
+      var chips=document.createElement('div');chips.className='et-chips';
+      catPk.etiquetas.forEach(function(et){
+        var lab=document.createElement('label');
+        var on=p.etiquetas.indexOf(et)>-1;
+        lab.className='et-chip'+(on?' on':'');
+        var cb=document.createElement('input');cb.type='checkbox';cb.checked=on;
+        cb.onchange=function(){
+          var arr=p.etiquetas.filter(function(x){return x!==et;});
+          if(this.checked)arr.push(et);
+          p.etiquetas=arr;lab.classList.toggle('on',this.checked);
+          if(paqueteActual)paqueteActual.productos=productos;
+          _productosModificados=true;
+        };
+        lab.appendChild(cb);lab.appendChild(document.createTextNode(et));
+        chips.appendChild(lab);
+      });
+      etWrap.appendChild(chips);
+    }
 
     var unidInp = document.createElement('input');
     unidInp.type='text'; unidInp.value=p.unidad||'';
@@ -4175,6 +4484,7 @@ function renderProductos(){
       var datos={
         id:prod.id, codigo:prod.codigo||'', nombre:prod.nombre||'', descripcion:prod.descripcion||'',
         unidad:prod.unidad||'', categoria:prod.categoria||'',
+        etiquetas:(prod.etiquetas||[]).join('; '),
         paquete:paqueteActual?paqueteActual.id:'',
         paquete_nombre:paqueteActual?paqueteActual.nombre:'',
         propietario:getUsuarioCorreo(), propietario_nombre:getUsuarioNombre(),
@@ -4220,6 +4530,7 @@ function renderProductos(){
 
     div.appendChild(row1);
     div.appendChild(row2);
+    if(etWrap)div.appendChild(etWrap);
     div.appendChild(desc);
     wrap.appendChild(div);
   });
@@ -4456,6 +4767,7 @@ function guardarPaqueteSheets(pk,callback){
       escalaActual: pk.escalaActual||pk._escalaActual||''
     }),
     productos_json: JSON.stringify(pk.productos||[]),
+    categoria: pk.categoria||'',
     fecha_creacion: pk.fechaCreacion||'',
     ultima_actualizacion: new Date().toISOString()
   };
