@@ -416,14 +416,14 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
     <div class="portal-sub">Sistema de Evaluación y Reevaluación de Proveedores</div>
   </div>
   <div id="paqueteBadge" style="display:none;align-items:center;gap:6px;padding:5px 12px;background:#EFF6FF;border:1.5px solid #BAE6FD;border-radius:8px;flex-shrink:0;font-size:.82rem;color:#0284c7;font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-  📦 <span id="paqueteBadgeNom">—</span>
+  <span id="paqueteBadgeIco">📦</span> <span id="paqueteBadgeNom">—</span>
 </div>
 <div id="userBadge" style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;flex-shrink:0;"><span style="font-size:1.1rem;">👤</span><div><div id="userBadgeName" style="font-size:.82rem;font-weight:700;color:var(--text);line-height:1.2;">—</div><div id="userBadgeEmail" style="font-size:.72rem;color:var(--muted);line-height:1.2;">—</div></div><button onclick="doLogout()" title="Cerrar sesión" style="background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:.75rem;color:var(--muted);padding:3px 7px;font-family:inherit;">✕ Salir</button></div>
 </div>
 
 <!-- PASOS -->
 <div class="steps">
-  <button class="sbtn active" data-step="0" onclick="goStep(0)"><span class="snum">01</span>Paquete</button>
+  <button class="sbtn active" data-step="0" onclick="goStep(0)"><span class="snum">01</span>Categoría y paquete</button>
   <button class="sbtn" data-step="1" onclick="goStep(1)"><span class="snum">02</span>Productos/Servicios</button>
   <button class="sbtn" data-step="3" onclick="goStep(3)"><span class="snum">03</span>Escala</button>
   <button class="sbtn" data-step="2" onclick="goStep(2)"><span class="snum">04</span>Criterios</button>
@@ -661,7 +661,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 
 <div class="panel" id="panel-6">
   <div class="acts" style="margin-bottom:16px;">
-    <button class="btn btn-o" onclick="goStep(0)">← Paquete</button>
+    <button class="btn btn-o" onclick="goStep(0)">← Categoría y paquete</button>
     <button class="btn btn-p" id="btnNext6" onclick="avanzarDesdeProdutos()">Continuar → Escala →</button>
   </div>
   <p class="stitle">Paso 2 — Productos / Servicios</p>
@@ -678,7 +678,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <div id="productosStatus" style="display:none;margin-bottom:10px;padding:9px 14px;border-radius:8px;font-size:.88rem;"></div>
   <div id="productosList"></div>
   <div class="acts">
-    <button class="btn btn-o" onclick="goStep(0)">← Paquete</button>
+    <button class="btn btn-o" onclick="goStep(0)">← Categoría y paquete</button>
     <button class="btn btn-p" onclick="avanzarDesdeProdutos()">Continuar → Escala →</button>
   </div>
 </div>
@@ -3443,10 +3443,18 @@ function cambiarCategoriaPaquete(id){
   });
   _catFiltro=c.id;
   renderListaPaquetes();
+  _actualizarBadgeCategoria();
   guardarPaqueteSheets(pk,function(ok){
     if(ok)tst('✅ Paquete movido a '+c.nombre);
     else{pk.categoria=anterior;renderListaPaquetes();tst('⚠️ No se pudo cambiar la categoría en QuintaDB');}
   });
+}
+function _actualizarBadgeCategoria(){
+  var pk=paqueteActual,b=document.getElementById('paqueteBadge'),ico=document.getElementById('paqueteBadgeIco');
+  if(!pk||!b)return;
+  var c=getCategoria(pk.categoria);
+  if(ico)ico.textContent=c?c.icono:'📦';
+  b.title='Categoría: '+(c?c.nombre:'sin categoría')+'\nPaquete: '+pk.nombre;
 }
 function categoriaDelPaquete(){return paqueteActual?getCategoria(paqueteActual.categoria):null;}
 
@@ -4002,6 +4010,7 @@ function seleccionarPaquete(pk,forzar){
   var pbnom=document.getElementById('paqueteBadgeNom');
   if(pbadge)pbadge.style.display='flex';
   if(pbnom)pbnom.textContent=pk.nombre;
+  _actualizarBadgeCategoria();
   var pltNom=pk._plantillaActual||pk.plantillaActual||'';
   var escNom=pk._escalaActual||pk.escalaActual||'';
   if(pltNom){pk._plantillaActual=pltNom;_actualizarBadgePlantilla(pltNom);}
