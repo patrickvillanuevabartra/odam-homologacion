@@ -107,6 +107,12 @@ function cambiarModulo(m){
   window.scrollTo({top:0});
 }
 
+// Atajo para el administrador: abrir Admin › Categorías
+function irAdminCategorias(){
+  if(!esAdmin()){tst('Solo el administrador puede editar categorías');return;}
+  if(_cpSucio&&_cpAct)cpGuardar();
+  cambiarModulo('homolog');goStep(7);switchAdminTab(5);adminRenderCategorias();
+}
 // ── Pantalla de inicio (neutral) ──
 var CP_MOD_NOM={compras:'🛒 Compras',homolog:'✅ Homologación',directorio:'📇 Proveedores'};
 function iniRender(){
@@ -479,6 +485,7 @@ function cpFormReq(){
   return '<div class="cp-card"><div class="cp-h">Datos del requerimiento</div>'
     +'<label class="cp-lbl" for="cqNom">Nombre *</label><input class="cp-inp" id="cqNom" value="'+esc(c.nombre)+'" oninput="_cpAct.nombre=this.value;cpMarcar()">'
     +'<label class="cp-lbl" for="cqCat">Categoría *</label><select class="cp-inp" id="cqCat" onchange="_cpAct.categoria=this.value;cpMarcar()">'+opts+'</select>'
+    +'<div class="cp-ayuda">'+(esAdmin()?'¿Falta una categoría o quieres cambiar sus etiquetas? <a href="#" onclick="irAdminCategorias();return false;" style="font-weight:700;">⚙️ Administrar categorías</a>':'¿No encuentras la categoría que necesitas? Pídesela al administrador del sistema.')+'</div>'
     +'<label class="cp-lbl" for="cqDes">Descripción de lo que se necesita</label><textarea class="cp-inp" id="cqDes" rows="3" oninput="_cpAct.descripcion=this.value;cpMarcar()">'+esc(c.descripcion)+'</textarea>'
     +'<label class="cp-lbl" for="cqObj">Objetivo o resultado clave relacionado</label><textarea class="cp-inp" id="cqObj" rows="2" placeholder="Ej.: Habilitar el baño del segundo piso antes de febrero" oninput="_cpAct.objetivo=this.value;cpMarcar()">'+esc(c.objetivo)+'</textarea>'
     +'<div class="cp-ayuda">Texto libre: para qué se hace esta compra.</div>'

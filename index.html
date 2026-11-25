@@ -467,6 +467,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 
   <div class="pk-cat-h"><span class="pk-num-g">1</span>Elige la categoría (el cajón)</div>
   <div id="pkCats" class="pk-cats" role="listbox" aria-label="Categorías"></div>
+  <div id="pkCatsAdmin" style="display:none;margin:-12px 0 18px;font-size:.95rem;">¿Falta una categoría o quieres cambiar sus etiquetas o criterios? <a href="#" onclick="irAdminCategorias();return false;" style="font-weight:700;">⚙️ Administrar categorías</a></div>
   <div class="pk-cat-h"><span class="pk-num-g">2</span><span id="pkCatTitulo">Elige o crea el paquete</span></div>
 
   <div class="pk-layout">
@@ -3414,6 +3415,7 @@ function elegirCategoria(id){
 }
 function renderCategoriasBar(){
   var wrap=document.getElementById('pkCats');if(!wrap)return;
+  var adm=document.getElementById('pkCatsAdmin');if(adm)adm.style.display=esAdmin()?'':'none';
   var cuenta={},sin=0;
   _paquetesCache.forEach(function(pk){var c=getCategoria(pk.categoria);if(c)cuenta[c.id]=(cuenta[c.id]||0)+1;else sin++;});
   var items=[{id:'todas',icono:'📚',nombre:'Todas',n:_paquetesCache.length}];
@@ -7638,7 +7640,7 @@ if(document.readyState==='loading'){
 }
 
 </script>
-<script src="compras.js?v=4"></script>
+<script src="compras.js?v=5"></script>
 <style id="urp-comun-css">
   /* ===== Urpito · SGOE FI URP (módulo común) ===== */
   .urp-guia{display:flex;gap:14px;align-items:flex-start}
