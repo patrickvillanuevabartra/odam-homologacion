@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Homologación de Proveedores — ODAM URP</title>
+<title>Gestión de Proveedores — ODAM URP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
@@ -412,8 +412,8 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 <div class="top-bar">
   <div class="logo">&#127981;</div>
   <div style="flex:1;">
-    <div class="portal-title">Homologación de Proveedores</div>
-    <div class="portal-sub">Sistema de Evaluación y Reevaluación de Proveedores</div>
+    <div class="portal-title">Gestión de Proveedores</div>
+    <div class="portal-sub">Homologación: evaluación y reevaluación de proveedores</div>
   </div>
   <div id="paqueteBadge" style="display:none;align-items:center;gap:6px;padding:5px 12px;background:#EFF6FF;border:1.5px solid #BAE6FD;border-radius:8px;flex-shrink:0;font-size:.82rem;color:#0284c7;font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
   <span id="paqueteBadgeIco">📦</span> <span id="paqueteBadgeNom">—</span>
@@ -421,8 +421,22 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 <div id="userBadge" style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;flex-shrink:0;"><span style="font-size:1.1rem;">👤</span><div><div id="userBadgeName" style="font-size:.82rem;font-weight:700;color:var(--text);line-height:1.2;">—</div><div id="userBadgeEmail" style="font-size:.72rem;color:var(--muted);line-height:1.2;">—</div></div><button onclick="doLogout()" title="Cerrar sesión" style="background:none;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:.75rem;color:var(--muted);padding:3px 7px;font-family:inherit;">✕ Salir</button></div>
 </div>
 
+<!-- MÓDULOS -->
+<div class="mod-switch" id="modSwitch" role="tablist" aria-label="Módulos">
+  <button class="mod-btn" data-mod="compras" onclick="cambiarModulo('compras')"><span class="mi">🛒</span><span><b>Compras</b><small>Elegir al proveedor comparando ofertas</small></span></button>
+  <button class="mod-btn on" data-mod="homolog" onclick="cambiarModulo('homolog')"><span class="mi">✅</span><span><b>Homologación</b><small>Evaluar a proveedores que ya trabajan</small></span></button>
+  <button class="mod-btn" data-mod="directorio" onclick="cambiarModulo('directorio')"><span class="mi">📇</span><span><b>Proveedores</b><small>Directorio único por RUC</small></span></button>
+</div>
 <!-- PASOS -->
-<div class="steps">
+<div class="steps" id="cpSteps" style="display:none;">
+  <button class="sbtn active" data-cp="0" onclick="cpPaso(0)"><span class="snum">01</span>Requerimiento</button>
+  <button class="sbtn" data-cp="1" onclick="cpPaso(1)"><span class="snum">02</span>Partidas</button>
+  <button class="sbtn" data-cp="2" onclick="cpPaso(2)"><span class="snum">03</span>Ofertas</button>
+  <button class="sbtn" data-cp="3" onclick="cpPaso(3)"><span class="snum">04</span>Cuadro económico</button>
+  <button class="sbtn" data-cp="4" onclick="cpPaso(4)"><span class="snum">05</span>Cuadro técnico</button>
+  <button class="sbtn" data-cp="5" onclick="cpPaso(5)"><span class="snum">06</span>Resultado</button>
+</div>
+<div class="steps" id="hmSteps">
   <button class="sbtn active" data-step="0" onclick="goStep(0)"><span class="snum">01</span>Categoría y paquete</button>
   <button class="sbtn" data-step="1" onclick="goStep(1)"><span class="snum">02</span>Productos/Servicios</button>
   <button class="sbtn" data-step="3" onclick="goStep(3)"><span class="snum">03</span>Escala</button>
@@ -433,7 +447,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
   <button class="sbtn" data-step="7" id="btnStepAdmin" onclick="goStep(7)" style="display:none;background:#7C3AED;color:white;"><span class="snum">⚙</span>Admin</button>
 </div>
 </div><!-- /portal-sticky -->
-<div class="portal-inner">
+<div class="portal-inner" id="modHomolog">
 
 <!-- ══════════ P0: PAQUETES ══════════ -->
 <div class="panel active" id="panel-0">
@@ -699,7 +713,10 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 
   <div id="provList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
 
-  <button class="btn-add-crit" onclick="addProv()" style="margin-bottom:0;">＋ Agregar Proveedor</button>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <button class="btn-add-crit" onclick="homologDesdeDirectorio()" style="margin-bottom:0;">📇 Elegir del directorio de proveedores</button>
+    <button class="btn-add-crit" onclick="addProv()" style="margin-bottom:0;">＋ Agregar proveedor nuevo</button>
+  </div>
 
   <div class="acts" style="margin-top:18px">
     <button class="btn btn-o" onclick="goStep(2)">← Criterios</button>
@@ -978,6 +995,8 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 </div>
 
 </div>
+<div class="portal-inner" id="modCompras" style="display:none;"></div>
+<div class="portal-inner" id="modDirectorio" style="display:none;"></div>
 </div>
 <!-- ── MODAL EVALUADORES ── -->
 <div id="modalEvaluadores" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2500;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;">
@@ -2848,6 +2867,7 @@ function iniciarSesion(){
       aplicarUsuario();
       cargarCategorias();
       cargarPaquetesDesdeSheets();
+      if(typeof cambiarModulo==='function')cambiarModulo(window._gpModuloInicial||'homolog');
       cargarEvaluadoresDesdeSheets();
       cargarPlantillasDesdeSheets();
       return;
@@ -2949,6 +2969,7 @@ function _establecerUsuario(nombre, correo){
   aplicarUsuario();
   cargarCategorias();
   cargarPaquetesDesdeSheets();
+  if(typeof cambiarModulo==='function')cambiarModulo(window._gpModuloInicial||'homolog');
   cargarEvaluadoresDesdeSheets();
   cargarPlantillasDesdeSheets();
   tst('✅ Bienvenido, '+nombre);
@@ -4669,6 +4690,7 @@ function guardarProveedorEnQDB(p,cb){
   };
   qdbFetch({accion:'guardarProveedor', datos:JSON.stringify(datos), qid:p._qid||''}, function(res){
     if(res&&res.qid)p._qid=res.qid;
+    if(res&&res.ok&&typeof dirDesdeHomolog==='function')dirDesdeHomolog(p,estadoCalc);
     // Si la razón social cambió respecto a la conocida en QDB,
     // propagar el nuevo nombre a todas las evaluaciones históricas
     if(res&&res.ok&&p._nomOriginal&&p.nom&&
@@ -5362,7 +5384,7 @@ function loadDefaults(){
 var ORDEN_PASOS=[0,1,3,2,4,5,6,7];
 function _marcarPasos(n){
   var pos=ORDEN_PASOS.indexOf(n);
-  document.querySelectorAll('.sbtn').forEach(function(b){
+  document.querySelectorAll('#hmSteps .sbtn').forEach(function(b){
     var st=parseInt(b.getAttribute('data-step'),10);
     b.classList.remove('active','done');
     if(st===n)b.classList.add('active');
@@ -7614,6 +7636,7 @@ if(document.readyState==='loading'){
 }
 
 </script>
+<script src="compras.js?v=3"></script>
 <style id="urp-comun-css">
   /* ===== Urpito · SGOE FI URP (módulo común) ===== */
   .urp-guia{display:flex;gap:14px;align-items:flex-start}
