@@ -5,7 +5,18 @@
    ══════════════════════════════════════════════════════════════════ */
 (function(){
 var css=`
-.mod-switch{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px;}
+.mod-switch{display:grid;grid-template-columns:auto repeat(3,1fr);gap:8px;margin:0 0 14px;}
+.mod-btn.home{flex-direction:column;justify-content:center;gap:2px;padding:8px 14px;text-align:center;}
+.mod-btn.home b{font-size:.95rem;}
+.ini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0;}
+.ini-card{font-family:inherit;text-align:left;background:white;border:2px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;color:var(--text);display:flex;flex-direction:column;gap:8px;}
+.ini-card:hover{border-color:var(--primary);box-shadow:0 4px 14px rgba(0,45,84,.12);}
+.ini-card .ii{font-size:2.4rem;line-height:1;}
+.ini-card b{font-size:1.25rem;}
+.ini-card .ic{font-size:1rem;color:var(--muted);line-height:1.5;}
+.ini-card .ig{margin-top:auto;font-weight:700;color:var(--primary);font-size:1rem;}
+.ini-flujo{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px;font-size:1.05rem;}
+.ini-flujo span.p{background:white;border:1.5px solid var(--border);border-radius:10px;padding:8px 12px;font-weight:600;}
 .mod-btn{font-family:inherit;text-align:left;display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid var(--border);border-radius:12px;background:white;cursor:pointer;color:var(--text);}
 .mod-btn .mi{font-size:1.6rem;line-height:1;}
 .mod-btn b{display:block;font-size:1.05rem;}
@@ -50,7 +61,7 @@ var css=`
 .cp-pend{background:#F8FAFC;border:2px dashed var(--border);border-radius:12px;padding:26px;text-align:center;font-size:1.05rem;color:var(--muted);}
 .cp-rank{display:inline-flex;width:30px;height:30px;border-radius:50%;align-items:center;justify-content:center;background:var(--primary);color:white;font-weight:700;}
 .cp-aviso{background:#FEF2F2;border:1.5px solid #FCA5A5;border-radius:8px;padding:8px 12px;color:#991B1B;font-size:.95rem;margin-top:6px;}
-@media (max-width:760px){.mod-switch,.cp-grid2,.cp-grid3{grid-template-columns:1fr;}}
+@media (max-width:760px){.mod-switch,.cp-grid2,.cp-grid3,.ini-grid{grid-template-columns:1fr;}}
 `;
 var st=document.createElement('style');st.id='compras-css';st.textContent=css;document.head.appendChild(st);
 })();
@@ -74,7 +85,9 @@ function cpUrp(){try{if(typeof urpNotasPasos==='function')urpNotasPasos();}catch
 var _modulo='homolog';
 function cambiarModulo(m){
   _modulo=m;
-  try{localStorage.setItem('gp_modulo',m);}catch(e){}
+  if(m!=='inicio'){try{localStorage.setItem('gp_modulo',m);}catch(e){}}
+  var ini=document.getElementById('modInicio');if(ini)ini.style.display=m==='inicio'?'':'none';
+  if(m==='inicio')iniRender();
   document.querySelectorAll('.mod-btn').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-mod')===m);});
   var hm=document.getElementById('modHomolog'),cp=document.getElementById('modCompras'),dr=document.getElementById('modDirectorio');
   var hs=document.getElementById('hmSteps'),cs=document.getElementById('cpSteps');
@@ -86,12 +99,34 @@ function cambiarModulo(m){
   if(dr)dr.style.display=m==='directorio'?'':'none';
   if(badge&&m!=='homolog')badge.style.visibility='hidden';else if(badge)badge.style.visibility='';
   var sub=document.querySelector('.portal-sub');
-  if(sub)sub.textContent=m==='compras'?'Compras: elegir al mejor proveedor comparando ofertas'
+  if(sub)sub.textContent=m==='inicio'?'¿Qué quieres hacer hoy?':m==='compras'?'Compras: elegir al mejor proveedor comparando ofertas'
     :m==='directorio'?'Directorio único de proveedores (un registro por RUC)'
     :'Homologación: evaluación y reevaluación de proveedores';
   if(m==='compras'){cpIniciar();}
   if(m==='directorio'){dirIniciar();}
   window.scrollTo({top:0});
+}
+
+// ── Pantalla de inicio (neutral) ──
+var CP_MOD_NOM={compras:'🛒 Compras',homolog:'✅ Homologación',directorio:'📇 Proveedores'};
+function iniRender(){
+  var w=document.getElementById('modInicio');if(!w)return;
+  var ult='';try{ult=localStorage.getItem('gp_modulo')||'';}catch(e){}
+  var nom=(typeof getUsuarioNombre==='function'?getUsuarioNombre():'')||'';
+  var card=function(m,ico,tit,cuando,ej){return '<button type="button" class="ini-card" onclick="cambiarModulo(\''+m+'\')"><span class="ii">'+ico+'</span><b>'+tit+'</b>'
+    +'<span class="ic"><b style="font-size:1rem;">Úsalo cuando:</b> '+cuando+'</span><span class="ic"><i>'+ej+'</i></span><span class="ig">Entrar →</span></button>';};
+  w.innerHTML=cpNota('👋','Hola'+(nom?', '+esc(nom.split(' ')[0]):'')+'. Elige con qué vas a trabajar',
+      'El sistema tiene tres partes. El camino normal es: primero <b>Compras</b> (eliges al proveedor comparando ofertas) y después <b>Homologación</b> (evalúas cómo trabajó). '
+      +'Si el proveedor ya trabaja contigo, puedes ir directo a Homologación. Los dos usan el mismo <b>directorio de proveedores</b>.')
+    +'<div class="ini-flujo"><span class="p">🛒 Compras: comparar ofertas</span><span>→ gana uno →</span><span class="p">✅ Homologación: evaluar su desempeño</span><span>→ Normal, Alerta, Lista negra o Vetado</span></div>'
+    +'<div class="ini-grid">'
+    +card('compras','🛒','Compras','necesitas comprar o contratar algo y tienes varias cotizaciones.','Ej.: elegir quién hará la tabiquería de drywall.')
+    +card('homolog','✅','Homologación','quieres evaluar a un proveedor que ya te dio el servicio o el producto.','Ej.: calificar el lavado de muebles que se hizo en octubre.')
+    +card('directorio','📇','Proveedores','quieres ver, corregir o registrar los datos de un proveedor (RUC, contacto, cuenta).','Ej.: actualizar el celular de un contratista.')
+    +'</div>'
+    +(CP_MOD_NOM[ult]?'<div class="cp-acts"><span class="cp-sub" style="margin:0;">La última vez trabajaste en <b>'+CP_MOD_NOM[ult]+'</b>.</span>'
+      +'<button class="btn btn-p" onclick="cambiarModulo(\''+ult+'\')">Continuar en '+CP_MOD_NOM[ult]+' →</button></div>':'');
+  cpUrp();
 }
 
 // ══════════════════════════════════════
@@ -224,11 +259,26 @@ function dirRender(){
     var cats=d.categorias.map(function(id){var k=getCategoria(id);return k?k.icono+' '+esc(k.nombre):'';}).filter(Boolean).join(' · ');
     return '<div class="cp-item" style="cursor:default;border-left-color:'+(d.estado==='normal'?'#10B981':d.estado==='alerta'?'#F59E0B':'#DC2626')+'">'
       +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;"><div class="cp-item-nom">'+esc(d.razon_social)+' '+cpBadge(d.estado)+'</div>'
-      +'<button class="pk-tool" style="font-size:.95rem;" onclick="dirEditar('+i+')">✏️ Editar</button></div>'
+      +'<div style="display:flex;gap:6px;"><button class="pk-tool" style="font-size:.95rem;" onclick="dirEditar('+i+')">✏️ Editar</button>'
+      +'<button class="pk-tool del" style="font-size:.95rem;" onclick="dirEliminar('+i+')">🗑 Eliminar</button></div></div>'
       +'<div class="cp-item-meta">RUC: '+(esc(d.ruc)||'<i>sin RUC</i>')+(d.contacto_nombre?' · '+esc(d.contacto_nombre):'')+(d.contacto_celular?' · '+esc(d.contacto_celular):'')+'</div>'
       +(cats?'<div class="cp-item-meta">'+cats+'</div>':'')
       +'<div class="cp-item-meta">Registrado desde: '+(d.origen==='compras'?'🛒 Compras':d.origen==='homologacion'?'✅ Homologación':'📇 Directorio')+'</div></div>';
   }).join('')||'<div class="cp-pend">'+(q?'Ningún proveedor coincide con la búsqueda.':'Aún no hay proveedores. Usa <b>+ Nuevo proveedor</b>.')+'</div>';
+}
+function dirEliminar(i){
+  var d=_dir[i];if(!d)return;
+  var usos=_cpLista.filter(function(c){return (c.ofertas||[]).some(function(o){return o.dirId===d.id||_dirClave(o)===_dirClave(d);});});
+  var msg='¿Eliminar a "'+d.razon_social+'" del directorio?\n\n'
+    +'• Sus evaluaciones y paquetes en Homologación NO se borran.\n'
+    +(usos.length?'• Aparece en '+_pkPlural(usos.length,'requerimiento','requerimientos')+' de Compras ('+usos.map(function(c){return c.nombre;}).join(', ')+'); sus ofertas se conservan.\n':'')
+    +'• Si vuelves a guardarlo desde Homologación o Compras, se registrará de nuevo.\n\nNo se puede deshacer.';
+  if(!confirm(msg))return;
+  var quitar=function(){_dir=_dir.filter(function(x){return x!==d;});dirRender();tst('✅ '+d.razon_social+' eliminado del directorio');};
+  if(!d._qid){quitar();return;}
+  qdbFetch({accion:'eliminarDirectorio',qid:d._qid},function(res){
+    if(res&&res.ok)quitar();else tst('⚠️ No se pudo eliminar en QuintaDB; inténtalo de nuevo');
+  });
 }
 function dirEditar(i){
   var f=document.getElementById('dirForm');if(!f)return;
@@ -664,9 +714,8 @@ function cpVistaResultado(){
 // Al cargar: restaurar el módulo que se usó la última vez
 document.addEventListener('DOMContentLoaded',function(){});
 (function(){
-  var m='homolog';try{m=localStorage.getItem('gp_modulo')||'homolog';}catch(e){}
-  if(['homolog','compras','directorio'].indexOf(m)<0)m='homolog';
-  window._gpModuloInicial=m;
+  // Al ingresar siempre se muestra el inicio neutral; desde ahí se puede continuar donde se quedó
+  window._gpModuloInicial='inicio';
 })();
 // Si la sesión ya estaba abierta cuando cargó este archivo, aplicar el módulo guardado
-if(typeof _usuarioActual!=='undefined'&&_usuarioActual){setTimeout(function(){cambiarModulo(window._gpModuloInicial||'homolog');},0);}
+if(typeof _usuarioActual!=='undefined'&&_usuarioActual){setTimeout(function(){cambiarModulo(window._gpModuloInicial||'inicio');},0);}

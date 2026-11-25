@@ -423,8 +423,9 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 
 <!-- MÓDULOS -->
 <div class="mod-switch" id="modSwitch" role="tablist" aria-label="Módulos">
+  <button class="mod-btn home" data-mod="inicio" onclick="cambiarModulo('inicio')" title="Volver a la pantalla de inicio"><span class="mi">🏠</span><b>Inicio</b></button>
   <button class="mod-btn" data-mod="compras" onclick="cambiarModulo('compras')"><span class="mi">🛒</span><span><b>Compras</b><small>Elegir al proveedor comparando ofertas</small></span></button>
-  <button class="mod-btn on" data-mod="homolog" onclick="cambiarModulo('homolog')"><span class="mi">✅</span><span><b>Homologación</b><small>Evaluar a proveedores que ya trabajan</small></span></button>
+  <button class="mod-btn" data-mod="homolog" onclick="cambiarModulo('homolog')"><span class="mi">✅</span><span><b>Homologación</b><small>Evaluar a proveedores que ya trabajan</small></span></button>
   <button class="mod-btn" data-mod="directorio" onclick="cambiarModulo('directorio')"><span class="mi">📇</span><span><b>Proveedores</b><small>Directorio único por RUC</small></span></button>
 </div>
 <!-- PASOS -->
@@ -995,6 +996,7 @@ html,body{background:#f1f5f9;font-family:"IBM Plex Sans",sans-serif;color:var(--
 </div>
 
 </div>
+<div class="portal-inner" id="modInicio" style="display:none;"></div>
 <div class="portal-inner" id="modCompras" style="display:none;"></div>
 <div class="portal-inner" id="modDirectorio" style="display:none;"></div>
 </div>
@@ -2867,7 +2869,7 @@ function iniciarSesion(){
       aplicarUsuario();
       cargarCategorias();
       cargarPaquetesDesdeSheets();
-      if(typeof cambiarModulo==='function')cambiarModulo(window._gpModuloInicial||'homolog');
+      if(typeof cambiarModulo==='function')cambiarModulo(window._gpModuloInicial||'inicio');
       cargarEvaluadoresDesdeSheets();
       cargarPlantillasDesdeSheets();
       return;
@@ -2969,7 +2971,7 @@ function _establecerUsuario(nombre, correo){
   aplicarUsuario();
   cargarCategorias();
   cargarPaquetesDesdeSheets();
-  if(typeof cambiarModulo==='function')cambiarModulo(window._gpModuloInicial||'homolog');
+  if(typeof cambiarModulo==='function')cambiarModulo(window._gpModuloInicial||'inicio');
   cargarEvaluadoresDesdeSheets();
   cargarPlantillasDesdeSheets();
   tst('✅ Bienvenido, '+nombre);
@@ -7636,7 +7638,7 @@ if(document.readyState==='loading'){
 }
 
 </script>
-<script src="compras.js?v=3"></script>
+<script src="compras.js?v=4"></script>
 <style id="urp-comun-css">
   /* ===== Urpito · SGOE FI URP (módulo común) ===== */
   .urp-guia{display:flex;gap:14px;align-items:flex-start}
