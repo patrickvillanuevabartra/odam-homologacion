@@ -381,6 +381,7 @@ function homologDesdeDirectorio(){
 // COMPRAS
 // ══════════════════════════════════════
 var _cpLista=[],_cpCarga='idle',_cpAct=null,_cpPaso=0,_cpSucio=false;
+// (el valor referencial lo fija el estudio de mercado del paso 1)
 var CP_PASOS=['Requerimiento','Partidas','Bases de evaluación','Postores y ofertas','Evaluación','Resultado'];
 
 function _cpMap(r){
@@ -474,6 +475,7 @@ function cpVistaReq(){
   }).join('')||'<div class="cp-pend">Todavía no tienes requerimientos.<br>Crea el primero con <b>+ Nuevo requerimiento</b>.</div>';
   h+='<div class="pk-layout"><aside><div class="cp-acts" style="margin-top:0;"><b style="font-size:1.05rem;">Tus requerimientos</b>'
     +'<button class="btn btn-p btn-sm" onclick="cpNuevo()">+ Nuevo requerimiento</button></div><div class="cp-list">'+lista+'</div></aside><section>'+cpFormReq()+'</section></div>';
+  if(_cpAct)h+=cpMercadoHtml()+'<div class="cp-acts"><span></span><button class="btn btn-p" onclick="cpPaso(1)">Continuar → Partidas →</button></div>';
   return h;
 }
 function cpFormReq(){
@@ -492,15 +494,67 @@ function cpFormReq(){
     +'<div class="cp-ayuda">Texto libre: para qué se hace esta compra.</div>'
     +'<div class="cp-grid2"><div><label class="cp-lbl" for="cqFs">Fecha de solicitud</label><input type="date" class="cp-inp" id="cqFs" value="'+esc(c.fecha_solicitud)+'" onchange="_cpAct.fecha_solicitud=this.value;cpMarcar()"></div>'
     +'<div><label class="cp-lbl" for="cqFt">Fecha tentativa de contratación</label><input type="date" class="cp-inp" id="cqFt" value="'+esc(c.fecha_tentativa)+'" onchange="_cpAct.fecha_tentativa=this.value;cpMarcar()"></div></div>'
-    +'<label class="cp-lbl" for="cqVr">Valor referencial (S/, con IGV) — opcional</label>'
-    +'<input class="cp-inp" id="cqVr" style="max-width:240px;" inputmode="decimal" value="'+esc(String(vr))+'" placeholder="Ej.: 3500" oninput="cpT().valor_referencial=cpNum(this.value);cpMarcar()">'
-    +'<div class="cp-ayuda">Es el monto máximo que estás dispuesto a pagar. Las ofertas que lo superen quedan fuera, y sirve para calificar la facturación en el modelo CTB.</div>'
+    +'<label class="cp-lbl">Valor referencial (S/, con IGV)</label>'
+    +'<div style="font-size:1.15rem;font-weight:700;" id="cqVrRes">'+(cpVR()?cpSoles(cpVR()):'<span style="color:#92400E;">Aún no definido — complétalo con el estudio de mercado de abajo</span>')+'</div>'
+    +'<div class="cp-ayuda">Es el monto máximo que se pagaría. Las ofertas que lo superen quedan fuera, y sirve para calificar la facturación en el modelo CTB.</div>'
     +'<label class="cp-lbl" for="cqPt">Peso de la evaluación técnica (%)</label>'
     +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><input type="number" min="0" max="100" step="5" class="cp-inp" style="max-width:120px;" id="cqPt" value="'+pt+'" oninput="cpPesos(this.value)">'
     +'<span id="cqPesos" style="font-size:1rem;">Técnico <b>'+pt+' %</b> + Económico <b>'+(100-pt)+' %</b> = 100 %</span></div>'
     +'<div class="cp-ayuda">Puntaje final = puntaje técnico × peso técnico + puntaje económico × peso económico. Por defecto 70 / 30, como en los concursos de la Cooperación Técnica Belga: pesa más la calidad que el precio.</div>'
     +'<div class="cp-acts"><button class="pk-tool del" style="font-size:.95rem;" onclick="cpEliminar()">🗑 Eliminar requerimiento</button>'+cpBotonGuardar()+'</div></div>'
-    +'<div class="cp-acts"><span></span><button class="btn btn-p" onclick="cpPaso(1)">Continuar → Partidas →</button></div>';
+    +'<div class="cp-ayuda" style="margin-top:8px;">⬇ El valor referencial se calcula en el <b>estudio de mercado</b>, más abajo.</div>';
+}
+// ── Estudio de mercado: de dónde sale el valor referencial ──
+var CP_FUENTES={cotizacion:'Cotización referencial',compra:'Compra anterior similar',catalogo:'Precio de catálogo o web',otro:'Otra fuente'};
+var CP_METODOS={promedio:'Promedio de las fuentes',mediana:'Mediana (el valor del medio)',minimo:'Menor valor'};
+function cpMer(){var t=cpT();var m=t.mercado=t.mercado||{};m.fuentes=m.fuentes||[];m.metodo=m.metodo||'promedio';return m;}
+function cpMercadoCalc(){
+  var m=cpMer(),v=m.fuentes.map(function(f){return cpNum(f.monto);}).filter(function(x){return x!=null&&x>0;}).sort(function(a,b){return a-b;});
+  if(!v.length)return {n:0,valor:null};
+  var r;
+  if(m.metodo==='minimo')r=v[0];
+  else if(m.metodo==='mediana')r=v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2;
+  else r=v.reduce(function(a,b){return a+b;},0)/v.length;
+  return {n:v.length,valor:Math.round(r*100)/100,min:v[0],max:v[v.length-1],disp:v[0]>0?v[v.length-1]/v[0]:null};
+}
+function cpMercadoAplicar(){
+  var m=cpMer(),r=cpMercadoCalc();
+  if(!m.manual)cpT().valor_referencial=r.valor;
+  var e=document.getElementById('cqVrRes');if(e)e.innerHTML=cpVR()?cpSoles(cpVR()):'<span style="color:#92400E;">Aún no definido — complétalo con el estudio de mercado de abajo</span>';
+}
+function cpMercadoHtml(){
+  var m=cpMer(),r=cpMercadoCalc(),hoy=new Date();
+  var filas=m.fuentes.map(function(f,i){
+    var b='cpMer().fuentes['+i+']';
+    var viejo=f.fecha&&((hoy-new Date(f.fecha))/864e5>180);
+    return '<tr><td style="font-weight:700;">'+(i+1)+'</td>'
+      +'<td style="min-width:220px;"><select onchange="'+b+'.tipo=this.value;cpMarcar()" class="cp-inp" style="padding:6px;font-size:.95rem;">'+Object.keys(CP_FUENTES).map(function(k){return '<option value="'+k+'"'+(f.tipo===k?' selected':'')+'>'+CP_FUENTES[k]+'</option>';}).join('')+'</select></td>'
+      +'<td><input value="'+esc(f.fuente||'')+'" placeholder="Proveedor, tienda o compra" oninput="'+b+'.fuente=this.value;cpMarcar()"></td>'
+      +'<td style="width:150px;"><input class="n" inputmode="decimal" value="'+(f.monto==null?'':f.monto)+'" placeholder="0.00" onchange="'+b+'.monto=cpNum(this.value);cpMarcar();cpMercadoAplicar();cpRender()"></td>'
+      +'<td style="width:160px;"><input type="date" value="'+esc(f.fecha||'')+'" onchange="'+b+'.fecha=this.value;cpMarcar();cpRender()">'+(viejo?'<div class="cp-ayuda" style="color:#92400E;">Tiene más de 6 meses</div>':'')+'</td>'
+      +'<td><input value="'+esc(f.obs||'')+'" placeholder="Enlace o nota" oninput="'+b+'.obs=this.value;cpMarcar()"></td>'
+      +'<td><button class="pk-tool del" onclick="cpMer().fuentes.splice('+i+',1);cpMarcar();cpMercadoAplicar();cpRender()">🗑</button></td></tr>';
+  }).join('');
+  var avisos='';
+  if(r.n===1)avisos+='<div class="cp-aviso" style="background:#FFFBEB;border-color:#FCD34D;color:#92400E;">Con una sola fuente el valor es poco confiable: se recomiendan al menos 2, idealmente 3.</div>';
+  if(r.n>=2&&r.disp>1.5)avisos+='<div class="cp-aviso" style="background:#FFFBEB;border-color:#FCD34D;color:#92400E;">La fuente más cara cuesta '+r.disp.toFixed(1)+' veces la más barata. Revisa que todas coticen lo mismo (mismo alcance y con IGV) antes de usar el resultado.</div>';
+  return '<div class="cp-card"><div class="cp-h">📊 Estudio de mercado</div>'
+    +'<div class="cp-sub">El valor referencial se calcula con precios reales del mercado <b>antes</b> de pedir las ofertas. Registra cotizaciones referenciales, compras anteriores parecidas o precios de catálogo, '
+    +'todas <b>por el mismo alcance</b> y <b>con IGV</b>. Estas fuentes solo sirven para fijar el valor; no son las ofertas que se evalúan.</div>'
+    +'<div class="cp-scroll"><table class="cp-tabla"><thead><tr><th>N°</th><th>Tipo</th><th>Fuente</th><th class="num">Monto total (S/, con IGV)</th><th>Fecha</th><th>Enlace o nota</th><th></th></tr></thead><tbody>'
+    +(filas||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px;">Aún no hay fuentes.</td></tr>')+'</tbody></table></div>'
+    +'<div class="cp-acts"><button class="btn btn-o" onclick="cpMer().fuentes.push({tipo:\'cotizacion\',fuente:\'\',monto:null,fecha:cpHoy(),obs:\'\'});cpMarcar();cpRender()">+ Agregar fuente</button></div>'
+    +'<div class="cp-grid2"><div><label class="cp-lbl">¿Cómo se calcula?</label><select class="cp-inp" onchange="cpMer().metodo=this.value;cpMarcar();cpMercadoAplicar();cpRender()">'
+    +Object.keys(CP_METODOS).map(function(k){return '<option value="'+k+'"'+(m.metodo===k?' selected':'')+'>'+CP_METODOS[k]+'</option>';}).join('')+'</select>'
+    +'<div class="cp-ayuda">Promedio: suma de montos ÷ número de fuentes. Mediana: el valor del medio, útil si una fuente es muy distinta. Menor valor: el más bajo.</div></div>'
+    +'<div><label class="cp-lbl">Resultado del estudio</label><div style="font-size:1.2rem;font-weight:700;">'+(r.valor!=null?cpSoles(r.valor):'—')+'</div>'
+    +'<div class="cp-ayuda">'+(r.n?_pkPlural(r.n,'fuente','fuentes')+' · rango '+cpSoles(r.min)+' a '+cpSoles(r.max):'Agrega fuentes para calcularlo')+'</div></div></div>'
+    +avisos
+    +'<label style="display:flex;gap:8px;align-items:center;font-size:1rem;margin-top:12px;"><input type="checkbox" style="width:20px;height:20px;"'+(m.manual?' checked':'')
+    +' onchange="cpMer().manual=this.checked;cpMarcar();if(!this.checked)cpMercadoAplicar();cpRender()">Fijar el valor referencial a mano (por ejemplo, si hay un presupuesto aprobado)</label>'
+    +(m.manual?'<div style="display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap;"><input class="cp-inp" style="max-width:220px;" inputmode="decimal" value="'+(cpVR()==null?'':cpVR())+'" onchange="cpT().valor_referencial=cpNum(this.value);cpMarcar();cpMercadoAplicar()">'
+      +'<input class="cp-inp" style="flex:1;min-width:220px;" value="'+esc(m.motivo||'')+'" placeholder="Motivo (obligatorio dejar constancia)" oninput="cpMer().motivo=this.value;cpMarcar()"></div>':'')
+    +'</div>';
 }
 function cpPesos(v){
   var n=Math.max(0,Math.min(100,cpNum(v)==null?0:cpNum(v)));_cpAct.peso_tecnico=n;cpMarcar();
