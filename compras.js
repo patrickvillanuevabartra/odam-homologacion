@@ -60,6 +60,8 @@ var css=`
 .cp-modal-c{background:white;border-radius:14px;max-width:760px;width:100%;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25);}
 .cp-pend{background:#F8FAFC;border:2px dashed var(--border);border-radius:12px;padding:26px;text-align:center;font-size:1.05rem;color:var(--muted);}
 .cp-rank{display:inline-flex;width:30px;height:30px;border-radius:50%;align-items:center;justify-content:center;background:var(--primary);color:white;font-weight:700;}
+.cp-ej{background:#FFFBEB;border:1.5px dashed #F59E0B;border-radius:8px;padding:9px 12px;margin-top:8px;color:#78350F;font-size:.98rem;line-height:1.55;}
+.cp-ej ul{margin:4px 0 0 20px;}
 .cp-aviso{background:#FEF2F2;border:1.5px solid #FCA5A5;border-radius:8px;padding:8px 12px;color:#991B1B;font-size:.95rem;margin-top:6px;}
 @media (max-width:760px){.mod-switch,.cp-grid2,.cp-grid3,.ini-grid{grid-template-columns:1fr;}}
 `;
@@ -77,6 +79,7 @@ var CP_ESTADOS={normal:'Normal',alerta:'Alerta',lista_negra:'Lista negra',vetado
 function cpEstadoKey(e){e=String(e||'normal').toLowerCase().replace(/\s+/g,'_');return CP_ESTADOS[e]?e:'normal';}
 function cpBadge(e){var k=cpEstadoKey(e);return '<span class="cp-badge b-'+k+'">'+CP_ESTADOS[k]+'</span>';}
 function cpNota(ico,tit,html){return '<div class="paso-nota"><span class="pn-ico">'+ico+'</span><div><div class="pn-tit">'+tit+'</div>'+html+'</div></div>';}
+function cpEj(html){return '<div class="cp-ej"><b>📝 Ejemplo:</b> '+html+'</div>';}
 function cpUrp(){try{if(typeof urpNotasPasos==='function')urpNotasPasos();}catch(e){}}
 
 // ══════════════════════════════════════
@@ -244,7 +247,7 @@ function dirIniciar(){
     w.dataset.init='1';
     w.innerHTML=cpNota('📇','Un solo registro por proveedor',
       'Aquí está cada proveedor <b>una sola vez</b>, identificado por su <b>RUC</b>. Lo usan los dos módulos: en <b>Compras</b> lo invitas a cotizar y en <b>Homologación</b> lo evalúas. '
-      +'El <b>estado</b> (Normal, Alerta, Lista negra o Vetado) lo calcula Homologación con sus evaluaciones; si un proveedor está en Lista negra o Vetado, Compras te avisará antes de invitarlo.')
+      +'El <b>estado</b> (Normal, Alerta, Lista negra o Vetado) lo calcula Homologación con sus evaluaciones; si un proveedor está en Lista negra o Vetado, Compras te avisará antes de invitarlo.'+cpEj('<i>MR Contratistas SAC</i>, RUC 20552589883, aparece una sola vez. Si lo invitas a cotizar en Compras y luego lo evalúas en Homologación, ambos usan este mismo registro; si cambias aquí su celular, se ve actualizado en los dos.'))
       +'<div class="cp-acts"><input id="dirBuscar" class="cp-inp" style="max-width:420px;" type="search" placeholder="Buscar por razón social o RUC" oninput="_dirFiltro=this.value;dirRender()">'
       +'<div style="display:flex;gap:8px;"><button class="btn btn-o btn-sm" onclick="dirCargar(dirRender,true)">🔄 Actualizar</button>'
       +'<button class="btn btn-p btn-sm" onclick="dirEditar(null)">+ Nuevo proveedor</button></div></div>'
@@ -463,7 +466,7 @@ function cpVistaReq(){
   var h=cpNota('🛒','¿Qué necesitas comprar o contratar?',
     'Un <b>requerimiento</b> es una necesidad concreta para la que pides cotizaciones a varios proveedores. Ejemplo: <i>Tabiquería drywall y albañilería menor – La Molina 2026</i>. '
     +'Todos los proveedores cotizarán <b>las mismas partidas</b> (paso 2), y así sus precios se pueden comparar de verdad. '
-    +'Al final, el proveedor ganador pasa a <b>Homologación</b> para evaluar su desempeño.');
+    +'Al final, el proveedor ganador pasa a <b>Homologación</b> para evaluar su desempeño.'+cpEj('Nombre: <i>Tabiquería drywall y albañilería menor – La Molina 2026</i> · Categoría: 🏗️ Construcción y remodelación · Objetivo: <i>Habilitar el baño del segundo piso antes de febrero</i> · Peso técnico 70 % (la calidad importa más que el precio).'));
   var lista;
   if(_cpCarga==='cargando'&&!_cpLista.length)lista='<div class="cp-pend">Cargando requerimientos desde QuintaDB…</div>';
   else if(_cpCarga==='error')lista='<div class="cp-pend">No se pudieron cargar los requerimientos.<br><button class="btn btn-o btn-sm" onclick="cpCargar()">Reintentar</button></div>';
@@ -539,8 +542,10 @@ function cpMercadoHtml(){
   if(r.n===1)avisos+='<div class="cp-aviso" style="background:#FFFBEB;border-color:#FCD34D;color:#92400E;">Con una sola fuente el valor es poco confiable: se recomiendan al menos 2, idealmente 3.</div>';
   if(r.n>=2&&r.disp>1.5)avisos+='<div class="cp-aviso" style="background:#FFFBEB;border-color:#FCD34D;color:#92400E;">La fuente más cara cuesta '+r.disp.toFixed(1)+' veces la más barata. Revisa que todas coticen lo mismo (mismo alcance y con IGV) antes de usar el resultado.</div>';
   return '<div class="cp-card"><div class="cp-h">📊 Estudio de mercado</div>'
-    +'<div class="cp-sub">El valor referencial se calcula con precios reales del mercado <b>antes</b> de pedir las ofertas. Registra cotizaciones referenciales, compras anteriores parecidas o precios de catálogo, '
-    +'todas <b>por el mismo alcance</b> y <b>con IGV</b>. Estas fuentes solo sirven para fijar el valor; no son las ofertas que se evalúan.</div>'
+    +cpNota('🔎','¿De dónde sale el valor referencial?','Se calcula con precios reales del mercado <b>antes</b> de pedir las ofertas: cotizaciones referenciales, compras anteriores parecidas o precios de catálogo, '
+      +'todas <b>por el mismo alcance</b> y <b>con IGV</b>. Estas fuentes solo sirven para fijar el valor; no son las ofertas que se evalúan.'
+      +cpEj('Pediste precio a 3 contratistas: S/ 3,400, S/ 3,100 y S/ 5,600. <b>Promedio</b> = (3,400 + 3,100 + 5,600) ÷ 3 = S/ 4,033.33. <b>Mediana</b> = S/ 3,400 (el del medio). '
+      +'Aquí conviene la mediana, porque S/ 5,600 se aleja mucho de los otros dos.'))
     +'<div class="cp-scroll"><table class="cp-tabla"><thead><tr><th>N°</th><th>Tipo</th><th>Fuente</th><th class="num">Monto total (S/, con IGV)</th><th>Fecha</th><th>Enlace o nota</th><th></th></tr></thead><tbody>'
     +(filas||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px;">Aún no hay fuentes.</td></tr>')+'</tbody></table></div>'
     +'<div class="cp-acts"><button class="btn btn-o" onclick="cpMer().fuentes.push({tipo:\'cotizacion\',fuente:\'\',monto:null,fecha:cpHoy(),obs:\'\'});cpMarcar();cpRender()">+ Agregar fuente</button></div>'
@@ -584,7 +589,7 @@ function cpVistaPartidas(){
   var c=_cpAct,k=getCategoria(c.categoria);
   var h=cpNota('📋','Las partidas: lo que todos van a cotizar',
     'Escribe cada trabajo o producto <b>una sola vez</b>, con su unidad y cantidad (metrado). Luego cada proveedor pone su precio a <b>estas mismas partidas</b>. '
-    +'Así se evita comparar presupuestos que cotizan cosas distintas. Ejemplo: <i>1. Muro de drywall con plancha RH en baño · m² · 12</i>.');
+    +'Así se evita comparar presupuestos que cotizan cosas distintas.'+cpEj('<ul><li>1. Muro de drywall con plancha RH en baño · m² · 12</li><li>2. Muro lateral del vecino · m² · 10</li><li>3. Pared divisoria con vano de puerta · glb · 1</li><li>4. Tarrajeo de filos · ml · 20</li></ul>Si un contratista te da un solo precio global, igual lo registras partida por partida o como una sola partida “glb · 1”.'));
   var chips=k&&k.etiquetas.length?'<div class="cp-ayuda" style="margin-bottom:6px;">Atajos de la categoría '+k.icono+' '+esc(k.nombre)+' (agregan una partida con ese nombre):</div>'
     +k.etiquetas.map(function(e){return '<button type="button" class="cp-chip" onclick="cpAddPartida(\''+esc(e).replace(/'/g,"\\'")+'\')">+ '+esc(e)+'</button>';}).join(''):'';
   var filas=(c.partidas||[]).map(function(p,i){
@@ -617,7 +622,7 @@ function cpVistaOfertas(){
   var h=cpNota('📨','Una oferta por proveedor',
     'Agrega a cada <b>postor</b> que presentó propuesta (desde el <b>directorio</b>) y registra su oferta económica: copia su <b>precio unitario</b> en cada partida. Si no cotizó una partida, marca <b>No cotiza</b>. '
     +'Completa también las condiciones: si el precio incluye <b>IGV</b>, el plazo, la garantía, el adelanto y lo que <b>no incluye</b>. '
-    +'Se recomienda tener <b>al menos 3 ofertas</b>. Los precios solo se comparan entre quienes pasen la evaluación técnica (paso 5), como cuando el sobre económico se abre al final.');
+    +'Se recomienda tener <b>al menos 3 ofertas</b>. Los precios solo se comparan entre quienes pasen la evaluación técnica (paso 5), como cuando el sobre económico se abre al final.'+cpEj('MR Contratistas cotizó el muro del baño a S/ 100 el m² <b>sin IGV</b>: escribe 100, y en “¿El precio incluye IGV?” elige <i>No, se suma el 18 %</i>. El sistema lo comparará como S/ 118 el m². Si no cotizó el tarrajeo, marca <i>No cotiza</i> en esa partida.'));
   if(!(c.partidas||[]).length){
     return h+'<div class="cp-pend">Primero registra las partidas en el paso 2.<br><button class="btn btn-p btn-sm" style="margin-top:10px;" onclick="cpPaso(1)">Ir a Partidas</button></div>';
   }
@@ -797,13 +802,14 @@ function cpVistaBases(){
     +'<b>1) Requisitos habilitadores:</b> se cumplen o no. Si falta uno, el postor queda fuera y no se evalúa.<br>'
     +'<b>2) Evaluación técnica (sobre 100 puntos):</b> solo para los habilitados. Quien no llega al <b>puntaje mínimo</b> queda fuera.<br>'
     +'<b>3) Evaluación económica:</b> solo para quienes pasaron la técnica. El más barato obtiene 100.<br>'
-    +'<b>Puntaje final</b> = técnico × '+pt+' % + económico × '+(100-pt)+' %. Si hay empate, gana el de mayor puntaje técnico.');
+    +'<b>Puntaje final</b> = técnico × '+pt+' % + económico × '+(100-pt)+' %. Si hay empate, gana el de mayor puntaje técnico.'+cpEj('Postor A: cumple todos los requisitos → técnico 86 (pasa el mínimo de 80) → económico 90 → final 86 × 0.70 + 90 × 0.30 = 87.2. Postor B: técnico 74 → <b>no pasa</b>; no importa si su precio era el más bajo.'));
   h+='<div class="cp-card"><div class="cp-h">Empezar desde un modelo</div><div class="cp-sub">Carga un modelo y luego ajústalo. Reemplaza lo que tengas.</div>'
     +'<button class="cp-chip" onclick="cpAplicarPlantilla(\'ctb\')">📑 Consultoría y servicios especializados (modelo CTB)</button>'
     +'<button class="cp-chip" onclick="cpAplicarPlantilla(\'obras\')">🏗️ Obras y servicios menores</button>'
     +'<button class="cp-chip" onclick="cpAplicarPlantilla(\'cat\')">🗂️ Desde los criterios de la categoría</button></div>';
   // Requisitos
-  h+='<div class="cp-card"><div class="cp-h">1. Requisitos habilitadores</div><div class="cp-sub">Se cumplen o no; no dan puntos. Escribe también con qué documento se comprueba.</div>'
+  h+='<div class="cp-card"><div class="cp-h">1. Requisitos habilitadores</div>'+cpNota('🚪','¿Qué es un requisito habilitador?','Es una condición que se <b>cumple o no</b>; no da puntos. Si un postor no cumple uno solo, queda fuera. Escribe también con qué documento se comprueba.'
+    +cpEj('Requisito: <i>RUC activo y habido</i> · Cómo se comprueba: <i>consulta RUC en SUNAT</i>. Si SUNAT muestra “no habido”, el postor queda fuera aunque su propuesta sea buena.'))
     +'<div class="cp-scroll"><table class="cp-tabla"><thead><tr><th style="width:50px;">N°</th><th>Requisito</th><th>Cómo se comprueba</th><th style="width:60px;"></th></tr></thead><tbody>'
     +(t.requisitos.map(function(r,i){
       return '<tr><td style="font-weight:700;">'+(i+1)+'</td><td><input value="'+esc(r.nombre)+'" oninput="cpT().requisitos['+i+'].nombre=this.value;cpMarcar()"></td>'
@@ -814,17 +820,17 @@ function cpVistaBases(){
   // Factores
   var suma=cpSumaMax();
   h+='<div class="cp-card"><div class="cp-h">2. Criterios de la evaluación técnica</div>'
-    +'<div class="cp-sub">Cada criterio tiene un puntaje máximo; entre todos deben sumar <b>100</b>. Hay tres formas de calificar:<br>'
-    +'• <b>Por tramos:</b> escribes un número (años, trabajos, meses) y la tabla da los puntos. Ej.: 8 años o más = 5 pts.<br>'
-    +'• <b>Por niveles:</b> eliges la descripción que corresponde. Ej.: Maestría = 2 pts.<br>'
-    +'• <b>Puntaje directo:</b> el evaluador pone los puntos, de 0 al máximo.</div>'
+    +cpNota('🎯','Criterios y su peso (puntaje máximo)','Cada criterio tiene un <b>puntaje máximo</b>, que es su peso: entre todos deben sumar <b>100</b>. Hay tres formas de calificar:'
+      +cpEj('<ul><li><b>Por tramos</b> (escribes un número): <i>Antigüedad de la empresa</i>, máx. 5 → 8 años o más = 5; de 5 a 7 = 3; menos de 5 = 1. Si la empresa tiene <b>6 años</b>, obtiene <b>3</b>.</li>'
+      +'<li><b>Por niveles</b> (eliges una descripción): <i>Grado del líder</i>, máx. 3 → Doctorado 3; Maestría 2; Diplomado 1. Con <b>Maestría</b> obtiene <b>2</b>.</li>'
+      +'<li><b>Puntaje directo</b> (el evaluador pone los puntos): <i>Calidad de la presentación</i>, máx. 10 → el evaluador le pone <b>7</b>.</li></ul>'))
     +t.factores.map(function(f,i){return cpFactorHtml(f,i);}).join('')
     +'<div class="cp-acts"><button class="btn btn-o" onclick="cpAddFactor()">+ Agregar criterio</button>'
     +'<span style="font-size:1.05rem;font-weight:700;color:'+(suma===100?'#059669':'#991B1B')+'">Suma de puntajes máximos: '+suma+(suma===100?' ✓':' — debe ser 100')+'</span></div></div>';
   // Mínimo
   h+='<div class="cp-card"><div class="cp-h">3. Puntaje técnico mínimo</div>'
     +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><input type="number" class="cp-inp" style="max-width:120px;" min="0" max="100" value="'+(cpNum(t.minimo)==null?80:t.minimo)+'" oninput="cpT().minimo=cpNum(this.value);cpMarcar()">'
-    +'<span style="font-size:1rem;">puntos de 100. Quien obtenga menos <b>no pasa</b> a la evaluación económica.</span></div></div>';
+    +'<span style="font-size:1rem;">puntos de 100. Quien obtenga menos <b>no pasa</b> a la evaluación económica.</span></div>'+cpEj('Con mínimo 80: un postor con <b>82</b> pasa a la económica; uno con <b>79</b> queda fuera.')+'</div>';
   h+='<div class="cp-acts"><span></span>'+cpBotonGuardar()+'</div>';
   return h;
 }
@@ -890,7 +896,7 @@ function cpEtapaHab(){
   var c=_cpAct,ofs=c.ofertas,t=cpT();
   var h=cpNota('✅','Etapa 1: requisitos habilitadores',
     'Marca para cada postor si <b>cumple</b> o <b>no cumple</b> cada requisito. Basta un "No cumple" para que quede <b>no habilitado</b>: no pasa a la evaluación técnica. '
-    +'Si un requisito aún no se revisa, déjalo en "Por revisar".');
+    +'Si un requisito aún no se revisa, déjalo en "Por revisar".'+cpEj('Constructora Andina no presentó la declaración jurada de no estar impedida → marca <i>No cumple</i> → queda <b>no habilitada</b> y su propuesta técnica ya no se califica.'));
   if(!t.requisitos.length)return h+'<div class="cp-pend">No definiste requisitos habilitadores: todos los postores quedan habilitados.<br><button class="btn btn-o btn-sm" style="margin-top:8px;" onclick="cpPaso(2)">Definirlos en Bases</button></div>';
   var filas=t.requisitos.map(function(r,ri){
     return '<tr><td style="font-weight:700;">'+(ri+1)+'</td><td>'+esc(r.nombre)+(r.evidencia?'<div class="cp-ayuda">'+esc(r.evidencia)+'</div>':'')+'</td>'
@@ -910,7 +916,7 @@ function cpEtapaTec(){
   var hab=c.ofertas.filter(function(o){return cpHabEstado(o)==='si';});
   var h=cpNota('📐','Etapa 2: evaluación técnica (sobre 100 puntos)',
     'Solo se evalúa a los postores <b>habilitados</b>. En cada criterio escribe el dato o elige el nivel; el sistema calcula los puntos según las bases (paso 3). '
-    +'<b>Puntaje técnico</b> = suma de los puntos de todos los criterios. Quien obtenga menos de <b>'+min+'</b> puntos queda fuera y <b>no pasa</b> a la evaluación económica.');
+    +'<b>Puntaje técnico</b> = suma de los puntos de todos los criterios. Quien obtenga menos de <b>'+min+'</b> puntos queda fuera y <b>no pasa</b> a la evaluación económica.'+cpEj('En <i>Antigüedad</i> escribes <b>6</b> (años) y el sistema pone 3 pts; en <i>Grado del líder</i> eliges <b>Maestría</b> y pone 2 pts. Al completar todos los criterios, si el total es 86 aparece “✓ Sí pasa”; si es 74, “✗ No pasa”.'));
   if(!t.factores.length)return h+'<div class="cp-pend">Aún no hay criterios técnicos.<br><button class="btn btn-o btn-sm" style="margin-top:8px;" onclick="cpPaso(2)">Definirlos en Bases</button></div>';
   if(!hab.length)return h+'<div class="cp-pend">Ningún postor está habilitado todavía. Completa la etapa 1.</div>';
   var grupoAnt=null;
@@ -962,7 +968,7 @@ function cpEtapaEco(){
     +'<span class="cp-badge" style="background:#DCFCE7;color:#065F46;">verde</span> precio más bajo de la partida; '
     +'<span class="cp-badge" style="background:#FEF3C7;color:#92400E;">amarillo</span> partida que no cotizó, completada con el <b>promedio</b> de los demás.<br>'
     +'<b>Puntaje económico</b> = (total comparable más bajo ÷ total comparable del postor) × 100.'
-    +(vr?' Las ofertas que superan el <b>valor referencial</b> ('+cpSoles(vr)+') quedan fuera.':''));
+    +(vr?' Las ofertas que superan el <b>valor referencial</b> ('+cpSoles(vr)+') quedan fuera.':'')+cpEj('A ofrece S/ 3,000 y B S/ 3,750 (ambos con IGV). A es el más barato → <b>100</b>. B → 3,000 ÷ 3,750 × 100 = <b>80</b>. Si el valor referencial fuera S/ 3,500, B quedaría fuera por superarlo.'));
   if(!aptos.length)return h+'<div class="cp-pend">Ningún postor ha pasado todavía la evaluación técnica.</div>';
   var r=cpCalcEconomico(c,aptos);
   var filas=c.partidas.map(function(p,pi){
