@@ -381,12 +381,12 @@ function homologDesdeDirectorio(){
 // COMPRAS
 // ══════════════════════════════════════
 var _cpLista=[],_cpCarga='idle',_cpAct=null,_cpPaso=0,_cpSucio=false;
-var CP_PASOS=['Requerimiento','Partidas','Ofertas','Cuadro económico','Cuadro técnico','Resultado'];
+var CP_PASOS=['Requerimiento','Partidas','Bases de evaluación','Postores y ofertas','Evaluación','Resultado'];
 
 function _cpMap(r){
   return {_qid:r._qid,id:r.id||r._qid,nombre:r.nombre||'',categoria:r.categoria||'',descripcion:r.descripcion||'',
     objetivo:r.objetivo||'',fecha_solicitud:r.fecha_solicitud||'',fecha_tentativa:r.fecha_tentativa||'',
-    peso_tecnico:cpNum(r.peso_tecnico)==null?60:cpNum(r.peso_tecnico),
+    peso_tecnico:cpNum(r.peso_tecnico)==null?70:cpNum(r.peso_tecnico),
     partidas:safeJsonParse(r.partidas_json,[])||[],ofertas:safeJsonParse(r.ofertas_json,[])||[],
     tecnica:safeJsonParse(r.tecnica_json,{})||{},resultado:safeJsonParse(r.resultado_json,{})||{},
     estado:r.estado||'borrador',propietario:(r.propietario||'').toLowerCase(),fecha_creacion:r.fecha_creacion||'',
@@ -411,7 +411,7 @@ function cpCargar(){
 }
 function cpGuardar(cb){
   var c=_cpAct;if(!c){if(cb)cb(false);return;}
-  var pt=Math.max(0,Math.min(100,cpNum(c.peso_tecnico)==null?60:cpNum(c.peso_tecnico)));
+  var pt=Math.max(0,Math.min(100,cpNum(c.peso_tecnico)==null?70:cpNum(c.peso_tecnico)));
   var datos={id:c.id,nombre:c.nombre,categoria:c.categoria,descripcion:c.descripcion,objetivo:c.objetivo,
     fecha_solicitud:c.fecha_solicitud,fecha_tentativa:c.fecha_tentativa,peso_tecnico:String(pt),peso_economico:String(100-pt),
     partidas_json:JSON.stringify(c.partidas||[]),ofertas_json:JSON.stringify(c.ofertas||[]),
@@ -451,7 +451,7 @@ function cpNav(){
 }
 function cpRender(){
   var w=document.getElementById('modCompras');if(!w||!w.dataset.init)return;
-  var f=[cpVistaReq,cpVistaPartidas,cpVistaOfertas,cpVistaEconomico,cpVistaTecnico,cpVistaResultado][_cpPaso];
+  var f=[cpVistaReq,cpVistaPartidas,cpVistaBases,cpVistaOfertas,cpVistaEvaluacion,cpVistaResultado][_cpPaso];
   var tit=_cpAct?'<div class="cp-sub" style="font-size:1rem;margin:0 0 6px;">Requerimiento: <b>'+esc(_cpAct.nombre)+'</b></div>':'';
   w.innerHTML=(_cpPaso>0?cpNav():'')+'<p class="stitle">Paso '+(_cpPaso+1)+' — '+CP_PASOS[_cpPaso]+'</p>'+tit+f()+(_cpPaso>0?cpNav():'');
   cpUrp();
@@ -470,7 +470,7 @@ function cpVistaReq(){
     var k=getCategoria(c.categoria);
     return '<button type="button" class="cp-item'+(_cpAct===c?' on':'')+'" onclick="cpElegir('+i+')">'
       +'<div class="cp-item-nom">'+esc(c.nombre)+'</div>'
-      +'<div class="cp-item-meta">'+(k?k.icono+' '+esc(k.nombre):'Sin categoría')+' · '+_pkPlural((c.partidas||[]).length,'partida','partidas')+' · '+_pkPlural((c.ofertas||[]).length,'oferta','ofertas')+'</div></button>';
+      +'<div class="cp-item-meta">'+(k?k.icono+' '+esc(k.nombre):'Sin categoría')+' · '+_pkPlural((c.partidas||[]).length,'partida','partidas')+' · '+_pkPlural((c.ofertas||[]).length,'postor','postores')+(c.estado==='adjudicado'?' · 🏆 adjudicado':'')+'</div></button>';
   }).join('')||'<div class="cp-pend">Todavía no tienes requerimientos.<br>Crea el primero con <b>+ Nuevo requerimiento</b>.</div>';
   h+='<div class="pk-layout"><aside><div class="cp-acts" style="margin-top:0;"><b style="font-size:1.05rem;">Tus requerimientos</b>'
     +'<button class="btn btn-p btn-sm" onclick="cpNuevo()">+ Nuevo requerimiento</button></div><div class="cp-list">'+lista+'</div></aside><section>'+cpFormReq()+'</section></div>';
@@ -481,7 +481,8 @@ function cpFormReq(){
   if(!c)return '<div class="cp-pend">Elige un requerimiento de la lista o crea uno nuevo.</div>';
   var opts='<option value="">— Elige la categoría —</option>'+_categorias.filter(function(k){return k.activa||k.id===c.categoria;}).map(function(k){
     return '<option value="'+esc(k.id)+'"'+(k.id===c.categoria?' selected':'')+'>'+k.icono+' '+esc(k.nombre)+'</option>';}).join('');
-  var pt=cpNum(c.peso_tecnico)==null?60:cpNum(c.peso_tecnico);
+  var pt=cpNum(c.peso_tecnico)==null?70:cpNum(c.peso_tecnico);
+  var vr=(c.tecnica&&c.tecnica.valor_referencial!=null)?c.tecnica.valor_referencial:'';
   return '<div class="cp-card"><div class="cp-h">Datos del requerimiento</div>'
     +'<label class="cp-lbl" for="cqNom">Nombre *</label><input class="cp-inp" id="cqNom" value="'+esc(c.nombre)+'" oninput="_cpAct.nombre=this.value;cpMarcar()">'
     +'<label class="cp-lbl" for="cqCat">Categoría *</label><select class="cp-inp" id="cqCat" onchange="_cpAct.categoria=this.value;cpMarcar()">'+opts+'</select>'
@@ -491,10 +492,13 @@ function cpFormReq(){
     +'<div class="cp-ayuda">Texto libre: para qué se hace esta compra.</div>'
     +'<div class="cp-grid2"><div><label class="cp-lbl" for="cqFs">Fecha de solicitud</label><input type="date" class="cp-inp" id="cqFs" value="'+esc(c.fecha_solicitud)+'" onchange="_cpAct.fecha_solicitud=this.value;cpMarcar()"></div>'
     +'<div><label class="cp-lbl" for="cqFt">Fecha tentativa de contratación</label><input type="date" class="cp-inp" id="cqFt" value="'+esc(c.fecha_tentativa)+'" onchange="_cpAct.fecha_tentativa=this.value;cpMarcar()"></div></div>'
+    +'<label class="cp-lbl" for="cqVr">Valor referencial (S/, con IGV) — opcional</label>'
+    +'<input class="cp-inp" id="cqVr" style="max-width:240px;" inputmode="decimal" value="'+esc(String(vr))+'" placeholder="Ej.: 3500" oninput="cpT().valor_referencial=cpNum(this.value);cpMarcar()">'
+    +'<div class="cp-ayuda">Es el monto máximo que estás dispuesto a pagar. Las ofertas que lo superen quedan fuera, y sirve para calificar la facturación en el modelo CTB.</div>'
     +'<label class="cp-lbl" for="cqPt">Peso de la evaluación técnica (%)</label>'
     +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><input type="number" min="0" max="100" step="5" class="cp-inp" style="max-width:120px;" id="cqPt" value="'+pt+'" oninput="cpPesos(this.value)">'
     +'<span id="cqPesos" style="font-size:1rem;">Técnico <b>'+pt+' %</b> + Económico <b>'+(100-pt)+' %</b> = 100 %</span></div>'
-    +'<div class="cp-ayuda">Puntaje final = puntaje técnico × peso técnico + puntaje económico × peso económico. Por defecto 60 / 40: pesa más la calidad que el precio.</div>'
+    +'<div class="cp-ayuda">Puntaje final = puntaje técnico × peso técnico + puntaje económico × peso económico. Por defecto 70 / 30, como en los concursos de la Cooperación Técnica Belga: pesa más la calidad que el precio.</div>'
     +'<div class="cp-acts"><button class="pk-tool del" style="font-size:.95rem;" onclick="cpEliminar()">🗑 Eliminar requerimiento</button>'+cpBotonGuardar()+'</div></div>'
     +'<div class="cp-acts"><span></span><button class="btn btn-p" onclick="cpPaso(1)">Continuar → Partidas →</button></div>';
 }
@@ -503,13 +507,14 @@ function cpPesos(v){
   var e=document.getElementById('cqPesos');if(e)e.innerHTML='Técnico <b>'+n+' %</b> + Económico <b>'+(100-n)+' %</b> = 100 %';
 }
 function cpElegir(i){
+  _cpEtapa=0;
   if(_cpSucio&&_cpAct&&_cpAct!==_cpLista[i])cpGuardar();
   _cpAct=_cpLista[i];_cpSucio=false;cpRender();
 }
 function cpNuevo(){
   if(_cpSucio&&_cpAct)cpGuardar();
   _cpAct={id:cpUid('cp'),nombre:'Nuevo requerimiento',categoria:'',descripcion:'',objetivo:'',fecha_solicitud:cpHoy(),fecha_tentativa:'',
-    peso_tecnico:60,partidas:[],ofertas:[],tecnica:{},resultado:{},estado:'borrador',fecha_creacion:cpHoy()};
+    peso_tecnico:70,partidas:[],ofertas:[],tecnica:{minimo:80},resultado:{},estado:'borrador',fecha_creacion:cpHoy()};
   _cpSucio=true;cpRender();
   setTimeout(function(){var n=document.getElementById('cqNom');if(n){n.focus();n.select();}},40);
 }
@@ -556,9 +561,9 @@ function cpMoverPartida(i,d){var a=_cpAct.partidas,j=i+d;if(j<0||j>=a.length)ret
 function cpVistaOfertas(){
   var c=_cpAct;
   var h=cpNota('📨','Una oferta por proveedor',
-    'Agrega a cada proveedor que cotizó (desde el <b>directorio</b>) y copia su <b>precio unitario</b> en cada partida. Si no cotizó una partida, marca <b>No cotiza</b>. '
+    'Agrega a cada <b>postor</b> que presentó propuesta (desde el <b>directorio</b>) y registra su oferta económica: copia su <b>precio unitario</b> en cada partida. Si no cotizó una partida, marca <b>No cotiza</b>. '
     +'Completa también las condiciones: si el precio incluye <b>IGV</b>, el plazo, la garantía, el adelanto y lo que <b>no incluye</b>. '
-    +'Se recomienda tener <b>al menos 3 ofertas</b> para que la comparación sea útil.');
+    +'Se recomienda tener <b>al menos 3 ofertas</b>. Los precios solo se comparan entre quienes pasen la evaluación técnica (paso 5), como cuando el sobre económico se abre al final.');
   if(!(c.partidas||[]).length){
     return h+'<div class="cp-pend">Primero registra las partidas en el paso 2.<br><button class="btn btn-p btn-sm" style="margin-top:10px;" onclick="cpPaso(1)">Ir a Partidas</button></div>';
   }
@@ -620,9 +625,321 @@ function cpAddOferta(){
   },{excluir:ya,origen:'compras'});
 }
 
-// ── Paso 4: Cuadro económico ──
-function cpCalcEconomico(c){
-  var ofs=c.ofertas||[],parts=c.partidas||[];
+// ══════════════════════════════════════
+// BASES Y EVALUACIÓN (modelo de concurso por etapas: habilitación → técnica → económica)
+// ══════════════════════════════════════
+function cpT(){
+  var c=_cpAct;if(!c.tecnica||typeof c.tecnica!=='object'||Array.isArray(c.tecnica))c.tecnica={};
+  var t=c.tecnica;t.requisitos=t.requisitos||[];t.factores=t.factores||[];t.eval=t.eval||{};
+  if(t.minimo==null)t.minimo=80;
+  return t;
+}
+function cpEv(oid){var t=cpT();var e=t.eval[oid]=t.eval[oid]||{};e.hab=e.hab||{};e.tec=e.tec||{};return e;}
+function cpVR(){return cpNum(cpT().valor_referencial);}
+function cpPtsFactor(f,e){
+  if(!e)return null;
+  var mx=cpNum(f.max)||0;
+  if(f.tipo==='tramos'){
+    var v=cpNum(e.valor);if(v==null)return null;
+    if(f.relVR){var vr=cpVR();if(!vr)return null;v=v/vr;}
+    var tr=(f.tramos||[]).filter(function(x){return cpNum(x.desde)!=null;}).sort(function(a,b){return cpNum(b.desde)-cpNum(a.desde);});
+    for(var i=0;i<tr.length;i++)if(v>=cpNum(tr[i].desde))return Math.min(mx,cpNum(tr[i].pts)||0);
+    return 0;
+  }
+  if(f.tipo==='niveles'){
+    if(e.nivel==null||e.nivel==='')return null;var n=(f.niveles||[])[+e.nivel];
+    return n?Math.min(mx,cpNum(n.pts)||0):null;
+  }
+  var p=cpNum(e.pts);return p==null?null:Math.max(0,Math.min(mx,p));
+}
+function cpHabEstado(o){
+  var t=cpT(),e=cpEv(o.id);if(!t.requisitos.length)return 'si';
+  var vals=t.requisitos.map(function(r){return e.hab[r.id]||'';});
+  if(vals.indexOf('no')>-1)return 'no';
+  return vals.every(function(v){return v==='si';})?'si':'pend';
+}
+function cpTecTotal(o){
+  var t=cpT(),e=cpEv(o.id),tot=0,faltan=0;
+  t.factores.forEach(function(f){var p=cpPtsFactor(f,e.tec[f.id]);if(p==null)faltan++;else tot+=p;});
+  tot=Math.round(tot*100)/100;
+  var min=cpNum(t.minimo)||0;
+  return {total:tot,faltan:faltan,pasa:t.factores.length>0&&faltan===0&&tot>=min,completo:faltan===0&&t.factores.length>0};
+}
+function cpSumaMax(){return Math.round(cpT().factores.reduce(function(s,f){return s+(cpNum(f.max)||0);},0)*100)/100;}
+
+// ── Plantillas de bases ──
+function cpPlantillaCTB(){
+  var tr=function(arr){return arr.map(function(x){return {desde:x[0],pts:x[1]};});};
+  var nv=function(arr){return arr.map(function(x){return {txt:x[0],pts:x[1]};});};
+  return {
+    requisitos:[
+      {id:cpUid('rq'),nombre:'Empresa constituida (copia de la escritura de constitución)',evidencia:'Copia simple de la escritura pública'},
+      {id:cpUid('rq'),nombre:'RUC activo y habido',evidencia:'Consulta RUC en SUNAT'},
+      {id:cpUid('rq'),nombre:'No impedido de contratar con el Estado',evidencia:'Declaración jurada firmada por el representante legal'},
+      {id:cpUid('rq'),nombre:'Declaración jurada con la información del postor',evidencia:'Razón social, representante, RUC, domicilio, contacto'},
+      {id:cpUid('rq'),nombre:'Ausencia de incompatibilidades (sin parentesco con la entidad)',evidencia:'Declaración jurada'},
+      {id:cpUid('rq'),nombre:'CV del líder y del equipo en el formato pedido',evidencia:'Formato de resumen de CV'},
+      {id:cpUid('rq'),nombre:'Cumple los requisitos técnicos mínimos de los términos de referencia',evidencia:'Revisión de la propuesta técnica'}
+    ],
+    factores:[
+      {id:cpUid('fc'),grupo:'Experiencia de la empresa',nombre:'Antigüedad en el mercado',max:5,tipo:'tramos',unidad:'años',tramos:tr([[8,5],[5,3],[0,1]]),ayuda:'Según la escritura de constitución.'},
+      {id:cpUid('fc'),grupo:'Experiencia de la empresa',nombre:'Trabajos similares realizados',max:15,tipo:'tramos',unidad:'trabajos',tramos:tr([[10,15],[6,10],[0,5]]),ayuda:'Certificados, constancias o contratos (máximo 10).'},
+      {id:cpUid('fc'),grupo:'Experiencia de la empresa',nombre:'Facturación en servicios similares (últimos 8 años)',max:27,tipo:'tramos',unidad:'S/ facturados',relVR:true,tramos:tr([[2,27],[1.5,15],[1,10],[0.5,5],[0,0]]),ayuda:'Se compara con el valor referencial: 2 veces o más = 27 pts; 1.5 = 15; 1 = 10; 0.5 = 5; menos = 0.'},
+      {id:cpUid('fc'),grupo:'Líder del equipo (13 pts)',nombre:'Grado académico',max:3,tipo:'niveles',niveles:nv([['Doctorado',3],['Maestría',2],['Diplomado o curso de posgrado',1],['Sin posgrado',0]])},
+      {id:cpUid('fc'),grupo:'Líder del equipo (13 pts)',nombre:'Experiencia general',max:5,tipo:'tramos',unidad:'años',tramos:tr([[15,5],[10,4],[0,2]])},
+      {id:cpUid('fc'),grupo:'Líder del equipo (13 pts)',nombre:'Experiencia específica en el tema',max:5,tipo:'tramos',unidad:'años',tramos:tr([[10,5],[6,4],[0,1]])},
+      {id:cpUid('fc'),grupo:'Equipo de apoyo (10 pts)',nombre:'Consultor 1: grado académico',max:2,tipo:'niveles',niveles:nv([['Doctorado',2],['Maestría',1],['Diplomado o sin posgrado',0]])},
+      {id:cpUid('fc'),grupo:'Equipo de apoyo (10 pts)',nombre:'Consultor 1: experiencia específica',max:3,tipo:'tramos',unidad:'años',tramos:tr([[5,3],[3,2],[0,0]])},
+      {id:cpUid('fc'),grupo:'Equipo de apoyo (10 pts)',nombre:'Consultor 2: grado académico',max:2,tipo:'niveles',niveles:nv([['Doctorado',2],['Maestría',1],['Diplomado o sin posgrado',0]])},
+      {id:cpUid('fc'),grupo:'Equipo de apoyo (10 pts)',nombre:'Consultor 2: experiencia específica',max:3,tipo:'tramos',unidad:'años',tramos:tr([[5,3],[3,2],[0,0]])},
+      {id:cpUid('fc'),grupo:'Propuesta técnica',nombre:'Metodología de trabajo',max:30,tipo:'niveles',niveles:nv([
+        ['Cumple los 4 elementos: selección, metodología y contenidos, herramientas y productos adicionales',30],
+        ['Cumple los 3 primeros elementos',27],['Cumple solo el elemento 1 o el 2',21],['No evidencia ninguno',0]]),ayuda:'Se revisa la propuesta técnica escrita.'}
+    ],
+    minimo:80,peso_tecnico:70
+  };
+}
+function cpPlantillaObras(){
+  var tr=function(arr){return arr.map(function(x){return {desde:x[0],pts:x[1]};});};
+  var nv=function(arr){return arr.map(function(x){return {txt:x[0],pts:x[1]};});};
+  return {
+    requisitos:[
+      {id:cpUid('rq'),nombre:'RUC activo y habido (o RUS vigente)',evidencia:'Consulta RUC en SUNAT'},
+      {id:cpUid('rq'),nombre:'Cotización por escrito con el detalle de partidas',evidencia:'PDF o documento firmado'},
+      {id:cpUid('rq'),nombre:'Visitó el lugar o conoce el alcance del trabajo',evidencia:'Fecha de la visita'},
+      {id:cpUid('rq'),nombre:'No está en Lista negra ni Vetado',evidencia:'Estado en el directorio de proveedores'}
+    ],
+    factores:[
+      {id:cpUid('fc'),grupo:'Experiencia',nombre:'Trabajos similares comprobados',max:30,tipo:'tramos',unidad:'trabajos',tramos:tr([[5,30],[3,20],[1,10],[0,0]]),ayuda:'Fotos, contratos o referencias de obras parecidas.'},
+      {id:cpUid('fc'),grupo:'Experiencia',nombre:'Referencias de clientes anteriores',max:15,tipo:'niveles',niveles:nv([['Buenas referencias verificadas (llamada o visita)',15],['Referencias sin verificar',8],['Sin referencias',0]])},
+      {id:cpUid('fc'),grupo:'Propuesta técnica',nombre:'Garantía de los trabajos',max:20,tipo:'tramos',unidad:'meses',tramos:tr([[12,20],[6,15],[3,10],[1,5],[0,0]])},
+      {id:cpUid('fc'),grupo:'Propuesta técnica',nombre:'Plazo de ejecución',max:20,tipo:'niveles',niveles:nv([['Igual o menor al plazo requerido',20],['Hasta 20 % más que el plazo requerido',10],['Más de 20 % por encima',0]])},
+      {id:cpUid('fc'),grupo:'Propuesta técnica',nombre:'Calidad de materiales especificada',max:15,tipo:'niveles',niveles:nv([['Especifica marcas y calidades superiores a lo pedido',15],['Especifica las calidades pedidas',10],['No especifica materiales',0]])}
+    ],
+    minimo:80,peso_tecnico:70
+  };
+}
+function cpPlantillaCategoria(){
+  var k=getCategoria(_cpAct.categoria);
+  return {requisitos:[{id:cpUid('rq'),nombre:'RUC activo y habido',evidencia:'Consulta RUC en SUNAT'}],
+    factores:(k?k.criterios:[]).map(function(c){return {id:cpUid('fc'),grupo:'',nombre:c.label,max:c.weight,tipo:'directo'};}),
+    minimo:80,peso_tecnico:cpNum(_cpAct.peso_tecnico)||70};
+}
+function cpAplicarPlantilla(cual){
+  var t=cpT();
+  if((t.requisitos.length||t.factores.length)&&!confirm('Esto reemplaza los requisitos y criterios que ya tienes (y las calificaciones hechas con ellos).\n\n¿Continuar?'))return;
+  var p=cual==='ctb'?cpPlantillaCTB():cual==='obras'?cpPlantillaObras():cpPlantillaCategoria();
+  if(cual==='cat'&&!p.factores.length){tst('La categoría del requerimiento no tiene criterios sugeridos');return;}
+  t.requisitos=p.requisitos;t.factores=p.factores;t.minimo=p.minimo;t.eval={};
+  _cpAct.peso_tecnico=p.peso_tecnico;
+  cpMarcar();cpRender();tst('✅ Bases cargadas: '+_pkPlural(p.requisitos.length,'requisito','requisitos')+' y '+_pkPlural(p.factores.length,'criterio','criterios'));
+}
+
+// ── Paso 3: Bases (requisitos habilitadores y criterios técnicos) ──
+function cpVistaBases(){
+  var t=cpT(),pt=cpNum(_cpAct.peso_tecnico)==null?70:cpNum(_cpAct.peso_tecnico);
+  var h=cpNota('📜','Las bases: cómo se va a elegir',
+    'La evaluación tiene <b>tres filtros en orden</b>, como en los concursos formales:<br>'
+    +'<b>1) Requisitos habilitadores:</b> se cumplen o no. Si falta uno, el postor queda fuera y no se evalúa.<br>'
+    +'<b>2) Evaluación técnica (sobre 100 puntos):</b> solo para los habilitados. Quien no llega al <b>puntaje mínimo</b> queda fuera.<br>'
+    +'<b>3) Evaluación económica:</b> solo para quienes pasaron la técnica. El más barato obtiene 100.<br>'
+    +'<b>Puntaje final</b> = técnico × '+pt+' % + económico × '+(100-pt)+' %. Si hay empate, gana el de mayor puntaje técnico.');
+  h+='<div class="cp-card"><div class="cp-h">Empezar desde un modelo</div><div class="cp-sub">Carga un modelo y luego ajústalo. Reemplaza lo que tengas.</div>'
+    +'<button class="cp-chip" onclick="cpAplicarPlantilla(\'ctb\')">📑 Consultoría y servicios especializados (modelo CTB)</button>'
+    +'<button class="cp-chip" onclick="cpAplicarPlantilla(\'obras\')">🏗️ Obras y servicios menores</button>'
+    +'<button class="cp-chip" onclick="cpAplicarPlantilla(\'cat\')">🗂️ Desde los criterios de la categoría</button></div>';
+  // Requisitos
+  h+='<div class="cp-card"><div class="cp-h">1. Requisitos habilitadores</div><div class="cp-sub">Se cumplen o no; no dan puntos. Escribe también con qué documento se comprueba.</div>'
+    +'<div class="cp-scroll"><table class="cp-tabla"><thead><tr><th style="width:50px;">N°</th><th>Requisito</th><th>Cómo se comprueba</th><th style="width:60px;"></th></tr></thead><tbody>'
+    +(t.requisitos.map(function(r,i){
+      return '<tr><td style="font-weight:700;">'+(i+1)+'</td><td><input value="'+esc(r.nombre)+'" oninput="cpT().requisitos['+i+'].nombre=this.value;cpMarcar()"></td>'
+        +'<td><input value="'+esc(r.evidencia||'')+'" placeholder="Ej.: declaración jurada" oninput="cpT().requisitos['+i+'].evidencia=this.value;cpMarcar()"></td>'
+        +'<td><button class="pk-tool del" onclick="cpQuitarReq('+i+')">🗑</button></td></tr>';
+    }).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px;">Sin requisitos: todos los postores quedan habilitados.</td></tr>')
+    +'</tbody></table></div><div class="cp-acts"><button class="btn btn-o" onclick="cpT().requisitos.push({id:cpUid(\'rq\'),nombre:\'\',evidencia:\'\'});cpMarcar();cpRender()">+ Agregar requisito</button></div></div>';
+  // Factores
+  var suma=cpSumaMax();
+  h+='<div class="cp-card"><div class="cp-h">2. Criterios de la evaluación técnica</div>'
+    +'<div class="cp-sub">Cada criterio tiene un puntaje máximo; entre todos deben sumar <b>100</b>. Hay tres formas de calificar:<br>'
+    +'• <b>Por tramos:</b> escribes un número (años, trabajos, meses) y la tabla da los puntos. Ej.: 8 años o más = 5 pts.<br>'
+    +'• <b>Por niveles:</b> eliges la descripción que corresponde. Ej.: Maestría = 2 pts.<br>'
+    +'• <b>Puntaje directo:</b> el evaluador pone los puntos, de 0 al máximo.</div>'
+    +t.factores.map(function(f,i){return cpFactorHtml(f,i);}).join('')
+    +'<div class="cp-acts"><button class="btn btn-o" onclick="cpAddFactor()">+ Agregar criterio</button>'
+    +'<span style="font-size:1.05rem;font-weight:700;color:'+(suma===100?'#059669':'#991B1B')+'">Suma de puntajes máximos: '+suma+(suma===100?' ✓':' — debe ser 100')+'</span></div></div>';
+  // Mínimo
+  h+='<div class="cp-card"><div class="cp-h">3. Puntaje técnico mínimo</div>'
+    +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><input type="number" class="cp-inp" style="max-width:120px;" min="0" max="100" value="'+(cpNum(t.minimo)==null?80:t.minimo)+'" oninput="cpT().minimo=cpNum(this.value);cpMarcar()">'
+    +'<span style="font-size:1rem;">puntos de 100. Quien obtenga menos <b>no pasa</b> a la evaluación económica.</span></div></div>';
+  h+='<div class="cp-acts"><span></span>'+cpBotonGuardar()+'</div>';
+  return h;
+}
+function cpFactorHtml(f,i){
+  var base='cpT().factores['+i+']';
+  var sel=function(v,txt){return '<option value="'+v+'"'+((f.tipo||'directo')===v?' selected':'')+'>'+txt+'</option>';};
+  var h='<div class="cp-oferta"><div class="cp-oferta-h"><b style="font-size:1.05rem;">Criterio '+(i+1)+'</b>'
+    +'<div style="display:flex;gap:6px;"><button class="pk-tool" onclick="cpMoverFactor('+i+',-1)">▲</button><button class="pk-tool" onclick="cpMoverFactor('+i+',1)">▼</button>'
+    +'<button class="pk-tool del" onclick="cpQuitarFactor('+i+')">🗑 Quitar</button></div></div><div class="cp-oferta-b">'
+    +'<div class="cp-grid3"><div><label class="cp-lbl">Grupo (opcional)</label><input class="cp-inp" value="'+esc(f.grupo||'')+'" placeholder="Ej.: Líder del equipo" oninput="'+base+'.grupo=this.value;cpMarcar()"></div>'
+    +'<div><label class="cp-lbl">Criterio *</label><input class="cp-inp" value="'+esc(f.nombre||'')+'" oninput="'+base+'.nombre=this.value;cpMarcar()"></div>'
+    +'<div><label class="cp-lbl">Puntaje máximo</label><input class="cp-inp" type="number" min="0" max="100" value="'+(f.max==null?'':f.max)+'" onchange="'+base+'.max=cpNum(this.value);cpMarcar();cpRender()"></div></div>'
+    +'<label class="cp-lbl">¿Cómo se califica?</label><select class="cp-inp" style="max-width:360px;" onchange="cpTipoFactor('+i+',this.value)">'
+    +sel('tramos','Por tramos (se escribe un número)')+sel('niveles','Por niveles (se elige una descripción)')+sel('directo','Puntaje directo')+'</select>';
+  if(f.tipo==='tramos'){
+    h+='<div class="cp-grid2"><div><label class="cp-lbl">¿Qué se cuenta? (unidad)</label><input class="cp-inp" value="'+esc(f.unidad||'')+'" placeholder="años, trabajos, meses" oninput="'+base+'.unidad=this.value;cpMarcar()"></div>'
+      +'<div><label class="cp-lbl">&nbsp;</label><label style="display:flex;gap:8px;align-items:center;font-size:1rem;"><input type="checkbox" style="width:20px;height:20px;"'+(f.relVR?' checked':'')+' onchange="'+base+'.relVR=this.checked;cpMarcar();cpRender()">El número se divide entre el valor referencial (veces el VR)</label></div></div>'
+      +'<table class="cp-tabla" style="margin-top:8px;max-width:520px;"><thead><tr><th>Desde ('+(f.relVR?'veces el VR':esc(f.unidad||'valor'))+' o más)</th><th class="num">Puntos</th><th></th></tr></thead><tbody>'
+      +(f.tramos||[]).map(function(x,j){return '<tr><td><input class="n" value="'+(x.desde==null?'':x.desde)+'" oninput="'+base+'.tramos['+j+'].desde=cpNum(this.value);cpMarcar()"></td>'
+        +'<td><input class="n" value="'+(x.pts==null?'':x.pts)+'" oninput="'+base+'.tramos['+j+'].pts=cpNum(this.value);cpMarcar()"></td>'
+        +'<td><button class="pk-tool del" onclick="'+base+'.tramos.splice('+j+',1);cpMarcar();cpRender()">🗑</button></td></tr>';}).join('')
+      +'</tbody></table><button class="cp-chip" style="margin-top:6px;" onclick="('+base+'.tramos=('+base+'.tramos||[])).push({desde:null,pts:null});cpMarcar();cpRender()">+ Agregar tramo</button>'
+      +'<div class="cp-ayuda">Se otorgan los puntos del tramo más alto que se alcance. Ej.: con 6 años y tramos 8→5, 5→3, 0→1, obtiene 3.</div>';
+  } else if(f.tipo==='niveles'){
+    h+='<table class="cp-tabla" style="margin-top:8px;"><thead><tr><th>Nivel (descripción)</th><th class="num" style="width:120px;">Puntos</th><th style="width:60px;"></th></tr></thead><tbody>'
+      +(f.niveles||[]).map(function(x,j){return '<tr><td><input value="'+esc(x.txt||'')+'" oninput="'+base+'.niveles['+j+'].txt=this.value;cpMarcar()"></td>'
+        +'<td><input class="n" value="'+(x.pts==null?'':x.pts)+'" oninput="'+base+'.niveles['+j+'].pts=cpNum(this.value);cpMarcar()"></td>'
+        +'<td><button class="pk-tool del" onclick="'+base+'.niveles.splice('+j+',1);cpMarcar();cpRender()">🗑</button></td></tr>';}).join('')
+      +'</tbody></table><button class="cp-chip" style="margin-top:6px;" onclick="('+base+'.niveles=('+base+'.niveles||[])).push({txt:\'\',pts:null});cpMarcar();cpRender()">+ Agregar nivel</button>';
+  } else {
+    h+='<div class="cp-ayuda">El evaluador escribe los puntos, de 0 a '+(f.max==null?'el máximo':f.max)+'.</div>';
+  }
+  h+='<label class="cp-lbl">Cómo se verifica (opcional)</label><input class="cp-inp" value="'+esc(f.ayuda||'')+'" placeholder="Ej.: constancias o contratos" oninput="'+base+'.ayuda=this.value;cpMarcar()">';
+  return h+'</div></div>';
+}
+function cpAddFactor(){cpT().factores.push({id:cpUid('fc'),grupo:'',nombre:'',max:null,tipo:'niveles',niveles:[{txt:'',pts:null}]});cpMarcar();cpRender();}
+function cpTipoFactor(i,v){var f=cpT().factores[i];f.tipo=v;if(v==='tramos'&&!f.tramos)f.tramos=[{desde:null,pts:null}];if(v==='niveles'&&!f.niveles)f.niveles=[{txt:'',pts:null}];cpMarcar();cpRender();}
+function cpQuitarFactor(i){if(!confirm('¿Quitar este criterio? Se pierden las calificaciones hechas con él.'))return;cpT().factores.splice(i,1);cpMarcar();cpRender();}
+function cpMoverFactor(i,d){var a=cpT().factores,j=i+d;if(j<0||j>=a.length)return;var x=a[i];a[i]=a[j];a[j]=x;cpMarcar();cpRender();}
+function cpQuitarReq(i){cpT().requisitos.splice(i,1);cpMarcar();cpRender();}
+
+// ── Paso 5: Evaluación por etapas ──
+var _cpEtapa=0;
+function cpEtapa(n){_cpEtapa=n;cpRender();}
+function cpVistaEvaluacion(){
+  var c=_cpAct,ofs=c.ofertas||[],t=cpT();
+  if(!ofs.length)return cpNota('⚖️','Evaluación','Primero registra a los postores y sus ofertas en el paso 4.')
+    +'<div class="cp-pend"><button class="btn btn-p btn-sm" onclick="cpPaso(3)">Ir a Postores y ofertas</button></div>';
+  if(!t.factores.length&&_cpEtapa>0)_cpEtapa=0;
+  var hab=ofs.filter(function(o){return cpHabEstado(o)==='si';});
+  var tecOk=hab.filter(function(o){return cpTecTotal(o).pasa;});
+  var tab=function(n,txt,cnt){return '<button class="tab-btn'+(_cpEtapa===n?' on':'')+'" onclick="cpEtapa('+n+')">'+txt+'<span class="tab-sub">'+cnt+'</span></button>';};
+  var h='<div class="tab-bar">'
+    +tab(0,'1. Requisitos habilitadores',hab.length+' de '+_pkPlural(ofs.length,'postor habilitado','postores habilitados'))
+    +tab(1,'2. Evaluación técnica',tecOk.length+' de '+hab.length+' llegan al mínimo')
+    +tab(2,'3. Evaluación económica',_pkPlural(tecOk.length,'postor evaluado','postores evaluados'))+'</div>';
+  h+=[cpEtapaHab,cpEtapaTec,cpEtapaEco][_cpEtapa]();
+  return h;
+}
+function cpThPostores(ofs){return ofs.map(function(o){var d=_dir.find(function(x){return x.id===o.dirId;});var e=d?d.estado:'normal';
+  return '<th class="num" style="min-width:160px;text-align:center;">'+esc(o.razon_social)+(e!=='normal'?'<br>'+cpBadge(e):'')+'</th>';}).join('');}
+function cpEtapaHab(){
+  var c=_cpAct,ofs=c.ofertas,t=cpT();
+  var h=cpNota('✅','Etapa 1: requisitos habilitadores',
+    'Marca para cada postor si <b>cumple</b> o <b>no cumple</b> cada requisito. Basta un "No cumple" para que quede <b>no habilitado</b>: no pasa a la evaluación técnica. '
+    +'Si un requisito aún no se revisa, déjalo en "Por revisar".');
+  if(!t.requisitos.length)return h+'<div class="cp-pend">No definiste requisitos habilitadores: todos los postores quedan habilitados.<br><button class="btn btn-o btn-sm" style="margin-top:8px;" onclick="cpPaso(2)">Definirlos en Bases</button></div>';
+  var filas=t.requisitos.map(function(r,ri){
+    return '<tr><td style="font-weight:700;">'+(ri+1)+'</td><td>'+esc(r.nombre)+(r.evidencia?'<div class="cp-ayuda">'+esc(r.evidencia)+'</div>':'')+'</td>'
+      +ofs.map(function(o){var v=cpEv(o.id).hab[r.id]||'';
+        return '<td style="text-align:center;"><select class="cp-inp" style="padding:6px;font-size:.95rem;background:'+(v==='si'?'#DCFCE7':v==='no'?'#FEE2E2':'white')+'" onchange="cpEv(\''+o.id+'\').hab[\''+r.id+'\']=this.value;cpMarcar();cpRender()">'
+          +'<option value=""'+(v===''?' selected':'')+'>Por revisar</option><option value="si"'+(v==='si'?' selected':'')+'>✓ Cumple</option><option value="no"'+(v==='no'?' selected':'')+'>✗ No cumple</option></select></td>';}).join('')+'</tr>';
+  }).join('');
+  var res=ofs.map(function(o){var e=cpHabEstado(o);return '<td style="text-align:center;font-weight:700;font-size:1rem;color:'+(e==='si'?'#059669':e==='no'?'#991B1B':'#92400E')+'">'
+    +(e==='si'?'✓ Habilitado':e==='no'?'✗ No habilitado':'⏳ Pendiente')+'</td>';}).join('');
+  h+='<div class="cp-scroll"><table class="cp-tabla"><thead><tr><th>N°</th><th>Requisito</th>'+cpThPostores(ofs)+'</tr></thead><tbody>'+filas
+    +'<tr class="tot"><td colspan="2">Resultado</td>'+res+'</tr></tbody></table></div>';
+  h+='<div class="cp-acts"><span></span><div style="display:flex;gap:10px;flex-wrap:wrap;">'+cpBotonGuardar()+'<button class="btn btn-p" onclick="cpEtapa(1)">Siguiente: evaluación técnica →</button></div></div>';
+  return h;
+}
+function cpEtapaTec(){
+  var c=_cpAct,t=cpT(),min=cpNum(t.minimo)||0;
+  var hab=c.ofertas.filter(function(o){return cpHabEstado(o)==='si';});
+  var h=cpNota('📐','Etapa 2: evaluación técnica (sobre 100 puntos)',
+    'Solo se evalúa a los postores <b>habilitados</b>. En cada criterio escribe el dato o elige el nivel; el sistema calcula los puntos según las bases (paso 3). '
+    +'<b>Puntaje técnico</b> = suma de los puntos de todos los criterios. Quien obtenga menos de <b>'+min+'</b> puntos queda fuera y <b>no pasa</b> a la evaluación económica.');
+  if(!t.factores.length)return h+'<div class="cp-pend">Aún no hay criterios técnicos.<br><button class="btn btn-o btn-sm" style="margin-top:8px;" onclick="cpPaso(2)">Definirlos en Bases</button></div>';
+  if(!hab.length)return h+'<div class="cp-pend">Ningún postor está habilitado todavía. Completa la etapa 1.</div>';
+  var grupoAnt=null;
+  var filas=t.factores.map(function(f,fi){
+    var g='';
+    if((f.grupo||'')!==grupoAnt){grupoAnt=f.grupo||'';if(grupoAnt)g='<tr><td colspan="'+(3+hab.length)+'" style="background:var(--surface);font-weight:700;">'+esc(grupoAnt)+'</td></tr>';}
+    return g+'<tr><td>'+esc(f.nombre)+(f.ayuda?'<div class="cp-ayuda">'+esc(f.ayuda)+'</div>':'')+'</td><td class="num" style="font-weight:700;">'+(f.max==null?'—':f.max)+'</td>'
+      +hab.map(function(o){
+        var oi=c.ofertas.indexOf(o),e=cpEv(o.id).tec[f.id]||{},p=cpPtsFactor(f,e),inp;
+        var on='cpTecSet(\''+o.id+'\',\''+f.id+'\',';
+        if(f.tipo==='tramos')inp='<input class="n" inputmode="decimal" value="'+(e.valor==null?'':e.valor)+'" placeholder="'+(f.relVR?'S/':esc(f.unidad||'valor'))+'" oninput="'+on+'\'valor\',this.value)">';
+        else if(f.tipo==='niveles')inp='<select class="cp-inp" style="padding:6px;font-size:.92rem;" onchange="'+on+'\'nivel\',this.value)"><option value="">— Elige —</option>'
+          +(f.niveles||[]).map(function(n,j){return '<option value="'+j+'"'+(String(e.nivel)===String(j)?' selected':'')+'>'+esc(n.txt)+' ('+n.pts+')</option>';}).join('')+'</select>';
+        else inp='<input class="n" inputmode="decimal" value="'+(e.pts==null?'':e.pts)+'" placeholder="0–'+f.max+'" oninput="'+on+'\'pts\',this.value)">';
+        return '<td>'+inp+'<div class="cp-ayuda" style="text-align:right;" id="tp_'+oi+'_'+fi+'">'+(p==null?'—':'<b>'+p+' pts</b>')+'</div></td>';
+      }).join('')+'</tr>';
+  }).join('');
+  var tot=hab.map(function(o){return '<td class="num" id="tt_'+c.ofertas.indexOf(o)+'"></td>';}).join('');
+  var est=hab.map(function(o){return '<td style="text-align:center;font-weight:700;" id="ts_'+c.ofertas.indexOf(o)+'"></td>';}).join('');
+  h+='<div class="cp-scroll"><table class="cp-tabla"><thead><tr><th>Criterio</th><th class="num">Máx.</th>'+cpThPostores(hab)+'</tr></thead><tbody>'+filas
+    +'<tr class="tot"><td>Puntaje técnico</td><td class="num">'+cpSumaMax()+'</td>'+tot+'</tr>'
+    +'<tr><td colspan="2"><b>¿Pasa a la evaluación económica?</b> (mínimo '+min+')</td>'+est+'</tr></tbody></table></div>';
+  h+='<div class="cp-acts"><button class="btn btn-o" onclick="cpEtapa(0)">← Requisitos</button><div style="display:flex;gap:10px;flex-wrap:wrap;">'+cpBotonGuardar()+'<button class="btn btn-p" onclick="cpEtapa(2)">Siguiente: evaluación económica →</button></div></div>';
+  setTimeout(cpRefrescarTec,0);
+  return h;
+}
+function cpTecSet(oid,fid,k,v){
+  var e=cpEv(oid),x=e.tec[fid]=e.tec[fid]||{};x[k]=(k==='nivel')?v:(v===''?null:v);cpMarcar();cpRefrescarTec();
+}
+function cpRefrescarTec(){
+  var c=_cpAct;if(!c)return;var t=cpT(),min=cpNum(t.minimo)||0;
+  c.ofertas.forEach(function(o,oi){
+    var e=cpEv(o.id);
+    t.factores.forEach(function(f,fi){var el=document.getElementById('tp_'+oi+'_'+fi);if(el){var p=cpPtsFactor(f,e.tec[f.id]);el.innerHTML=p==null?'—':'<b>'+p+' pts</b>';}});
+    var r=cpTecTotal(o),tt=document.getElementById('tt_'+oi),ts=document.getElementById('ts_'+oi);
+    if(tt)tt.innerHTML='<b style="font-size:1.15rem;">'+r.total+'</b>'+(r.faltan?'<div class="cp-ayuda">faltan '+r.faltan+'</div>':'');
+    if(ts){ts.innerHTML=!r.completo?'⏳ Falta calificar':(r.pasa?'✓ Sí pasa':'✗ No pasa ('+r.total+' < '+min+')');ts.style.color=!r.completo?'#92400E':(r.pasa?'#059669':'#991B1B');}
+  });
+}
+function cpAptosEco(){
+  var vr=cpVR();
+  return (_cpAct.ofertas||[]).filter(function(o){return cpHabEstado(o)==='si'&&cpTecTotal(o).pasa;});
+}
+function cpEtapaEco(){
+  var c=_cpAct,aptos=cpAptosEco(),vr=cpVR();
+  var h=cpNota('💰','Etapa 3: evaluación económica',
+    'Solo entran los postores que <b>pasaron la evaluación técnica</b> (como abrir el sobre económico únicamente a ellos).<br>'
+    +'Todos los montos se comparan <b>con IGV</b>; si alguien cotizó sin IGV, se le suma el 18 %. '
+    +'<span class="cp-badge" style="background:#DCFCE7;color:#065F46;">verde</span> precio más bajo de la partida; '
+    +'<span class="cp-badge" style="background:#FEF3C7;color:#92400E;">amarillo</span> partida que no cotizó, completada con el <b>promedio</b> de los demás.<br>'
+    +'<b>Puntaje económico</b> = (total comparable más bajo ÷ total comparable del postor) × 100.'
+    +(vr?' Las ofertas que superan el <b>valor referencial</b> ('+cpSoles(vr)+') quedan fuera.':''));
+  if(!aptos.length)return h+'<div class="cp-pend">Ningún postor ha pasado todavía la evaluación técnica.</div>';
+  var r=cpCalcEconomico(c,aptos);
+  var filas=c.partidas.map(function(p,pi){
+    return '<tr><td style="font-weight:700;">'+(pi+1)+'</td><td>'+esc(p.descripcion)+'<div class="cp-ayuda">'+esc(p.unidad||'')+' · '+(p.cantidad==null?'—':p.cantidad)+'</div></td>'
+      +r.celdas[pi].map(function(x){
+        var cls=x.tipo==='min'?'cel-min':x.tipo==='imp'?'cel-imp':x.tipo==='nadie'?'cel-nadie':'';
+        return '<td class="num '+cls+'">'+(x.tipo==='nadie'?'nadie cotizó':cpSoles(x.v)+(x.tipo==='imp'?'<br><small>promedio</small>':''))+'</td>';
+      }).join('')+'</tr>';
+  }).join('');
+  var fila=function(lbl,fn,cls){return '<tr class="'+(cls||'')+'"><td colspan="2">'+lbl+'</td>'+aptos.map(function(o,i){return '<td class="num">'+fn(o,r.tot[i],i)+'</td>';}).join('')+'</tr>';};
+  var nd=function(v,suf){return v==null||v===''?'<span style="color:#991B1B;">no indica</span>':v+(suf||'');};
+  h+='<div class="cp-scroll"><table class="cp-tabla"><thead><tr><th>Ítem</th><th>Partida</th>'+cpThPostores(aptos)+'</tr></thead><tbody>'+filas
+    +fila('Total ofertado (lo que sí cotizó, con IGV)',function(o,t){return cpSoles(t.ofertado);},'tot')
+    +fila('Partidas completadas con el promedio',function(o,t){return t.imputadas?'<b style="color:#92400E;">'+t.imputadas+'</b>':'0';})
+    +fila('<b>Total comparable</b>',function(o,t){return '<b>'+cpSoles(t.comparable)+'</b>'+(t.excede?'<div style="color:#991B1B;font-weight:700;">Supera el valor referencial: queda fuera</div>':'');},'tot')
+    +fila('<b>Puntaje económico (0–100)</b>',function(o,t){return t.excede?'—':'<b style="font-size:1.1rem;">'+t.puntaje.toFixed(2)+'</b>';},'tot')
+    +'<tr><td colspan="'+(2+aptos.length)+'" style="background:var(--surface);font-weight:700;">Condiciones declaradas</td></tr>'
+    +fila('IGV en la cotización',function(o){return o.igv==='no_incluye'?'No incluía (+18 %)':o.igv==='exonerado'?'Exonerado':'Incluía';})
+    +fila('Plazo de ejecución',function(o){return nd(o.plazo_dias,' días');})
+    +fila('Garantía',function(o){return nd(o.garantia_meses,' meses');})
+    +fila('Adelanto',function(o){return nd(o.adelanto_pct,' %');})
+    +fila('No incluye',function(o){return o.exclusiones?'<div style="text-align:left;white-space:normal;max-width:240px;">'+esc(o.exclusiones)+'</div>':'—';})
+    +'</tbody></table></div>';
+  h+='<div class="cp-acts"><button class="btn btn-o" onclick="cpEtapa(1)">← Evaluación técnica</button><div style="display:flex;gap:10px;flex-wrap:wrap;">'+cpBotonGuardar()
+    +'<button class="btn btn-p" onclick="cpPaso(5)">Ver resultado final →</button></div></div>';
+  return h;
+}
+
+// Cuadro económico (sobre un grupo de ofertas)
+function cpCalcEconomico(c,ofs){
+  ofs=ofs||c.ofertas||[];var parts=c.partidas||[],vr=cpVR();
   var factor=function(o){return o.igv==='no_incluye'?1+CP_IGV:1;};
   var celdas=parts.map(function(p){
     var cant=cpNum(p.cantidad)||0;
@@ -638,84 +955,99 @@ function cpCalcEconomico(c){
   var tot=ofs.map(function(o,i){
     var t={ofertado:0,comparable:0,imputadas:0};
     celdas.forEach(function(f){var x=f[i];if(x.tipo==='imp')t.imputadas++;else if(x.tipo!=='nadie')t.ofertado+=x.v;t.comparable+=x.v;});
+    t.excede=!!(vr&&t.comparable>vr+0.005);
     return t;
   });
-  var validos=tot.map(function(t){return t.comparable;}).filter(function(v){return v>0;});
+  var validos=tot.filter(function(t){return !t.excede&&t.comparable>0;}).map(function(t){return t.comparable;});
   var pmin=validos.length?Math.min.apply(null,validos):null;
-  tot.forEach(function(t){t.puntaje=(pmin&&t.comparable>0)?pmin/t.comparable*100:0;});
-  var orden=tot.map(function(t,i){return i;}).sort(function(a,b){return tot[b].puntaje-tot[a].puntaje;});
-  orden.forEach(function(i,pos){tot[i].puesto=pos+1;});
+  tot.forEach(function(t){t.puntaje=(!t.excede&&pmin&&t.comparable>0)?pmin/t.comparable*100:0;});
   return {celdas:celdas,tot:tot,pmin:pmin};
 }
-function cpVistaEconomico(){
-  var c=_cpAct,ofs=c.ofertas||[];
-  var h=cpNota('💰','Cómo se lee el cuadro económico',
-    '<b>Precios comparables:</b> todos los montos se muestran <b>con IGV</b>; si un proveedor cotizó sin IGV, se le suma el 18 %.<br>'
-    +'<span class="cp-badge" style="background:#DCFCE7;color:#065F46;">verde</span> el precio más bajo de esa partida. '
-    +'<span class="cp-badge" style="background:#FEF3C7;color:#92400E;">amarillo</span> el proveedor <b>no cotizó</b> esa partida: se completa con el <b>promedio</b> de los que sí la cotizaron, para que nadie parezca más barato solo por cotizar menos.<br>'
-    +'<b>Puntaje económico</b> = (total comparable más bajo ÷ total comparable del proveedor) × 100. El más barato obtiene 100; uno que cuesta el doble obtiene 50.');
-  if(ofs.length<1)return h+'<div class="cp-pend">Aún no hay ofertas. Regístralas en el paso 3.<br><button class="btn btn-p btn-sm" style="margin-top:10px;" onclick="cpPaso(2)">Ir a Ofertas</button></div>';
-  var r=cpCalcEconomico(c);
-  var th=ofs.map(function(o){var d=_dir.find(function(x){return x.id===o.dirId;});var e=d?d.estado:'normal';return '<th class="num" style="min-width:150px;">'+esc(o.razon_social)+(e!=='normal'?'<br>'+cpBadge(e):'')+'</th>';}).join('');
-  var filas=c.partidas.map(function(p,pi){
-    return '<tr><td style="font-weight:700;">'+(pi+1)+'</td><td>'+esc(p.descripcion)+'<div class="cp-ayuda">'+esc(p.unidad||'')+' · '+(p.cantidad==null?'—':p.cantidad)+'</div></td>'
-      +r.celdas[pi].map(function(x){
-        var cls=x.tipo==='min'?'cel-min':x.tipo==='imp'?'cel-imp':x.tipo==='nadie'?'cel-nadie':'';
-        var tip=x.tipo==='imp'?' title="No cotizó: se usa el promedio de los demás"':x.tipo==='nadie'?' title="Nadie cotizó esta partida"':'';
-        return '<td class="num '+cls+'"'+tip+'>'+(x.tipo==='nadie'?'nadie cotizó':cpSoles(x.v)+(x.tipo==='imp'?'<br><small>promedio</small>':''))+'</td>';
-      }).join('')+'</tr>';
-  }).join('');
-  var fila=function(lbl,fn,cls){return '<tr class="'+(cls||'')+'"><td colspan="2">'+lbl+'</td>'+ofs.map(function(o,i){return '<td class="num">'+fn(o,r.tot[i],i)+'</td>';}).join('')+'</tr>';};
-  var nd=function(v,suf){return v==null||v===''?'<span style="color:#991B1B;">no indica</span>':v+(suf||'');};
-  h+='<div class="cp-scroll"><table class="cp-tabla"><thead><tr><th>Ítem</th><th>Partida</th>'+th+'</tr></thead><tbody>'+filas
-    +fila('Total ofertado (lo que sí cotizó, con IGV)',function(o,t){return cpSoles(t.ofertado);},'tot')
-    +fila('Partidas completadas con el promedio',function(o,t){return t.imputadas?'<b style="color:#92400E;">'+t.imputadas+'</b>':'0';})
-    +fila('<b>Total comparable</b>',function(o,t){return '<b>'+cpSoles(t.comparable)+'</b>';},'tot')
-    +fila('<b>Puntaje económico (0–100)</b>',function(o,t){return '<b style="font-size:1.1rem;">'+t.puntaje.toFixed(2)+'</b>';},'tot')
-    +fila('Orden de mérito económico',function(o,t){return '<span class="cp-rank">'+t.puesto+'</span>';})
-    +'<tr><td colspan="'+(2+ofs.length)+'" style="background:var(--surface);font-weight:700;">Condiciones (se califican en el cuadro técnico)</td></tr>'
-    +fila('IGV en la cotización',function(o){return o.igv==='no_incluye'?'No incluía (+18 %)':o.igv==='exonerado'?'Exonerado':'Incluía';})
-    +fila('Plazo de ejecución',function(o){return nd(o.plazo_dias,' días');})
-    +fila('Garantía',function(o){return nd(o.garantia_meses,' meses');})
-    +fila('Adelanto',function(o){return nd(o.adelanto_pct,' %');})
-    +fila('Validez de la oferta',function(o){return nd(o.validez_dias,' días');})
-    +fila('No incluye',function(o){return o.exclusiones?'<div style="text-align:left;white-space:normal;max-width:240px;">'+esc(o.exclusiones)+'</div>':'<span style="color:var(--muted);">—</span>';})
-    +'</tbody></table></div>';
-  if(ofs.length<3)h+='<div class="cp-aviso" style="background:#FFFBEB;border-color:#FCD34D;color:#92400E;">Con '+_pkPlural(ofs.length,'oferta','ofertas')+' la comparación es limitada; se recomiendan al menos 3.</div>';
-  h+='<div class="cp-acts"><button class="btn btn-o" onclick="cpExcelEconomico()">⬇ Descargar cuadro en Excel</button>'+cpBotonGuardar()+'</div>';
-  return h;
-}
-function cpExcelEconomico(){
-  if(typeof XLSX==='undefined'){tst('⚠️ La herramienta de Excel aún no cargó; inténtalo en unos segundos');return;}
-  var c=_cpAct,ofs=c.ofertas||[],r=cpCalcEconomico(c);
-  var aoa=[['Cuadro comparativo económico — '+c.nombre],['Montos en soles, con IGV. Partidas no cotizadas se completan con el promedio de las demás ofertas (marcadas con *).'],[],
-    ['Ítem','Partida','Unidad','Cantidad'].concat(ofs.map(function(o){return o.razon_social;}))];
-  c.partidas.forEach(function(p,pi){aoa.push([pi+1,p.descripcion,p.unidad||'',p.cantidad].concat(r.celdas[pi].map(function(x){return x.tipo==='nadie'?'nadie cotizó':(Math.round(x.v*100)/100)+(x.tipo==='imp'?' *':'');})));});
-  aoa.push(['','Total ofertado','',''].concat(r.tot.map(function(t){return Math.round(t.ofertado*100)/100;})));
-  aoa.push(['','Total comparable','',''].concat(r.tot.map(function(t){return Math.round(t.comparable*100)/100;})));
-  aoa.push(['','Puntaje económico (0–100) = total más bajo ÷ total del proveedor × 100','',''].concat(r.tot.map(function(t){return Math.round(t.puntaje*100)/100;})));
-  aoa.push(['','Orden de mérito','',''].concat(r.tot.map(function(t){return t.puesto;})));
-  aoa.push([]);
-  [['Plazo (días)','plazo_dias'],['Garantía (meses)','garantia_meses'],['Adelanto (%)','adelanto_pct'],['Validez (días)','validez_dias'],['No incluye','exclusiones']].forEach(function(x){
-    aoa.push(['',x[0],'',''].concat(ofs.map(function(o){return o[x[1]]==null?'':o[x[1]];})));});
-  var ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:6},{wch:48},{wch:10},{wch:10}].concat(ofs.map(function(){return {wch:22};}));
-  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Cuadro económico');
-  XLSX.writeFile(wb,'Cuadro_economico_'+c.nombre.replace(/[^\wáéíóúñÁÉÍÓÚÑ]+/g,'_').slice(0,40)+'.xlsx');
-}
 
-// ── Pasos 5 y 6: en construcción ──
-function cpVistaTecnico(){
-  return cpNota('🔧','Cuadro técnico (siguiente etapa del desarrollo)',
-    'Aquí se calificará la calidad de cada oferta en dos partes: primero los <b>requisitos que se cumplen o no</b> (RUC activo y habido, garantía por escrito, experiencia mínima); '
-    +'quien no cumple queda fuera. Luego los <b>criterios de la categoría</b> con su rúbrica (experiencia, plazo, calidad de materiales, garantía), igual que en Homologación.')
-    +'<div class="cp-pend">🚧 En construcción. Mientras tanto puedes usar el cuadro económico.</div>';
+// ── Paso 6: Resultado ──
+function cpResultado(){
+  var c=_cpAct,t=cpT(),pt=(cpNum(c.peso_tecnico)==null?70:cpNum(c.peso_tecnico))/100,pe=1-pt;
+  var aptos=cpAptosEco(),eco=cpCalcEconomico(c,aptos);
+  var filas=c.ofertas.map(function(o){
+    var hab=cpHabEstado(o),tec=cpTecTotal(o),ai=aptos.indexOf(o),et=ai>-1?eco.tot[ai]:null;
+    var etapa,fin=null;
+    if(hab==='no')etapa='No habilitado';else if(hab==='pend')etapa='Habilitación pendiente';
+    else if(!tec.completo)etapa='Evaluación técnica pendiente';else if(!tec.pasa)etapa='No alcanzó el mínimo técnico';
+    else if(et&&et.excede)etapa='Supera el valor referencial';
+    else{etapa='Evaluado';fin=Math.round((tec.total*pt+et.puntaje*pe)*100)/100;}
+    return {o:o,hab:hab,tec:tec,eco:et,etapa:etapa,fin:fin};
+  });
+  var ev=filas.filter(function(f){return f.fin!=null;}).sort(function(a,b){return b.fin-a.fin||b.tec.total-a.tec.total;});
+  ev.forEach(function(f,i){f.puesto=i+1;});
+  return {filas:filas,evaluados:ev,pt:pt,pe:pe};
 }
 function cpVistaResultado(){
-  var pt=cpNum(_cpAct.peso_tecnico)==null?60:cpNum(_cpAct.peso_tecnico);
-  return cpNota('🏆','Resultado y buena pro (siguiente etapa del desarrollo)',
-    'Puntaje final = puntaje técnico × '+pt+' % + puntaje económico × '+(100-pt)+' %. Se mostrará el orden de mérito, el acta de buena pro y el botón '
-    +'<b>Enviar a Homologación</b>, que crea el paquete con el proveedor ganador para su evaluación inicial cuando termine el servicio.')
-    +'<div class="cp-pend">🚧 En construcción.</div>';
+  var c=_cpAct,R=cpResultado(),res=c.resultado||{};
+  var h=cpNota('🏆','Resultado final',
+    '<b>Puntaje final</b> = puntaje técnico × '+Math.round(R.pt*100)+' % + puntaje económico × '+Math.round(R.pe*100)+' %. '
+    +'Solo reciben puntaje final los postores que pasaron las tres etapas. Si dos empatan, gana el de <b>mayor puntaje técnico</b>.<br>'
+    +'Ejemplo: técnico 90 y económico 80 → 90 × '+R.pt.toFixed(2)+' + 80 × '+R.pe.toFixed(2)+' = '+(90*R.pt+80*R.pe).toFixed(2)+'.');
+  if(!c.ofertas.length)return h+'<div class="cp-pend">Aún no hay postores.</div>';
+  var orden=R.evaluados.concat(R.filas.filter(function(f){return f.fin==null;}));
+  h+='<div class="cp-scroll"><table class="cp-tabla"><thead><tr><th>Orden</th><th>Postor</th><th>Habilitación</th><th class="num">Técnico (0–100)</th><th class="num">Económico (0–100)</th><th class="num">Puntaje final</th><th>Situación</th></tr></thead><tbody>'
+    +orden.map(function(f){
+      var gan=res.ganador===f.o.id;
+      return '<tr'+(gan?' style="background:#ECFDF5;"':'')+'><td>'+(f.puesto?'<span class="cp-rank">'+f.puesto+'</span>':'—')+'</td>'
+        +'<td><b>'+esc(f.o.razon_social)+'</b>'+(gan?' <span class="cp-badge b-normal">🏆 Buena pro</span>':'')+'<div class="cp-ayuda">RUC '+(esc(f.o.ruc)||'—')+'</div></td>'
+        +'<td>'+(f.hab==='si'?'✓ Habilitado':f.hab==='no'?'<span style="color:#991B1B;">✗ No habilitado</span>':'⏳ Pendiente')+'</td>'
+        +'<td class="num">'+(f.hab==='si'&&f.tec.completo?f.tec.total.toFixed(2):'—')+'</td>'
+        +'<td class="num">'+(f.eco&&!f.eco.excede?f.eco.puntaje.toFixed(2):'—')+'</td>'
+        +'<td class="num" style="font-size:1.1rem;font-weight:700;">'+(f.fin==null?'—':f.fin.toFixed(2))+'</td>'
+        +'<td style="color:'+(f.fin!=null?'#059669':'#991B1B')+';font-weight:600;">'+f.etapa+'</td></tr>';
+    }).join('')+'</tbody></table></div>';
+  var primero=R.evaluados[0];
+  if(primero){
+    var empate=R.evaluados[1]&&R.evaluados[1].fin===primero.fin;
+    h+='<div class="cp-card" style="border-color:#10B981;"><div class="cp-h">'+(res.ganador?'Buena pro otorgada':'Propuesta de buena pro')+'</div>'
+      +'<div style="font-size:1.05rem;">Mayor puntaje final: <b>'+esc(primero.o.razon_social)+'</b> con <b>'+primero.fin.toFixed(2)+'</b> puntos'
+      +(empate?' (empate en puntaje final; se desempata por mayor puntaje técnico)':'')+'.</div>'
+      +(res.ganador?'<div class="cp-ayuda">Otorgada el '+esc(res.fecha||'')+'. Para cambiarla, vuelve a otorgarla.</div>':'')
+      +'<label class="cp-lbl">Observaciones del comité o evaluador</label><textarea class="cp-inp" rows="2" oninput="(_cpAct.resultado=_cpAct.resultado||{}).obs=this.value;cpMarcar()">'+esc(res.obs||'')+'</textarea>'
+      +'<div class="cp-acts"><button class="btn btn-o" onclick="cpExcelActa()">⬇ Descargar cuadro final en Excel</button>'
+      +'<button class="btn btn-p" onclick="cpOtorgar(\''+primero.o.id+'\')">🏆 Otorgar la buena pro a '+esc(primero.o.razon_social)+'</button></div></div>';
+  } else {
+    h+='<div class="cp-pend">Todavía ningún postor ha completado las tres etapas.</div>';
+  }
+  return h;
+}
+function cpOtorgar(oid){
+  var o=_cpAct.ofertas.find(function(x){return x.id===oid;});if(!o)return;
+  if(!confirm('¿Otorgar la buena pro a '+o.razon_social+'?'))return;
+  _cpAct.resultado=_cpAct.resultado||{};_cpAct.resultado.ganador=oid;_cpAct.resultado.fecha=cpHoy();_cpAct.estado='adjudicado';
+  cpMarcar();cpGuardar(function(ok){tst(ok?'✅ Buena pro otorgada y guardada':'⚠️ No se pudo guardar');cpRender();});
+}
+function cpExcelActa(){
+  if(typeof XLSX==='undefined'){tst('⚠️ La herramienta de Excel aún no cargó; inténtalo en unos segundos');return;}
+  var c=_cpAct,t=cpT(),R=cpResultado(),wb=XLSX.utils.book_new(),ofs=c.ofertas;
+  var hab=[['Etapa 1 — Requisitos habilitadores: '+c.nombre],[],['N°','Requisito'].concat(ofs.map(function(o){return o.razon_social;}))];
+  t.requisitos.forEach(function(r,i){hab.push([i+1,r.nombre].concat(ofs.map(function(o){var v=cpEv(o.id).hab[r.id];return v==='si'?'Cumple':v==='no'?'No cumple':'Por revisar';})));});
+  hab.push(['','Resultado'].concat(ofs.map(function(o){var e=cpHabEstado(o);return e==='si'?'Habilitado':e==='no'?'No habilitado':'Pendiente';})));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(hab),'1 Habilitación');
+  var habs=ofs.filter(function(o){return cpHabEstado(o)==='si';});
+  var tec=[['Etapa 2 — Evaluación técnica (mínimo '+t.minimo+' de 100)'],[],['Grupo','Criterio','Máximo'].concat(habs.map(function(o){return o.razon_social;}))];
+  t.factores.forEach(function(f){tec.push([f.grupo||'',f.nombre,f.max].concat(habs.map(function(o){var p=cpPtsFactor(f,cpEv(o.id).tec[f.id]);return p==null?'':p;})));});
+  tec.push(['','Puntaje técnico',cpSumaMax()].concat(habs.map(function(o){return cpTecTotal(o).total;})));
+  tec.push(['','¿Pasa a económica?',''].concat(habs.map(function(o){return cpTecTotal(o).pasa?'Sí':'No';})));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tec),'2 Técnica');
+  var aptos=cpAptosEco(),r=cpCalcEconomico(c,aptos);
+  var eco=[['Etapa 3 — Evaluación económica (con IGV; * = partida completada con el promedio)'],[],['Ítem','Partida','Unidad','Cantidad'].concat(aptos.map(function(o){return o.razon_social;}))];
+  c.partidas.forEach(function(p,pi){eco.push([pi+1,p.descripcion,p.unidad||'',p.cantidad].concat(r.celdas[pi].map(function(x){return x.tipo==='nadie'?'nadie cotizó':(Math.round(x.v*100)/100)+(x.tipo==='imp'?' *':'');})));});
+  eco.push(['','Total comparable','',''].concat(r.tot.map(function(x){return Math.round(x.comparable*100)/100;})));
+  eco.push(['','Puntaje económico = total más bajo ÷ total del postor × 100','',''].concat(r.tot.map(function(x){return x.excede?'Supera VR':Math.round(x.puntaje*100)/100;})));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(eco),'3 Económica');
+  var fin=[['Cuadro final — '+c.nombre],['Puntaje final = técnico × '+Math.round(R.pt*100)+' % + económico × '+Math.round(R.pe*100)+' %. Empate: gana el de mayor puntaje técnico.'],[],
+    ['Orden','Postor','RUC','Técnico','Económico','Puntaje final','Situación']];
+  R.evaluados.concat(R.filas.filter(function(f){return f.fin==null;})).forEach(function(f){
+    fin.push([f.puesto||'',f.o.razon_social,f.o.ruc||'',f.tec.completo&&f.hab==='si'?f.tec.total:'',f.eco&&!f.eco.excede?Math.round(f.eco.puntaje*100)/100:'',f.fin==null?'':f.fin,f.etapa]);});
+  if(c.resultado&&c.resultado.ganador){var g=c.ofertas.find(function(o){return o.id===c.resultado.ganador;});fin.push([],['Buena pro otorgada a: '+(g?g.razon_social:'')+' — '+(c.resultado.fecha||'')]);}
+  if(c.resultado&&c.resultado.obs)fin.push(['Observaciones: '+c.resultado.obs]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fin),'Cuadro final');
+  XLSX.writeFile(wb,'Evaluacion_'+c.nombre.replace(/[^\wáéíóúñÁÉÍÓÚÑ]+/g,'_').slice(0,40)+'.xlsx');
 }
 
 // Al cargar: restaurar el módulo que se usó la última vez
